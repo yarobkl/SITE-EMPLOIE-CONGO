@@ -30,8 +30,12 @@ const App = () => {
   const [formData, setFormData] = useState({ nom: '', email: '', phone: '', message: '' });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState(null);
-  const [loginForm, setLoginForm] = useState({ email: '', phone: '' });
+  const [loginForm, setLoginForm] = useState({ email: '' });
   const [signupForm, setSignupForm] = useState({ nom: '', prenom: '', email: '', phone: '', userType: 'candidat' });
+  const [otpCode, setOtpCode] = useState('');
+  const [userOTP, setUserOTP] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [showOTPScreen, setShowOTPScreen] = useState(false);
   const [jobs] = useState([
     { id: 1, company: "TotalEnergies EP Congo", role: "Ingénieur HSE Sénior", loc: "Pointe-Noire", type: "CDI", salary: "Top Range", description: "Nous recherchons un Ingénieur HSE sénior expérimenté pour rejoindre notre équipe.", requirements: ["5+ ans d'expérience", "Certification HSE", "Anglais courant"] },
     { id: 2, company: "MTN Congo", role: "Chef de Projet Digital", loc: "Brazzaville", type: "CDD", salary: "Négociable", description: "Pilotage de projets digitaux innovants avec une équipe dynamique.", requirements: ["3+ ans en gestion de projet", "Maîtrise des outils agile", "Gestion de budget"] },
@@ -45,6 +49,39 @@ const App = () => {
     surface: '#FFFFFF',
     background: '#F6F9FC',
     text: '#1A1F36'
+  };
+
+  const generateOTP = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    if (loginForm.email) {
+      const code = generateOTP();
+      setOtpCode(code);
+      setPendingEmail(loginForm.email);
+      setShowOTPScreen(true);
+      setUserOTP('');
+      alert(`Votre code OTP est: ${code}\n\nCe code a été généré pour les tests. En production, il serait envoyé par email.`);
+    }
+  };
+
+  const handleOTPVerification = (e) => {
+    e.preventDefault();
+    if (userOTP === otpCode) {
+      setIsLoggedIn(true);
+      setUserData({ email: pendingEmail, nom: 'Utilisateur' });
+      setLoginForm({ email: '' });
+      setShowOTPScreen(false);
+      setOtpCode('');
+      setUserOTP('');
+      setPendingEmail('');
+      setView('home');
+      alert('Connexion réussie!');
+    } else {
+      alert('Code OTP invalide. Veuillez réessayer.');
+    }
   };
 
   const Navbar = () => (
@@ -101,7 +138,7 @@ const App = () => {
         <div className="md:hidden bg-white border-b border-slate-100 p-6 space-y-4 animate-in fade-in slide-in-from-top-2">
           {isLoggedIn ? (
             <>
-              <button onClick={() => {setView('jobs'); setIsMenuOpen(false)}} className="block w-full text-left font-bold text-slate-700">Explorer</button>
+              <button onClick={() => {setView('jobs'); setIsMenuOpen(false)}} className="block w-full text-left font-bold text-slate-700">Offres d'emploi</button>
               <button onClick={() => {setView('candidate'); setIsMenuOpen(false)}} className="block w-full text-left font-bold text-slate-700">Mon Profil</button>
               {userData?.userType === 'recruteur' && (
                 <button onClick={() => {setView('recruiter'); setIsMenuOpen(false)}} className="block w-full text-left font-bold text-slate-700">Espace Recruteur</button>
@@ -110,7 +147,7 @@ const App = () => {
             </>
           ) : (
             <>
-              <button onClick={() => {setView('login'); setIsMenuOpen(false)}} className="block w-full text-center py-3 bg-[#0061FF] text-white rounded-lg font-bold">Connexion</button>
+              <button onClick={() => {setView('login'); setIsMenuOpen(false)}} className="block w-full text-center py-3 bg-[#0A2540] text-white rounded-lg font-bold">Connexion</button>
               <button onClick={() => {setView('signup'); setIsMenuOpen(false)}} className="block w-full text-center py-3 border-2 border-[#0061FF] text-[#0061FF] rounded-lg font-bold">S'inscrire</button>
             </>
           )}
@@ -384,16 +421,7 @@ const App = () => {
             <p className="text-slate-500 font-semibold">Connectez-vous à votre compte</p>
           </div>
 
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            if (loginForm.email && loginForm.phone) {
-              setIsLoggedIn(true);
-              setUserData({ email: loginForm.email, phone: loginForm.phone, nom: 'Utilisateur' });
-              setLoginForm({ email: '', phone: '' });
-              setView('home');
-              alert('Connexion réussie!');
-            }
-          }} className="space-y-6">
+          <form onSubmit={handleLoginSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-bold text-[#0A2540] mb-2">Email</label>
               <input
@@ -405,19 +433,8 @@ const App = () => {
                 placeholder="votre@email.com"
               />
             </div>
-            <div>
-              <label className="block text-sm font-bold text-[#0A2540] mb-2">Numéro de téléphone</label>
-              <input
-                type="tel"
-                required
-                value={loginForm.phone}
-                onChange={(e) => setLoginForm({...loginForm, phone: e.target.value})}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]"
-                placeholder="+242 06 xxx xxxx"
-              />
-            </div>
             <button type="submit" className="w-full bg-[#0061FF] text-white py-3 rounded-xl font-bold text-lg hover:bg-[#0A2540] transition-all">
-              Se connecter
+              Recevoir le code OTP
             </button>
           </form>
 
@@ -431,6 +448,51 @@ const App = () => {
           <button onClick={() => setView('home')} className="w-full mt-4 text-slate-500 font-semibold hover:text-slate-700 transition-colors">
             Retour à l'accueil
           </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const OTPVerificationPage = () => (
+    <div className="min-h-screen bg-gradient-to-br from-[#F6F9FC] to-white flex items-center justify-center px-4 py-16">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-xl p-8">
+          <div className="text-center mb-8">
+            <div className="w-12 h-12 bg-[#0061FF] rounded-lg flex items-center justify-center text-white shadow-lg mx-auto mb-4">
+              <ShieldCheck size={24} />
+            </div>
+            <h1 className="text-3xl font-black text-[#0A2540] mb-2">Vérifier votre compte</h1>
+            <p className="text-slate-500 font-semibold">Entrez le code OTP envoyé à {pendingEmail}</p>
+          </div>
+
+          <form onSubmit={handleOTPVerification} className="space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-[#0A2540] mb-2">Code OTP (6 chiffres)</label>
+              <input
+                type="text"
+                required
+                maxLength="6"
+                value={userOTP}
+                onChange={(e) => setUserOTP(e.target.value.replace(/[^0-9]/g, ''))}
+                className="w-full px-4 py-3 text-center text-2xl tracking-widest border border-slate-200 rounded-xl font-bold focus:outline-none focus:border-[#0061FF]"
+                placeholder="000000"
+              />
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+              <p className="text-slate-700 font-semibold text-sm">✉️ Le code OTP a été affiché. Saisissez-le ci-dessus pour vous connecter.</p>
+            </div>
+
+            <button type="submit" className="w-full bg-[#0061FF] text-white py-3 rounded-xl font-bold text-lg hover:bg-[#0A2540] transition-all">
+              Vérifier et se connecter
+            </button>
+          </form>
+
+          <div className="mt-6 pt-6 border-t border-slate-100">
+            <button onClick={() => { setShowOTPScreen(false); setLoginForm({ email: '' }); }} className="w-full text-slate-500 font-semibold hover:text-slate-700 transition-colors">
+              Retour à la connexion
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -668,7 +730,7 @@ const App = () => {
           <>
             <Hero />
             <div className="max-w-7xl mx-auto px-4 py-12 grid md:grid-cols-2 gap-8">
-               <div onClick={() => setView('jobs')} className="group bg-white p-10 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-2xl transition-all cursor-pointer">
+               <div onClick={() => isLoggedIn ? setView('jobs') : setView('login')} className="group bg-white p-10 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-2xl transition-all cursor-pointer">
                   <div className="w-12 h-12 bg-blue-50 text-[#0061FF] rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                     <Users size={24} />
                   </div>
@@ -676,7 +738,7 @@ const App = () => {
                   <p className="text-slate-500 font-medium mb-6">Plus de 200 nouvelles offres chaque semaine dans tous les secteurs.</p>
                   <span className="flex items-center gap-2 font-bold text-[#0061FF] text-sm">Découvrir les offres <ArrowRight size={16} /></span>
                </div>
-               <div onClick={() => setView('recruiter')} className="group bg-[#F6F9FC] p-10 rounded-[2rem] border border-blue-100 shadow-sm hover:shadow-2xl transition-all cursor-pointer">
+               <div onClick={() => isLoggedIn ? setView('recruiter') : setView('signup')} className="group bg-[#F6F9FC] p-10 rounded-[2rem] border border-blue-100 shadow-sm hover:shadow-2xl transition-all cursor-pointer">
                   <div className="w-12 h-12 bg-[#0A2540] text-white rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                     <Building2 size={24} />
                   </div>
@@ -690,7 +752,8 @@ const App = () => {
           </>
         )}
 
-        {view === 'login' && <LoginPage />}
+        {view === 'login' && !showOTPScreen && <LoginPage />}
+        {view === 'login' && showOTPScreen && <OTPVerificationPage />}
         {view === 'signup' && <SignupPage />}
         {view === 'jobs' && !selectedJob && isLoggedIn && <CandidateView />}
         {view === 'jobs' && selectedJob && isLoggedIn && <JobDetail />}
