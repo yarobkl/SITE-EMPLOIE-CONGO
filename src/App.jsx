@@ -39,13 +39,20 @@ const App = () => {
   const [jobs] = useState([
     { id: 1, company: "TotalEnergies EP Congo", role: "Ingénieur HSE Sénior", loc: "Pointe-Noire", type: "CDI", salary: "Top Range", description: "Nous recherchons un Ingénieur HSE sénior expérimenté pour rejoindre notre équipe.", requirements: ["5+ ans d'expérience", "Certification HSE", "Anglais courant"] },
     { id: 2, company: "MTN Congo", role: "Chef de Projet Digital", loc: "Brazzaville", type: "CDD", salary: "Négociable", description: "Pilotage de projets digitaux innovants avec une équipe dynamique.", requirements: ["3+ ans en gestion de projet", "Maîtrise des outils agile", "Gestion de budget"] },
-    { id: 3, company: "BGFIBank Congo", role: "Auditeur Interne", loc: "Brazzaville", type: "CDI", salary: "Attractif", description: "Audit interne et conformité des processus bancaires.", requirements: ["Expertise en audit", "Connaissance bancaire", "rigueur"] },
-    { id: 4, company: "Airtel Congo", role: "Développeur Backend", loc: "Pointe-Noire", type: "Remote/Hybride", salary: "Expert", description: "Développement d'infrastructure backend robuste pour nos services.", requirements: ["Maîtrise Node.js ou Python", "APIs REST", "Databases SQL/NoSQL"] }
+    { id: 3, company: "BGFIBank Congo", role: "Auditeur Interne", loc: "Brazzaville", type: "CDI", salary: "Attractif", description: "Audit interne et conformité des processus bancaires.", requirements: ["Expertise en audit", "Connaissance bancaire", "Rigueur"] },
+    { id: 4, company: "Airtel Congo", role: "Développeur Backend", loc: "Pointe-Noire", type: "Remote/Hybride", salary: "Expert", description: "Développement d'infrastructure backend robuste pour nos services.", requirements: ["Maîtrise Node.js ou Python", "APIs REST", "Databases SQL/NoSQL"] },
+    { id: 5, company: "BICEC", role: "Responsable RH", loc: "Brazzaville", type: "CDI", salary: "Compétitif", description: "Gestion complète du processus RH et développement des talents.", requirements: ["5+ ans en RH", "Gestion de paie", "Recrutement"] },
+    { id: 6, company: "Vodacom Congo", role: "Analyste Système", loc: "Brazzaville", type: "CDI", salary: "Attractif", description: "Support et maintenance des infrastructures informatiques critiques.", requirements: ["3+ ans en support IT", "Linux/Windows", "Networking"] },
+    { id: 7, company: "Congo Logistique", role: "Responsable Logistique", loc: "Pointe-Noire", type: "CDI", salary: "Négociable", description: "Optimisation des chaînes logistiques et gestion d'entrepôt.", requirements: ["4+ ans expérience logistique", "WMS", "Anglais"] },
+    { id: 8, company: "Cabinet Conseil Brazzaville", role: "Consultant Junior", loc: "Brazzaville", type: "CDD", salary: "Débutant accepté", description: "Conseil en stratégie d'entreprise pour clients diversifiés.", requirements: ["Bac+3 minimum", "Excel avancé", "Français/Anglais"] },
+    { id: 9, company: "Hôpital Général Brazzaville", role: "Infirmier", loc: "Brazzaville", type: "CDI", salary: "Attractif", description: "Soins aux patients et support médical en milieu hospitalier.", requirements: ["Diplôme d'infirmier", "Expérience médicale", "Dévouement"] },
+    { id: 10, company: "École Polytechnique Brazzaville", role: "Enseignant IT", loc: "Brazzaville", type: "CDD", salary: "Selon expérience", description: "Enseignement de l'informatique et des technologies numériques.", requirements: ["Master en Informatique", "Expérience pédagogique", "Passion pédagogique"] }
   ]);
 
+  // Palette Bleu Moderne : Deep Blue, Electric Blue et Soft Slate
   const colors = {
-    primary: '#0A2540',
-    accent: '#0061FF',
+    primary: '#0A2540', // Bleu nuit très profond (Premium)
+    accent: '#0061FF',  // Bleu électrique
     surface: '#FFFFFF',
     background: '#F6F9FC',
     text: '#1A1F36'
@@ -158,6 +165,7 @@ const App = () => {
 
   const Hero = () => (
     <section className="relative pt-16 pb-28 overflow-hidden bg-[#F6F9FC]">
+      {/* Background patterns */}
       <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(#0A2540 1px, transparent 1px)', size: '20px 20px' }}></div>
       </div>
@@ -176,6 +184,7 @@ const App = () => {
           </p>
         </div>
 
+        {/* Search Bar - Glassmorphism style */}
         <div className="bg-white p-2 rounded-2xl shadow-[0_20px_50px_rgba(10,37,64,0.1)] flex flex-col md:row gap-2 max-w-5xl mx-auto border border-white/50">
           <div className="flex flex-col md:flex-row w-full gap-2">
             <div className="flex-1 flex items-center px-5 py-4 gap-3 bg-slate-50/50 rounded-xl border border-slate-100">
@@ -294,7 +303,7 @@ const App = () => {
             </div>
             <div className="flex items-center gap-4 w-full md:w-auto">
               <span className="text-sm font-bold text-blue-600/60 hidden lg:block">{job.salary}</span>
-              <button onClick={() => isLoggedIn ? setSelectedJob(job) : setView('login')} className="flex-1 md:flex-none px-6 py-3 bg-[#0A2540] text-white rounded-xl text-sm font-bold hover:bg-[#0061FF] transition-all">
+              <button onClick={() => setSelectedJob(job)} className="flex-1 md:flex-none px-6 py-3 bg-[#0A2540] text-white rounded-xl text-sm font-bold hover:bg-[#0061FF] transition-all">
                 Voir l'offre
               </button>
             </div>
@@ -406,6 +415,78 @@ const App = () => {
           </button>
         </form>
       </div>
+    </div>
+  );
+
+  const ProfilePage = () => (
+    <div className="max-w-4xl mx-auto px-4 py-16">
+      <h1 className="text-4xl font-black text-[#0A2540] mb-4">Mon Profil</h1>
+      <p className="text-slate-500 font-semibold mb-8">Bienvenue sur votre espace candidat</p>
+
+      <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-lg mb-8">
+        <h2 className="text-2xl font-bold text-[#0A2540] mb-6">Offres sauvegardées ({savedJobs.length})</h2>
+        {savedJobs.length === 0 ? (
+          <p className="text-slate-500 font-semibold">Aucune offre sauvegardée pour le moment.</p>
+        ) : (
+          <div className="grid gap-4">
+            {savedJobs.map(job => (
+              <div key={job.id} className="group bg-slate-50 p-6 rounded-xl border border-slate-100 hover:border-[#0061FF]/30 transition-all flex justify-between items-start md:items-center gap-6">
+                <div>
+                  <h3 className="text-lg font-bold text-[#0A2540] mb-1">{job.role}</h3>
+                  <p className="text-sm text-slate-500 font-semibold">{job.company} • {job.loc}</p>
+                </div>
+                <button onClick={() => { setSelectedJob(job); setView('apply'); }} className="px-6 py-3 bg-[#0061FF] text-white rounded-xl text-sm font-bold hover:bg-[#0A2540] transition-all">
+                  Postuler
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const CandidateView = () => <JobsList />;
+
+  const PostJobForm = () => (
+    <div className="max-w-2xl mx-auto px-4 py-16">
+      <h1 className="text-4xl font-black text-[#0A2540] mb-4">Publier une offre d'emploi</h1>
+      <p className="text-slate-500 font-semibold mb-8">Déposez votre annonce pour trouver les meilleurs talents</p>
+
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        alert('Offre publiée avec succès! Elle sera visible dans quelques minutes.');
+        setView('home');
+      }} className="bg-white p-8 rounded-2xl border border-slate-100 shadow-lg space-y-6">
+        <div>
+          <label className="block text-sm font-bold text-[#0A2540] mb-2">Titre du poste</label>
+          <input type="text" required className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]" placeholder="Ex: Développeur Senior" />
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-[#0A2540] mb-2">Localisation</label>
+          <select required className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]">
+            <option>Brazzaville</option>
+            <option>Pointe-Noire</option>
+            <option>Dolisie</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-[#0A2540] mb-2">Type de contrat</label>
+          <select required className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]">
+            <option>CDI</option>
+            <option>CDD</option>
+            <option>Stage</option>
+            <option>Freelance</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-[#0A2540] mb-2">Description</label>
+          <textarea required className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF] h-32 resize-none" placeholder="Décrivez le poste et les responsabilités..." />
+        </div>
+        <button type="submit" className="w-full bg-[#0061FF] text-white py-4 rounded-xl font-bold text-lg hover:bg-[#0A2540] transition-all">
+          Publier l'offre
+        </button>
+      </form>
     </div>
   );
 
@@ -594,78 +675,6 @@ const App = () => {
           </div>
         </div>
       </div>
-    </div>
-  );
-
-  const ProfilePage = () => (
-    <div className="max-w-4xl mx-auto px-4 py-16">
-      <h1 className="text-4xl font-black text-[#0A2540] mb-4">Mon Profil</h1>
-      <p className="text-slate-500 font-semibold mb-8">Bienvenue sur votre espace candidat</p>
-
-      <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-lg mb-8">
-        <h2 className="text-2xl font-bold text-[#0A2540] mb-6">Offres sauvegardées ({savedJobs.length})</h2>
-        {savedJobs.length === 0 ? (
-          <p className="text-slate-500 font-semibold">Aucune offre sauvegardée pour le moment.</p>
-        ) : (
-          <div className="grid gap-4">
-            {savedJobs.map(job => (
-              <div key={job.id} className="group bg-slate-50 p-6 rounded-xl border border-slate-100 hover:border-[#0061FF]/30 transition-all flex justify-between items-start md:items-center gap-6">
-                <div>
-                  <h3 className="text-lg font-bold text-[#0A2540] mb-1">{job.role}</h3>
-                  <p className="text-sm text-slate-500 font-semibold">{job.company} • {job.loc}</p>
-                </div>
-                <button onClick={() => { setSelectedJob(job); setView('apply'); }} className="px-6 py-3 bg-[#0061FF] text-white rounded-xl text-sm font-bold hover:bg-[#0A2540] transition-all">
-                  Postuler
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const CandidateView = () => <JobsList />;
-
-  const PostJobForm = () => (
-    <div className="max-w-2xl mx-auto px-4 py-16">
-      <h1 className="text-4xl font-black text-[#0A2540] mb-4">Publier une offre d'emploi</h1>
-      <p className="text-slate-500 font-semibold mb-8">Déposez votre annonce pour trouver les meilleurs talents</p>
-
-      <form onSubmit={(e) => {
-        e.preventDefault();
-        alert('Offre publiée avec succès! Elle sera visible dans quelques minutes.');
-        setView('home');
-      }} className="bg-white p-8 rounded-2xl border border-slate-100 shadow-lg space-y-6">
-        <div>
-          <label className="block text-sm font-bold text-[#0A2540] mb-2">Titre du poste</label>
-          <input type="text" required className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]" placeholder="Ex: Développeur Senior" />
-        </div>
-        <div>
-          <label className="block text-sm font-bold text-[#0A2540] mb-2">Localisation</label>
-          <select required className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]">
-            <option>Brazzaville</option>
-            <option>Pointe-Noire</option>
-            <option>Dolisie</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-bold text-[#0A2540] mb-2">Type de contrat</label>
-          <select required className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]">
-            <option>CDI</option>
-            <option>CDD</option>
-            <option>Stage</option>
-            <option>Freelance</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-bold text-[#0A2540] mb-2">Description</label>
-          <textarea required className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF] h-32 resize-none" placeholder="Décrivez le poste et les responsabilités..." />
-        </div>
-        <button type="submit" className="w-full bg-[#0061FF] text-white py-4 rounded-xl font-bold text-lg hover:bg-[#0A2540] transition-all">
-          Publier l'offre
-        </button>
-      </form>
     </div>
   );
 
