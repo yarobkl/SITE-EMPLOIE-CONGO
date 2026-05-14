@@ -28,6 +28,10 @@ const App = () => {
   const [locationFilter, setLocationFilter] = useState('Toute la République');
   const [savedJobs, setSavedJobs] = useState([]);
   const [formData, setFormData] = useState({ nom: '', email: '', phone: '', message: '' });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const [loginForm, setLoginForm] = useState({ email: '', phone: '' });
+  const [signupForm, setSignupForm] = useState({ nom: '', prenom: '', email: '', phone: '', userType: 'candidat' });
   const [jobs] = useState([
     { id: 1, company: "TotalEnergies EP Congo", role: "Ingénieur HSE Sénior", loc: "Pointe-Noire", type: "CDI", salary: "Top Range", description: "Nous recherchons un Ingénieur HSE sénior expérimenté pour rejoindre notre équipe.", requirements: ["5+ ans d'expérience", "Certification HSE", "Anglais courant"] },
     { id: 2, company: "MTN Congo", role: "Chef de Projet Digital", loc: "Brazzaville", type: "CDD", salary: "Négociable", description: "Pilotage de projets digitaux innovants avec une équipe dynamique.", requirements: ["3+ ans en gestion de projet", "Maîtrise des outils agile", "Gestion de budget"] },
@@ -35,10 +39,9 @@ const App = () => {
     { id: 4, company: "Airtel Congo", role: "Développeur Backend", loc: "Pointe-Noire", type: "Remote/Hybride", salary: "Expert", description: "Développement d'infrastructure backend robuste pour nos services.", requirements: ["Maîtrise Node.js ou Python", "APIs REST", "Databases SQL/NoSQL"] }
   ]);
 
-  // Palette Bleu Moderne : Deep Blue, Electric Blue et Soft Slate
   const colors = {
-    primary: '#0A2540', // Bleu nuit très profond (Premium)
-    accent: '#0061FF',  // Bleu électrique
+    primary: '#0A2540',
+    accent: '#0061FF',
     surface: '#FFFFFF',
     background: '#F6F9FC',
     text: '#1A1F36'
@@ -59,14 +62,31 @@ const App = () => {
           </div>
 
           <div className="hidden md:flex items-center space-x-8">
-            <button onClick={() => setView('jobs')} className="text-sm font-bold text-slate-600 hover:text-[#0061FF] transition-colors">Explorer</button>
-            <button onClick={() => setView('candidate')} className="text-sm font-bold text-slate-600 hover:text-[#0061FF] transition-colors">Mon Profil</button>
-            <button
-              onClick={() => setView('recruiter')}
-              className="bg-[#0A2540] text-white px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-[#0061FF] transition-all shadow-lg active:scale-95"
-            >
-              Recruteurs
-            </button>
+            {isLoggedIn ? (
+              <>
+                <button onClick={() => setView('jobs')} className="text-sm font-bold text-slate-600 hover:text-[#0061FF] transition-colors">Explorer</button>
+                <button onClick={() => setView('candidate')} className="text-sm font-bold text-slate-600 hover:text-[#0061FF] transition-colors">Mon Profil</button>
+                {userData?.userType === 'recruteur' && (
+                  <button onClick={() => setView('recruiter')} className="text-sm font-bold text-slate-600 hover:text-[#0061FF] transition-colors">Recruteur</button>
+                )}
+                <button
+                  onClick={() => { setIsLoggedIn(false); setUserData(null); setView('home'); }}
+                  className="bg-red-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-red-700 transition-all shadow-lg"
+                >
+                  Déconnexion
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => setView('login')} className="text-sm font-bold text-slate-600 hover:text-[#0061FF] transition-colors">Connexion</button>
+                <button
+                  onClick={() => setView('signup')}
+                  className="bg-[#0A2540] text-white px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-[#0061FF] transition-all shadow-lg"
+                >
+                  S'inscrire
+                </button>
+              </>
+            )}
           </div>
 
           <div className="md:hidden">
@@ -79,9 +99,21 @@ const App = () => {
 
       {isMenuOpen && (
         <div className="md:hidden bg-white border-b border-slate-100 p-6 space-y-4 animate-in fade-in slide-in-from-top-2">
-          <button onClick={() => {setView('jobs'); setIsMenuOpen(false)}} className="block w-full text-left font-bold text-slate-700">Offres d'emploi</button>
-          <button onClick={() => {setView('candidate'); setIsMenuOpen(false)}} className="block w-full text-left font-bold text-slate-700">Mon Profil</button>
-          <button onClick={() => {setView('post-job'); setIsMenuOpen(false)}} className="block w-full text-center py-3 bg-[#0A2540] text-white rounded-lg font-bold">Publier une offre</button>
+          {isLoggedIn ? (
+            <>
+              <button onClick={() => {setView('jobs'); setIsMenuOpen(false)}} className="block w-full text-left font-bold text-slate-700">Explorer</button>
+              <button onClick={() => {setView('candidate'); setIsMenuOpen(false)}} className="block w-full text-left font-bold text-slate-700">Mon Profil</button>
+              {userData?.userType === 'recruteur' && (
+                <button onClick={() => {setView('recruiter'); setIsMenuOpen(false)}} className="block w-full text-left font-bold text-slate-700">Espace Recruteur</button>
+              )}
+              <button onClick={() => { setIsLoggedIn(false); setUserData(null); setView('home'); setIsMenuOpen(false); }} className="block w-full text-center py-3 bg-red-600 text-white rounded-lg font-bold">Déconnexion</button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => {setView('login'); setIsMenuOpen(false)}} className="block w-full text-center py-3 bg-[#0061FF] text-white rounded-lg font-bold">Connexion</button>
+              <button onClick={() => {setView('signup'); setIsMenuOpen(false)}} className="block w-full text-center py-3 border-2 border-[#0061FF] text-[#0061FF] rounded-lg font-bold">S'inscrire</button>
+            </>
+          )}
         </div>
       )}
     </nav>
@@ -89,7 +121,6 @@ const App = () => {
 
   const Hero = () => (
     <section className="relative pt-16 pb-28 overflow-hidden bg-[#F6F9FC]">
-      {/* Background patterns */}
       <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(#0A2540 1px, transparent 1px)', size: '20px 20px' }}></div>
       </div>
@@ -108,7 +139,6 @@ const App = () => {
           </p>
         </div>
 
-        {/* Search Bar - Glassmorphism style */}
         <div className="bg-white p-2 rounded-2xl shadow-[0_20px_50px_rgba(10,37,64,0.1)] flex flex-col md:row gap-2 max-w-5xl mx-auto border border-white/50">
           <div className="flex flex-col md:flex-row w-full gap-2">
             <div className="flex-1 flex items-center px-5 py-4 gap-3 bg-slate-50/50 rounded-xl border border-slate-100">
@@ -182,7 +212,6 @@ const App = () => {
             </div>
           </div>
         </div>
-        {/* Abstract circles */}
         <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-[#0061FF]/10 rounded-full blur-3xl"></div>
       </div>
     </div>
@@ -228,7 +257,7 @@ const App = () => {
             </div>
             <div className="flex items-center gap-4 w-full md:w-auto">
               <span className="text-sm font-bold text-blue-600/60 hidden lg:block">{job.salary}</span>
-              <button onClick={() => setSelectedJob(job)} className="flex-1 md:flex-none px-6 py-3 bg-[#0A2540] text-white rounded-xl text-sm font-bold hover:bg-[#0061FF] transition-all">
+              <button onClick={() => isLoggedIn ? setSelectedJob(job) : setView('login')} className="flex-1 md:flex-none px-6 py-3 bg-[#0A2540] text-white rounded-xl text-sm font-bold hover:bg-[#0061FF] transition-all">
                 Voir l'offre
               </button>
             </div>
@@ -283,11 +312,14 @@ const App = () => {
         </div>
 
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-[#0A2540] mb-4">Critères requis</h2>
+          <h2 className="text-2xl font-bold text-[#0A2540] mb-4">Ce que nous cherchons</h2>
+          <div className="bg-blue-50 p-4 rounded-xl mb-4 border border-blue-100">
+            <p className="text-slate-700 font-semibold text-sm">✨ N'hésitez pas à postuler même si vous n'avez pas tous les critères! Nous valorisons l'apprentissage et la motivation.</p>
+          </div>
           <ul className="space-y-2">
             {selectedJob.requirements.map((req, i) => (
               <li key={i} className="flex items-center gap-3 text-slate-600">
-                <CheckCircle size={18} className="text-green-500 flex-shrink-0" /> {req}
+                <CheckCircle size={18} className="text-[#0061FF] flex-shrink-0" /> {req}
               </li>
             ))}
           </ul>
@@ -309,33 +341,196 @@ const App = () => {
         <h1 className="text-3xl font-black text-[#0A2540] mb-2">Postuler à cette offre</h1>
         <p className="text-slate-500 font-semibold mb-8">{selectedJob.role} - {selectedJob.company}</p>
 
+        <div className="bg-blue-50 p-6 rounded-xl mb-8 border border-blue-100">
+          <p className="text-slate-700 font-semibold">📝 Remplissez simplement vos informations de contact. Pas besoin de CV ! Postulez maintenant et commencez votre nouvelle carrière.</p>
+        </div>
+
         <form onSubmit={(e) => {
           e.preventDefault();
-          alert(`Application soumise!\nNom: ${formData.nom}\nEmail: ${formData.email}\nTéléphone: ${formData.phone}`);
+          alert(`Candidature soumise avec succès!\n\nNom: ${formData.nom}\nEmail: ${formData.email}\nTéléphone: ${formData.phone}\n\nUn recruteur vous contactera bientôt.`);
           setFormData({ nom: '', email: '', phone: '', message: '' });
           setView('home');
           setSelectedJob(null);
         }} className="space-y-6">
           <div>
             <label className="block text-sm font-bold text-[#0A2540] mb-2">Nom complet</label>
-            <input type="text" required value={formData.nom} onChange={(e) => setFormData({...formData, nom: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]" placeholder="Votre nom" />
+            <input type="text" required value={formData.nom} onChange={(e) => setFormData({...formData, nom: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]" placeholder="Jean Dupont" />
           </div>
           <div>
             <label className="block text-sm font-bold text-[#0A2540] mb-2">Email</label>
             <input type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]" placeholder="votre@email.com" />
           </div>
           <div>
-            <label className="block text-sm font-bold text-[#0A2540] mb-2">Téléphone</label>
-            <input type="tel" required value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]" placeholder="+242 ..." />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-[#0A2540] mb-2">Message</label>
-            <textarea required value={formData.message} onChange={(e) => setFormData({...formData, message: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF] h-32 resize-none" placeholder="Parlez de votre intérêt pour ce poste..." />
+            <label className="block text-sm font-bold text-[#0A2540] mb-2">Numéro de téléphone</label>
+            <input type="tel" required value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]" placeholder="+242 06 xxx xxxx" />
           </div>
           <button type="submit" className="w-full bg-[#0061FF] text-white py-4 rounded-xl font-bold text-lg hover:bg-[#0A2540] transition-all">
-            Envoyer candidature
+            Soumettre ma candidature
           </button>
         </form>
+      </div>
+    </div>
+  );
+
+  const LoginPage = () => (
+    <div className="min-h-screen bg-gradient-to-br from-[#F6F9FC] to-white flex items-center justify-center px-4 py-16">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-xl p-8">
+          <div className="text-center mb-8">
+            <div className="w-12 h-12 bg-[#0A2540] rounded-lg flex items-center justify-center text-white shadow-lg mx-auto mb-4">
+              <Globe size={24} strokeWidth={2.5} />
+            </div>
+            <h1 className="text-3xl font-black text-[#0A2540] mb-2">CONGO<span className="text-[#0061FF]">EMPLOI</span></h1>
+            <p className="text-slate-500 font-semibold">Connectez-vous à votre compte</p>
+          </div>
+
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (loginForm.email && loginForm.phone) {
+              setIsLoggedIn(true);
+              setUserData({ email: loginForm.email, phone: loginForm.phone, nom: 'Utilisateur' });
+              setLoginForm({ email: '', phone: '' });
+              setView('home');
+              alert('Connexion réussie!');
+            }
+          }} className="space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-[#0A2540] mb-2">Email</label>
+              <input
+                type="email"
+                required
+                value={loginForm.email}
+                onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]"
+                placeholder="votre@email.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-[#0A2540] mb-2">Numéro de téléphone</label>
+              <input
+                type="tel"
+                required
+                value={loginForm.phone}
+                onChange={(e) => setLoginForm({...loginForm, phone: e.target.value})}
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#0061FF]"
+                placeholder="+242 06 xxx xxxx"
+              />
+            </div>
+            <button type="submit" className="w-full bg-[#0061FF] text-white py-3 rounded-xl font-bold text-lg hover:bg-[#0A2540] transition-all">
+              Se connecter
+            </button>
+          </form>
+
+          <div className="mt-6 pt-6 border-t border-slate-100">
+            <p className="text-slate-600 text-center font-semibold mb-4">Pas encore de compte?</p>
+            <button onClick={() => setView('signup')} className="w-full border-2 border-[#0061FF] text-[#0061FF] py-3 rounded-xl font-bold hover:bg-blue-50 transition-all">
+              Créer un compte
+            </button>
+          </div>
+
+          <button onClick={() => setView('home')} className="w-full mt-4 text-slate-500 font-semibold hover:text-slate-700 transition-colors">
+            Retour à l'accueil
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const SignupPage = () => (
+    <div className="min-h-screen bg-gradient-to-br from-[#F6F9FC] to-white flex items-center justify-center px-4 py-16">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-xl p-8">
+          <div className="text-center mb-8">
+            <div className="w-12 h-12 bg-[#0061FF] rounded-lg flex items-center justify-center text-white shadow-lg mx-auto mb-4">
+              <Users size={24} />
+            </div>
+            <h1 className="text-3xl font-black text-[#0A2540] mb-2">Créer un compte</h1>
+            <p className="text-slate-500 font-semibold">Rejoignez CONGOEMPLOI aujourd'hui</p>
+          </div>
+
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (signupForm.email && signupForm.phone && signupForm.nom && signupForm.prenom) {
+              setIsLoggedIn(true);
+              setUserData({ email: signupForm.email, phone: signupForm.phone, nom: signupForm.prenom + ' ' + signupForm.nom, userType: signupForm.userType });
+              setSignupForm({ nom: '', prenom: '', email: '', phone: '', userType: 'candidat' });
+              setView('home');
+              alert('Compte créé avec succès!');
+            }
+          }} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-bold text-[#0A2540] mb-1">Prénom</label>
+                <input
+                  type="text"
+                  required
+                  value={signupForm.prenom}
+                  onChange={(e) => setSignupForm({...signupForm, prenom: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg font-semibold focus:outline-none focus:border-[#0061FF] text-sm"
+                  placeholder="Jean"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-[#0A2540] mb-1">Nom</label>
+                <input
+                  type="text"
+                  required
+                  value={signupForm.nom}
+                  onChange={(e) => setSignupForm({...signupForm, nom: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg font-semibold focus:outline-none focus:border-[#0061FF] text-sm"
+                  placeholder="Dupont"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-[#0A2540] mb-2">Email</label>
+              <input
+                type="email"
+                required
+                value={signupForm.email}
+                onChange={(e) => setSignupForm({...signupForm, email: e.target.value})}
+                className="w-full px-4 py-3 border border-slate-200 rounded-lg font-semibold focus:outline-none focus:border-[#0061FF] text-sm"
+                placeholder="votre@email.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-[#0A2540] mb-2">Numéro de téléphone</label>
+              <input
+                type="tel"
+                required
+                value={signupForm.phone}
+                onChange={(e) => setSignupForm({...signupForm, phone: e.target.value})}
+                className="w-full px-4 py-3 border border-slate-200 rounded-lg font-semibold focus:outline-none focus:border-[#0061FF] text-sm"
+                placeholder="+242 06 xxx xxxx"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-[#0A2540] mb-2">Je suis</label>
+              <select
+                value={signupForm.userType}
+                onChange={(e) => setSignupForm({...signupForm, userType: e.target.value})}
+                className="w-full px-4 py-2 border border-slate-200 rounded-lg font-semibold focus:outline-none focus:border-[#0061FF] text-sm"
+              >
+                <option value="candidat">Un candidat à la recherche d'emploi</option>
+                <option value="recruteur">Un recruteur / Entreprise</option>
+              </select>
+            </div>
+
+            <button type="submit" className="w-full bg-[#0061FF] text-white py-3 rounded-xl font-bold hover:bg-[#0A2540] transition-all mt-6">
+              Créer mon compte
+            </button>
+          </form>
+
+          <div className="mt-6 pt-6 border-t border-slate-100">
+            <p className="text-slate-600 text-center font-semibold mb-4">Vous avez déjà un compte?</p>
+            <button onClick={() => setView('login')} className="w-full border-2 border-[#0061FF] text-[#0061FF] py-3 rounded-xl font-bold hover:bg-blue-50 transition-all">
+              Se connecter
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -495,12 +690,16 @@ const App = () => {
           </>
         )}
 
-        {view === 'jobs' && !selectedJob && <CandidateView />}
-        {view === 'jobs' && selectedJob && <JobDetail />}
-        {view === 'apply' && <ApplyForm />}
-        {view === 'recruiter' && <RecruiterView />}
-        {view === 'post-job' && <PostJobForm />}
-        {view === 'candidate' && <ProfilePage />}
+        {view === 'login' && <LoginPage />}
+        {view === 'signup' && <SignupPage />}
+        {view === 'jobs' && !selectedJob && isLoggedIn && <CandidateView />}
+        {view === 'jobs' && selectedJob && isLoggedIn && <JobDetail />}
+        {view === 'apply' && isLoggedIn && <ApplyForm />}
+        {view === 'recruiter' && isLoggedIn && <RecruiterView />}
+        {view === 'post-job' && isLoggedIn && <PostJobForm />}
+        {view === 'candidate' && isLoggedIn && <ProfilePage />}
+        {view === 'jobs' && !isLoggedIn && <div className="max-w-4xl mx-auto px-4 py-16 text-center"><p className="text-xl text-slate-600 font-semibold mb-6">Vous devez être connecté pour voir les offres d'emploi</p><button onClick={() => setView('login')} className="bg-[#0061FF] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#0A2540] transition-all">Se connecter</button></div>}
+        {view === 'recruiter' && !isLoggedIn && <div className="max-w-4xl mx-auto px-4 py-16 text-center"><p className="text-xl text-slate-600 font-semibold mb-6">Créez un compte recruteur pour accéder à cet espace</p><button onClick={() => setView('signup')} className="bg-[#0061FF] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#0A2540] transition-all">S'inscrire</button></div>}
       </main>
       <Footer />
     </div>
