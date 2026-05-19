@@ -1,6 +1,6 @@
 # CONGOEMPLOI - Plateforme de Recrutement
 
-Plateforme moderne de recrutement pour la République du Congo, connectant les entreprises majeures aux talents les plus qualifiés de Brazzaville et Pointe-Noire.
+Plateforme mobile-first de recrutement pour la République du Congo, connectant les entreprises aux talents de Brazzaville, Pointe-Noire et Dolisie.
 
 ## 🚀 Démarrage rapide
 
@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-L'application sera accessible sur `http://localhost:3000`
+L'application sera accessible sur `http://localhost:3000` ou le port Vite disponible.
 
 ### Build pour production
 
@@ -44,7 +44,25 @@ npm run build
 - Espace candidat
 - Espace recruteur
 - Navigation responsive
-- Design modular
+- Parcours mobile-first candidat/recruteur
+- Sauvegarde locale des favoris, candidatures, offres et notifications
+- Préparation Supabase pour la base de données
+
+## Base de données Supabase
+
+La V1 fonctionne en mode local pour pouvoir tester tout de suite. Pour brancher Supabase:
+
+1. Créer un projet Supabase.
+2. Exécuter `supabase/schema.sql` dans le SQL Editor.
+3. Copier `.env.example` vers `.env.local`.
+4. Renseigner:
+
+```bash
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+```
+
+Sur Vercel, ajouter les mêmes variables dans Project Settings > Environment Variables.
 
 ## 📝 Licence
 
