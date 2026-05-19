@@ -80,6 +80,12 @@ alter table public.applications enable row level security;
 alter table public.saved_jobs enable row level security;
 alter table public.notifications enable row level security;
 
+grant usage on schema public to anon, authenticated;
+grant select on public.companies, public.jobs to anon, authenticated;
+grant insert on public.companies, public.jobs, public.applications to anon, authenticated;
+grant select, insert, update, delete on public.saved_jobs, public.notifications to authenticated;
+grant select, update on public.profiles to authenticated;
+
 create policy "profiles read own" on public.profiles
   for select using (auth.uid() = id);
 
