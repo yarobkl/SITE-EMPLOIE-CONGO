@@ -622,7 +622,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
+    <div className="min-h-screen bg-white text-slate-950">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <button onClick={() => setScreen('home')} className="flex min-h-11 items-center gap-2 rounded-lg text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
@@ -673,7 +673,7 @@ export default function App() {
       </nav>
 
       {toast && (
-        <div className="fixed bottom-24 left-4 right-4 z-[60] mx-auto max-w-sm rounded-lg bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-lg md:bottom-6">
+        <div className="fixed bottom-24 left-4 right-4 z-[60] mx-auto max-w-sm rounded-lg border border-blue-100 bg-white px-4 py-3 text-center text-sm font-bold text-slate-900 shadow-lg md:bottom-6">
           {toast}
         </div>
       )}
@@ -693,15 +693,15 @@ function IconButton({ label, children, onClick, badge }) {
 function HomeScreen({ jobs, query, setQuery, city, setCity, openJob, setScreen, hasSupabaseConfig, dataSource }) {
   return (
     <div className="space-y-6">
-      <section className="rounded-lg bg-slate-950 p-5 text-white md:grid md:grid-cols-[1.2fr_0.8fr] md:gap-8 md:p-8">
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:grid md:grid-cols-[1.2fr_0.8fr] md:gap-8 md:p-8">
         <div>
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-blue-100">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
             <ShieldCheck size={14} /> Brazzaville, Pointe-Noire, Dolisie
           </div>
-          <h1 className="max-w-2xl text-3xl font-black leading-tight md:text-5xl">
+          <h1 className="max-w-2xl text-3xl font-black leading-tight text-slate-950 md:text-5xl">
             Trouver un emploi ou recruter au Congo, depuis ton telephone.
           </h1>
-          <p className="mt-4 max-w-xl text-base leading-7 text-slate-300">
+          <p className="mt-4 max-w-xl text-base font-semibold leading-7 text-slate-600">
             Une experience mobile simple pour chercher, sauvegarder, postuler et publier une offre.
           </p>
           <div className="mt-6 grid grid-cols-3 gap-2">
@@ -710,7 +710,7 @@ function HomeScreen({ jobs, query, setQuery, city, setCity, openJob, setScreen, 
             <Metric value="94%" label="Match" />
           </div>
         </div>
-        <div className="mt-6 rounded-lg bg-white p-3 text-slate-950 md:mt-0">
+        <div className="mt-6 rounded-lg bg-slate-50 p-3 text-slate-950 md:mt-0">
           <SearchPanel query={query} setQuery={setQuery} city={city} setCity={setCity} onSubmit={() => setScreen('jobs')} />
           <button onClick={() => setScreen('jobs')} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
             Rechercher <Search size={18} />
@@ -854,7 +854,7 @@ function ApplyScreen({ job, form, setForm, submitApplication, setScreen, isLogge
       {trackingEnabled && !isLoggedIn && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm font-bold leading-6 text-amber-900">Connecte-toi pour activer le suivi de candidature.</p>
-          <button onClick={() => setScreen('login')} className="mt-3 min-h-11 rounded-lg bg-amber-900 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-amber-700">
+          <button onClick={() => setScreen('login')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
             Se connecter
           </button>
         </div>
@@ -1087,7 +1087,7 @@ function SettingsScreen() {
       <PageHeader title="Base de donnees" subtitle="Supabase est prepare pour Vercel" />
       <div className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex items-center gap-3">
-          <div className={classNames('flex h-11 w-11 items-center justify-center rounded-lg text-white', hasSupabaseConfig ? 'bg-emerald-600' : 'bg-slate-700')}>
+          <div className={classNames('flex h-11 w-11 items-center justify-center rounded-lg text-white', hasSupabaseConfig ? 'bg-emerald-600' : 'bg-blue-700')}>
             <ShieldCheck size={20} />
           </div>
           <div>
@@ -1240,9 +1240,9 @@ function ActionCard({ icon: Icon, title, body, onClick }) {
 
 function Metric({ value, label }) {
   return (
-    <div className="rounded-lg bg-white/10 p-3">
-      <p className="text-xl font-black">{value}</p>
-      <p className="text-xs font-bold text-slate-300">{label}</p>
+    <div className="rounded-lg border border-slate-200 bg-white p-3">
+      <p className="text-xl font-black text-slate-950">{value}</p>
+      <p className="text-xs font-bold text-slate-500">{label}</p>
     </div>
   );
 }
