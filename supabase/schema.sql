@@ -103,17 +103,53 @@ create policy "jobs are public" on public.jobs
 create policy "companies are public" on public.companies
   for select using (true);
 
-create policy "public can create companies for demo" on public.companies
-  for insert with check (true);
+create policy "recruiters create own companies" on public.companies
+  for insert with check (
+    auth.uid() = owner_id
+    and exists (
+      select 1 from public.profiles
+      where profiles.id = auth.uid()
+      and profiles.role in ('recruteur', 'admin')
+    )
+  );
 
-create policy "public can publish jobs for demo" on public.jobs
-  for insert with check (status = 'published');
+create policy "recruiters publish own jobs" on public.jobs
+  for insert with check (
+    status = 'published'
+    and exists (
+      select 1 from public.companies
+      join public.profiles on profiles.id = companies.owner_id
+      where companies.id = jobs.company_id
+      and companies.owner_id = auth.uid()
+      and profiles.role in ('recruteur', 'admin')
+    )
+  );
 
 create policy "candidates create applications" on public.applications
   for insert with check (auth.uid() = candidate_id or candidate_id is null);
 
 create policy "candidates read own applications" on public.applications
   for select using (auth.uid() = candidate_id);
+
+create policy "recruiters read received applications" on public.applications
+  for select using (
+    exists (
+      select 1 from public.jobs
+      join public.companies on companies.id = jobs.company_id
+      where jobs.id = applications.job_id
+      and companies.owner_id = auth.uid()
+    )
+  );
+
+create policy "recruiters update received applications" on public.applications
+  for update using (
+    exists (
+      select 1 from public.jobs
+      join public.companies on companies.id = jobs.company_id
+      where jobs.id = applications.job_id
+      and companies.owner_id = auth.uid()
+    )
+  );
 
 create policy "saved jobs own access" on public.saved_jobs
   for all using (auth.uid() = candidate_id) with check (auth.uid() = candidate_id);
@@ -137,6 +173,16 @@ create policy "candidates read own cv pdf" on storage.objects
   for select using (
     bucket_id = 'cvs'
     and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+create policy "recruiters read candidate cv pdf" on storage.objects
+  for select using (
+    bucket_id = 'cvs'
+    and exists (
+      select 1 from public.profiles
+      where profiles.id = auth.uid()
+      and profiles.role in ('recruteur', 'admin')
+    )
   );
 
 create policy "public demo upload cv pdf" on storage.objects

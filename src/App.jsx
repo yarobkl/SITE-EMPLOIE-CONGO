@@ -142,6 +142,7 @@ function classNames(...values) {
 function normalizeJob(row) {
   return {
     id: row.id,
+    companyId: row.company_id,
     company: row.companies?.name || row.company || 'Entreprise',
     role: row.title || row.role,
     loc: row.location || row.loc,
@@ -168,6 +169,7 @@ function normalizeApplication(row) {
     cvPath: row.cv_url,
     cvName: row.cv_name,
     cvSize: row.cv_size,
+    candidateId: row.candidate_id,
     nom: row.nom,
     email: row.email,
     phone: row.phone,
@@ -204,6 +206,8 @@ export default function App() {
   const [profile, setProfile] = useStoredState('congoemploi.v2.profile', initialProfile);
   const [savedIds, setSavedIds] = useStoredState('congoemploi.v2.savedIds', []);
   const [applications, setApplications] = useStoredState('congoemploi.v2.applications', []);
+  const [recruiterJobs, setRecruiterJobs] = useState([]);
+  const [recruiterApplications, setRecruiterApplications] = useState([]);
   const [notifications, setNotifications] = useStoredState('congoemploi.v2.notifications', [
     { id: 1, title: 'Bienvenue sur CONGOEMPLOI', body: 'Votre espace mobile est pret.', read: false },
   ]);
@@ -215,7 +219,7 @@ export default function App() {
     async function loadJobs() {
       const { data, error } = await supabase
         .from('jobs')
-        .select('id,title,description,location,contract_type,salary_range,sector,requirements,status,companies(name)')
+        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,companies(name)')
         .eq('status', 'published')
         .order('created_at', { ascending: false });
       if (cancelled) return;
@@ -282,7 +286,7 @@ export default function App() {
 
       const { data: userApplications } = await supabase
         .from('applications')
-        .select('id,job_id,nom,email,phone,message,cv_url,cv_name,cv_size,tracking_enabled,application_opened,cv_opened,status,created_at,jobs(title,companies(name))')
+        .select('id,job_id,candidate_id,nom,email,phone,message,cv_url,cv_name,cv_size,tracking_enabled,application_opened,cv_opened,status,created_at,jobs(title,companies(name))')
         .order('created_at', { ascending: false });
 
       if (!cancelled && userApplications) {
@@ -305,6 +309,46 @@ export default function App() {
 
       if (!cancelled && userNotifications) {
         setNotifications(userNotifications.map(normalizeNotification));
+      }
+
+      const { data: ownedCompanies } = await supabase
+        .from('companies')
+        .select('id,name')
+        .eq('owner_id', authUser.id);
+      const companyIds = ownedCompanies?.map((company) => company.id) || [];
+      if (!companyIds.length) {
+        if (!cancelled) {
+          setRecruiterJobs([]);
+          setRecruiterApplications([]);
+        }
+        return;
+      }
+
+      const { data: ownedJobs } = await supabase
+        .from('jobs')
+        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,companies(name)')
+        .in('company_id', companyIds)
+        .order('created_at', { ascending: false });
+      const normalizedOwnedJobs = ownedJobs?.map(normalizeJob) || [];
+      const ownedJobIds = normalizedOwnedJobs.map((job) => job.id);
+
+      if (!cancelled) {
+        setRecruiterJobs(normalizedOwnedJobs);
+      }
+
+      if (!ownedJobIds.length) {
+        if (!cancelled) setRecruiterApplications([]);
+        return;
+      }
+
+      const { data: receivedApplications } = await supabase
+        .from('applications')
+        .select('id,job_id,candidate_id,nom,email,phone,message,cv_url,cv_name,cv_size,tracking_enabled,application_opened,cv_opened,status,created_at,jobs(title,companies(name))')
+        .in('job_id', ownedJobIds)
+        .order('created_at', { ascending: false });
+
+      if (!cancelled && receivedApplications) {
+        setRecruiterApplications(receivedApplications.map(normalizeApplication));
       }
     }
 
@@ -516,21 +560,51 @@ export default function App() {
     notify('Candidature envoyee au recruteur');
   };
 
-  const markApplicationActivity = (applicationId, field) => {
+  const markApplicationActivity = async (applicationId, field, shouldOpenCv = false) => {
     let changedApplication;
-    setApplications((current) => current.map((item) => {
+    const updateItem = (item) => {
       if (item.id !== applicationId || item[field]) return item;
       changedApplication = { ...item, [field]: true, status: 'reviewed' };
       return changedApplication;
-    }));
+    };
+    setApplications((current) => current.map(updateItem));
+    setRecruiterApplications((current) => current.map(updateItem));
     if (!changedApplication) return;
+
+    if (hasSupabaseConfig && supabase && typeof applicationId === 'string') {
+      await supabase
+        .from('applications')
+        .update({
+          [field === 'cvOpened' ? 'cv_opened' : 'application_opened']: true,
+          status: 'reviewed',
+        })
+        .eq('id', applicationId);
+    }
+
     if (changedApplication.trackingEnabled) {
       const title = field === 'cvOpened' ? 'CV ouvert' : 'Demande consultee';
       const body = `${changedApplication.company} a ${field === 'cvOpened' ? 'ouvert ton CV' : 'ouvert ta candidature'}.`;
       setNotifications((current) => [{ id: Date.now(), title, body, read: false }, ...current]);
+      if (hasSupabaseConfig && supabase && changedApplication.candidateId) {
+        await supabase.from('notifications').insert({
+          user_id: changedApplication.candidateId,
+          title,
+          body,
+          read: false,
+        });
+      }
       notify(title);
     } else {
       notify('Action recruteur enregistree, pas de notification pour candidature rapide.');
+    }
+
+    if (shouldOpenCv && changedApplication.cvPath && hasSupabaseConfig && supabase) {
+      const { data, error } = await supabase.storage.from('cvs').createSignedUrl(changedApplication.cvPath, 60 * 5);
+      if (!error && data?.signedUrl) {
+        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        notify('CV indisponible pour le moment.');
+      }
     }
   };
 
@@ -539,6 +613,11 @@ export default function App() {
     if (!isLoggedIn) {
       notify('Connecte-toi pour publier une offre.');
       setScreen('login');
+      return;
+    }
+    if (!['recruteur', 'admin'].includes(profile.role)) {
+      notify('Active le mode recruteur dans ton profil.');
+      setScreen('profile');
       return;
     }
     const nextJob = {
@@ -550,7 +629,7 @@ export default function App() {
     if (hasSupabaseConfig && supabase) {
       const { data: company, error: companyError } = await supabase
         .from('companies')
-        .insert({ name: nextJob.company, city: nextJob.loc, sector: nextJob.sector })
+        .insert({ owner_id: authUser.id, name: nextJob.company, city: nextJob.loc, sector: nextJob.sector })
         .select('id')
         .single();
       if (!companyError && company?.id) {
@@ -567,14 +646,16 @@ export default function App() {
             requirements: nextJob.requirements,
             status: 'published',
           })
-          .select('id,title,description,location,contract_type,salary_range,sector,requirements,status,companies(name)')
+          .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,companies(name)')
           .single();
         if (!jobError && savedJob) {
           nextJob.id = savedJob.id;
+          nextJob.companyId = savedJob.company_id;
         }
       }
     }
     setJobs((current) => [nextJob, ...current]);
+    setRecruiterJobs((current) => [nextJob, ...current]);
     setJobForm(emptyJob);
     setNotifications((current) => [
       { id: Date.now(), title: 'Offre publiee', body: `${nextJob.role} est maintenant visible`, read: false },
@@ -619,7 +700,7 @@ export default function App() {
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} />;
     if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} setScreen={setScreen} />;
-    if (screen === 'recruiter') return <RecruiterScreen jobs={jobs} applications={applications} setScreen={setScreen} markApplicationActivity={markApplicationActivity} isLoggedIn={isLoggedIn} />;
+    if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} setScreen={setScreen} markApplicationActivity={markApplicationActivity} isLoggedIn={isLoggedIn} role={profile.role} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} publishJob={publishJob} setScreen={setScreen} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
     if (screen === 'settings') return <SettingsScreen />;
@@ -932,6 +1013,7 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
         <TextField label="Telephone" type="tel" value={profile.phone} onChange={(phone) => setProfile({ ...profile, phone })} />
         <TextField label="Ville" value={profile.city} onChange={(city) => setProfile({ ...profile, city })} />
         <TextField label="Titre" value={profile.title} onChange={(title) => setProfile({ ...profile, title })} />
+        <SelectField label="Type de compte" value={profile.role} onChange={(role) => setProfile({ ...profile, role })} options={['candidat', 'recruteur']} />
         <button type="submit" className="min-h-12 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 md:col-span-2">
           Enregistrer
         </button>
@@ -997,8 +1079,9 @@ function LoginScreen({ authMode, setAuthMode, loginEmail, setLoginEmail, loginPa
   );
 }
 
-function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivity, isLoggedIn }) {
+function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivity, isLoggedIn, role }) {
   const ownJobs = jobs.slice(0, 4);
+  const canRecruit = isLoggedIn && ['recruteur', 'admin'].includes(role);
   return (
     <div className="space-y-5">
       <PageHeader title="Recruteur" subtitle="Publier et suivre les candidatures" />
@@ -1010,8 +1093,16 @@ function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivit
           </button>
         </div>
       )}
+      {isLoggedIn && !canRecruit && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-bold leading-6 text-amber-900">Passe ton profil en type de compte recruteur pour publier et recevoir les candidatures.</p>
+          <button onClick={() => setScreen('profile')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+            Modifier mon profil
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-3 gap-2">
-        <StatCard value={jobs.length} label="Offres" />
+        <StatCard value={ownJobs.length} label="Mes offres" />
         <StatCard value={applications.length} label="Candidats" />
         <StatCard value="94%" label="Match" />
       </div>
@@ -1045,7 +1136,7 @@ function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivit
               <button onClick={() => markApplicationActivity(item.id, 'applicationOpened')} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
                 Ouvrir la demande
               </button>
-              <button onClick={() => markApplicationActivity(item.id, 'cvOpened')} className="min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+              <button onClick={() => markApplicationActivity(item.id, 'cvOpened', true)} className="min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
                 Ouvrir le CV
               </button>
             </div>
