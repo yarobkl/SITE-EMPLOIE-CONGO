@@ -47,6 +47,11 @@ create table if not exists public.applications (
   phone text not null,
   message text,
   cv_url text,
+  cv_name text,
+  cv_size integer,
+  tracking_enabled boolean not null default false,
+  application_opened boolean not null default false,
+  cv_opened boolean not null default false,
   status text not null default 'pending' check (status in ('pending', 'reviewed', 'accepted', 'rejected')),
   created_at timestamptz not null default now()
 );
@@ -98,3 +103,21 @@ create policy "saved jobs own access" on public.saved_jobs
 
 create policy "notifications own access" on public.notifications
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('cvs', 'cvs', false, 2097152, array['application/pdf'])
+on conflict (id) do update set
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+create policy "candidates upload own cv pdf" on storage.objects
+  for insert with check (
+    bucket_id = 'cvs'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+create policy "candidates read own cv pdf" on storage.objects
+  for select using (
+    bucket_id = 'cvs'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );

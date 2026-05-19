@@ -46,6 +46,8 @@ npm run build
 - Navigation responsive
 - Parcours mobile-first candidat/recruteur
 - Sauvegarde locale des favoris, candidatures, offres et notifications
+- Candidature suivie avec connexion, CV PDF et KPI d'ouverture
+- Candidature rapide avec CV PDF, sans suivi temps réel
 - Préparation Supabase pour la base de données
 
 ## Base de données Supabase

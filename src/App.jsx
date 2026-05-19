@@ -97,7 +97,19 @@ const initialProfile = {
   title: 'Candidat mobile',
 };
 
-const emptyApplication = { nom: '', email: '', phone: '', message: '' };
+const MAX_CV_BYTES = 2 * 1024 * 1024;
+const MAX_CV_LABEL = '2 Mo';
+
+const emptyApplication = {
+  nom: '',
+  email: '',
+  phone: '',
+  message: '',
+  mode: 'tracked',
+  cvName: '',
+  cvSize: 0,
+  cvType: '',
+};
 const emptyJob = { role: '', company: '', loc: 'Brazzaville', type: 'CDI', salary: '', sector: '', description: '' };
 
 function readStorage(key, fallback) {
@@ -139,6 +151,7 @@ export default function App() {
 
   const [jobs, setJobs] = useStoredState('congoemploi.v2.jobs', initialJobs);
   const [profile, setProfile] = useStoredState('congoemploi.v2.profile', initialProfile);
+  const [isLoggedIn, setIsLoggedIn] = useStoredState('congoemploi.v2.isLoggedIn', false);
   const [savedIds, setSavedIds] = useStoredState('congoemploi.v2.savedIds', []);
   const [applications, setApplications] = useStoredState('congoemploi.v2.applications', []);
   const [notifications, setNotifications] = useStoredState('congoemploi.v2.notifications', [
@@ -189,6 +202,7 @@ export default function App() {
     event.preventDefault();
     if (otp === '246810') {
       setProfile((current) => ({ ...current, email: loginEmail || current.email }));
+      setIsLoggedIn(true);
       setOtpSent(false);
       setLoginEmail('');
       setOtp('');
@@ -201,23 +215,62 @@ export default function App() {
 
   const submitApplication = (event) => {
     event.preventDefault();
+    if (!applicationForm.cvName) {
+      notify(`Ajoute un CV PDF de ${MAX_CV_LABEL} maximum.`);
+      return;
+    }
+    if (applicationForm.mode === 'tracked' && !isLoggedIn) {
+      notify('Connecte-toi pour suivre cette candidature.');
+      setScreen('login');
+      return;
+    }
+    const trackingEnabled = applicationForm.mode === 'tracked' && isLoggedIn;
     const application = {
       id: Date.now(),
       jobId: activeJob.id,
       jobRole: activeJob.role,
       company: activeJob.company,
       status: 'pending',
+      trackingEnabled,
+      applicationOpened: false,
+      cvOpened: false,
       createdAt: new Date().toISOString(),
       ...applicationForm,
+      nom: applicationForm.nom || `${profile.prenom} ${profile.nom}`.trim(),
+      email: applicationForm.email || profile.email,
+      phone: applicationForm.phone || profile.phone,
     };
     setApplications((current) => [application, ...current]);
     setNotifications((current) => [
-      { id: Date.now(), title: 'Candidature envoyee', body: `${activeJob.role} chez ${activeJob.company}`, read: false },
+      {
+        id: Date.now(),
+        title: trackingEnabled ? 'Candidature suivie envoyee' : 'Candidature rapide envoyee',
+        body: trackingEnabled ? `${activeJob.role}: le suivi temps reel est actif.` : `${activeJob.role}: CV recu, sans suivi temps reel.`,
+        read: false,
+      },
       ...current,
     ]);
     setApplicationForm(emptyApplication);
     setScreen('profile');
     notify('Candidature envoyee au recruteur');
+  };
+
+  const markApplicationActivity = (applicationId, field) => {
+    let changedApplication;
+    setApplications((current) => current.map((item) => {
+      if (item.id !== applicationId || item[field]) return item;
+      changedApplication = { ...item, [field]: true, status: 'reviewed' };
+      return changedApplication;
+    }));
+    if (!changedApplication) return;
+    if (changedApplication.trackingEnabled) {
+      const title = field === 'cvOpened' ? 'CV ouvert' : 'Demande consultee';
+      const body = `${changedApplication.company} a ${field === 'cvOpened' ? 'ouvert ton CV' : 'ouvert ta candidature'}.`;
+      setNotifications((current) => [{ id: Date.now(), title, body, read: false }, ...current]);
+      notify(title);
+    } else {
+      notify('Action recruteur enregistree, pas de notification pour candidature rapide.');
+    }
   };
 
   const publishJob = (event) => {
@@ -253,11 +306,11 @@ export default function App() {
   const renderScreen = () => {
     if (screen === 'jobs') return <JobsScreen jobs={filteredJobs} query={query} setQuery={setQuery} city={city} setCity={setCity} openJob={openJob} savedIds={savedIds} toggleSave={toggleSave} />;
     if (screen === 'job') return <JobScreen job={activeJob} saved={savedIds.includes(activeJob?.id)} toggleSave={toggleSave} setScreen={setScreen} />;
-    if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} setScreen={setScreen} />;
+    if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} setScreen={setScreen} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
-    if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} />;
+    if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} isLoggedIn={isLoggedIn} />;
     if (screen === 'login') return <LoginScreen otpSent={otpSent} loginEmail={loginEmail} setLoginEmail={setLoginEmail} otp={otp} setOtp={setOtp} handleLogin={handleLogin} verifyOtp={verifyOtp} setScreen={setScreen} />;
-    if (screen === 'recruiter') return <RecruiterScreen jobs={jobs} applications={applications} setScreen={setScreen} />;
+    if (screen === 'recruiter') return <RecruiterScreen jobs={jobs} applications={applications} setScreen={setScreen} markApplicationActivity={markApplicationActivity} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} publishJob={publishJob} setScreen={setScreen} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
     if (screen === 'settings') return <SettingsScreen />;
@@ -438,18 +491,83 @@ function JobScreen({ job, saved, toggleSave, setScreen }) {
   );
 }
 
-function ApplyScreen({ job, form, setForm, submitApplication, setScreen }) {
+function ApplyScreen({ job, form, setForm, submitApplication, setScreen, isLoggedIn, profile, notify }) {
+  const trackingEnabled = form.mode === 'tracked';
+  const fillFromProfile = () => {
+    setForm({
+      ...form,
+      nom: `${profile.prenom} ${profile.nom}`.trim(),
+      email: profile.email,
+      phone: profile.phone,
+    });
+    notify('Profil ajoute a la candidature');
+  };
+  const handleCvChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      event.target.value = '';
+      setForm({ ...form, cvName: '', cvSize: 0, cvType: '' });
+      notify('Le CV doit etre un fichier PDF.');
+      return;
+    }
+    if (file.size > MAX_CV_BYTES) {
+      event.target.value = '';
+      setForm({ ...form, cvName: '', cvSize: 0, cvType: '' });
+      notify(`Le CV ne doit pas depasser ${MAX_CV_LABEL}.`);
+      return;
+    }
+    setForm({ ...form, cvName: file.name, cvSize: file.size, cvType: file.type || 'application/pdf' });
+    notify('CV PDF ajoute');
+  };
+
   return (
     <div className="space-y-4">
       <BackButton onClick={() => setScreen('job')} label="Retour" />
       <PageHeader title="Postuler" subtitle={`${job.role} - ${job.company}`} />
+      <div className="grid gap-2 md:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => setForm({ ...form, mode: 'tracked' })}
+          className={classNames('rounded-lg border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-600', trackingEnabled ? 'border-blue-700 bg-blue-50' : 'border-slate-200 bg-white')}
+        >
+          <div className="flex items-center gap-2 font-black text-slate-950">
+            <ShieldCheck size={19} className="text-blue-700" /> Candidature suivie
+          </div>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">Connexion requise. Tu vois si l'employeur ouvre ta demande ou ton CV, avec notifications et KPI.</p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setForm({ ...form, mode: 'quick' })}
+          className={classNames('rounded-lg border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-600', !trackingEnabled ? 'border-blue-700 bg-blue-50' : 'border-slate-200 bg-white')}
+        >
+          <div className="flex items-center gap-2 font-black text-slate-950">
+            <Send size={19} className="text-blue-700" /> Candidature rapide
+          </div>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">Ton CV est recu par le recruteur, mais tu n'as pas de suivi temps reel du dossier.</p>
+        </button>
+      </div>
+      {trackingEnabled && !isLoggedIn && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-bold leading-6 text-amber-900">Connecte-toi pour activer le suivi de candidature.</p>
+          <button onClick={() => setScreen('login')} className="mt-3 min-h-11 rounded-lg bg-amber-900 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-amber-700">
+            Se connecter
+          </button>
+        </div>
+      )}
       <form onSubmit={submitApplication} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
+        {isLoggedIn && (
+          <button type="button" onClick={fillFromProfile} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+            Utiliser mon profil
+          </button>
+        )}
         <TextField label="Nom complet" value={form.nom} onChange={(nom) => setForm({ ...form, nom })} required />
         <TextField label="Email" type="email" value={form.email} onChange={(email) => setForm({ ...form, email })} required />
         <TextField label="Telephone" type="tel" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} required />
         <TextArea label="Message au recruteur" value={form.message} onChange={(message) => setForm({ ...form, message })} placeholder="Disponibilite, experience, motivation..." />
+        <CvUpload cvName={form.cvName} cvSize={form.cvSize} onChange={handleCvChange} />
         <button type="submit" className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
-          Envoyer ma candidature <Send size={18} />
+          {trackingEnabled ? 'Envoyer et suivre' : 'Envoyer rapidement'} <Send size={18} />
         </button>
       </form>
     </div>
@@ -468,10 +586,18 @@ function SavedScreen({ jobs, openJob }) {
   );
 }
 
-function ProfileScreen({ profile, setProfile, applications, updateProfile, setScreen }) {
+function ProfileScreen({ profile, setProfile, applications, updateProfile, setScreen, isLoggedIn }) {
+  const trackedApplications = applications.filter((item) => item.trackingEnabled);
+  const cvOpenedCount = trackedApplications.filter((item) => item.cvOpened).length;
+  const applicationOpenedCount = trackedApplications.filter((item) => item.applicationOpened).length;
   return (
     <div className="space-y-5">
-      <PageHeader title="Profil" subtitle="Candidat et suivi des candidatures" />
+      <PageHeader title="Profil" subtitle={isLoggedIn ? 'Candidat et suivi des candidatures' : 'Connecte-toi pour activer le suivi temps reel'} />
+      <div className="grid grid-cols-3 gap-2">
+        <StatCard value={trackedApplications.length} label="Suivies" />
+        <StatCard value={applicationOpenedCount} label="Demandes vues" />
+        <StatCard value={cvOpenedCount} label="CV ouverts" />
+      </div>
       <form onSubmit={updateProfile} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-5 md:grid-cols-2">
         <TextField label="Nom" value={profile.nom} onChange={(nom) => setProfile({ ...profile, nom })} />
         <TextField label="Prenom" value={profile.prenom} onChange={(prenom) => setProfile({ ...profile, prenom })} />
@@ -492,8 +618,21 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
               <div>
                 <h3 className="font-black">{item.jobRole}</h3>
                 <p className="text-sm font-semibold text-slate-500">{item.company}</p>
+                <p className="mt-2 text-xs font-black text-slate-500">
+                  {item.cvName ? `CV: ${item.cvName}` : 'CV non joint'} - {item.trackingEnabled ? 'Suivi actif' : 'Candidature rapide'}
+                </p>
+                {item.trackingEnabled && (
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs font-black">
+                    <span className={classNames('rounded-full px-3 py-1', item.applicationOpened ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600')}>
+                      {item.applicationOpened ? 'Demande ouverte' : 'Demande en attente'}
+                    </span>
+                    <span className={classNames('rounded-full px-3 py-1', item.cvOpened ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600')}>
+                      {item.cvOpened ? 'CV ouvert' : 'CV non ouvert'}
+                    </span>
+                  </div>
+                )}
               </div>
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">En revue</span>
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">{item.status === 'reviewed' ? 'Vu' : 'En revue'}</span>
             </div>
           </div>
         ))}
@@ -522,7 +661,7 @@ function LoginScreen({ otpSent, loginEmail, setLoginEmail, otp, setOtp, handleLo
   );
 }
 
-function RecruiterScreen({ jobs, applications, setScreen }) {
+function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivity }) {
   const ownJobs = jobs.slice(0, 4);
   return (
     <div className="space-y-5">
@@ -543,6 +682,32 @@ function RecruiterScreen({ jobs, applications, setScreen }) {
             <p className="mt-1 text-sm font-semibold text-slate-500">{job.company} - {job.loc}</p>
           </div>
         ))}
+      </div>
+      <SectionTitle title="Candidatures recues" />
+      <div className="grid gap-3">
+        {applications.map((item) => (
+          <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-black">{item.jobRole}</h3>
+                <p className="text-sm font-semibold text-slate-500">{item.nom} - {item.email}</p>
+                <p className="mt-2 text-xs font-black text-slate-500">
+                  {item.cvName ? `CV PDF: ${item.cvName}` : 'Aucun CV'} - {item.trackingEnabled ? 'suivi candidat actif' : 'candidature rapide'}
+                </p>
+              </div>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{item.status === 'reviewed' ? 'Vu' : 'Nouveau'}</span>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <button onClick={() => markApplicationActivity(item.id, 'applicationOpened')} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                Ouvrir la demande
+              </button>
+              <button onClick={() => markApplicationActivity(item.id, 'cvOpened')} className="min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                Ouvrir le CV
+              </button>
+            </div>
+          </div>
+        ))}
+        {applications.length === 0 && <EmptyState title="Aucune candidature recue" body="Les candidatures apparaitront ici avec leur CV PDF." />}
       </div>
     </div>
   );
@@ -670,6 +835,21 @@ function TextArea({ label, value, onChange, required, placeholder }) {
       <span className="mb-2 block text-sm font-black text-slate-800">{label}</span>
       <textarea required={required} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} rows={4} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-base font-semibold outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-600" />
     </label>
+  );
+}
+
+function CvUpload({ cvName, cvSize, onChange }) {
+  const readableSize = cvSize ? `${(cvSize / 1024 / 1024).toFixed(2)} Mo` : '';
+  return (
+    <div>
+      <span className="mb-2 block text-sm font-black text-slate-800">CV PDF</span>
+      <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center transition hover:border-blue-700 hover:bg-blue-50 focus-within:ring-2 focus-within:ring-blue-600">
+        <FileText size={26} className="text-blue-700" />
+        <span className="mt-2 text-sm font-black text-slate-900">{cvName || 'Ajouter mon CV'}</span>
+        <span className="mt-1 text-xs font-bold text-slate-500">{cvName ? readableSize : `PDF uniquement, ${MAX_CV_LABEL} maximum`}</span>
+        <input type="file" accept="application/pdf,.pdf" onChange={onChange} className="sr-only" />
+      </label>
+    </div>
   );
 }
 
