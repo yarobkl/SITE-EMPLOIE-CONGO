@@ -92,6 +92,12 @@ create policy "jobs are public" on public.jobs
 create policy "companies are public" on public.companies
   for select using (true);
 
+create policy "public can create companies for demo" on public.companies
+  for insert with check (true);
+
+create policy "public can publish jobs for demo" on public.jobs
+  for insert with check (status = 'published');
+
 create policy "candidates create applications" on public.applications
   for insert with check (auth.uid() = candidate_id or candidate_id is null);
 

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Bell,
@@ -22,7 +22,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { hasSupabaseConfig } from './lib/supabase';
+import { hasSupabaseConfig, supabase } from './lib/supabase';
 
 const initialJobs = [
   {
@@ -137,6 +137,21 @@ function classNames(...values) {
   return values.filter(Boolean).join(' ');
 }
 
+function normalizeJob(row) {
+  return {
+    id: row.id,
+    company: row.companies?.name || row.company || 'Entreprise',
+    role: row.title || row.role,
+    loc: row.location || row.loc,
+    type: row.contract_type || row.type,
+    salary: row.salary_range || row.salary,
+    sector: row.sector || 'General',
+    description: row.description,
+    requirements: row.requirements?.length ? row.requirements : ['Experience pertinente', 'Disponibilite', 'Motivation'],
+    status: row.status || 'published',
+  };
+}
+
 export default function App() {
   const [screen, setScreen] = useState('home');
   const [selectedJob, setSelectedJob] = useState(null);
@@ -148,6 +163,7 @@ export default function App() {
   const [otp, setOtp] = useState('');
   const [applicationForm, setApplicationForm] = useState(emptyApplication);
   const [jobForm, setJobForm] = useState(emptyJob);
+  const [dataSource, setDataSource] = useState(hasSupabaseConfig ? 'Connexion base...' : 'Mode local');
 
   const [jobs, setJobs] = useStoredState('congoemploi.v2.jobs', initialJobs);
   const [profile, setProfile] = useStoredState('congoemploi.v2.profile', initialProfile);
@@ -157,6 +173,31 @@ export default function App() {
   const [notifications, setNotifications] = useStoredState('congoemploi.v2.notifications', [
     { id: 1, title: 'Bienvenue sur CONGOEMPLOI', body: 'Votre espace mobile est pret.', read: false },
   ]);
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase) return;
+    let cancelled = false;
+    async function loadJobs() {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('id,title,description,location,contract_type,salary_range,sector,requirements,status,companies(name)')
+        .eq('status', 'published')
+        .order('created_at', { ascending: false });
+      if (cancelled) return;
+      if (error) {
+        setDataSource('Mode local');
+        return;
+      }
+      if (data?.length) {
+        setJobs(data.map(normalizeJob));
+      }
+      setDataSource('Supabase');
+    }
+    loadJobs();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const publishedJobs = jobs.filter((job) => job.status === 'published');
   const filteredJobs = useMemo(() => {
@@ -213,7 +254,7 @@ export default function App() {
     notify('Code invalide. Essaie 246810 pour la demo.');
   };
 
-  const submitApplication = (event) => {
+  const submitApplication = async (event) => {
     event.preventDefault();
     if (!applicationForm.cvName) {
       notify(`Ajoute un CV PDF de ${MAX_CV_LABEL} maximum.`);
@@ -241,6 +282,23 @@ export default function App() {
       phone: applicationForm.phone || profile.phone,
     };
     setApplications((current) => [application, ...current]);
+    if (hasSupabaseConfig && supabase) {
+      const { error } = await supabase.from('applications').insert({
+        job_id: typeof activeJob.id === 'string' ? activeJob.id : null,
+        candidate_id: null,
+        nom: application.nom,
+        email: application.email,
+        phone: application.phone,
+        message: application.message,
+        cv_name: application.cvName,
+        cv_size: application.cvSize || 0,
+        tracking_enabled: application.trackingEnabled,
+        application_opened: false,
+        cv_opened: false,
+        status: 'pending',
+      });
+      if (error) notify('Candidature gardee localement, base indisponible.');
+    }
     setNotifications((current) => [
       {
         id: Date.now(),
@@ -273,7 +331,7 @@ export default function App() {
     }
   };
 
-  const publishJob = (event) => {
+  const publishJob = async (event) => {
     event.preventDefault();
     const nextJob = {
       id: Date.now(),
@@ -281,6 +339,33 @@ export default function App() {
       status: 'published',
       ...jobForm,
     };
+    if (hasSupabaseConfig && supabase) {
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .insert({ name: nextJob.company, city: nextJob.loc, sector: nextJob.sector })
+        .select('id')
+        .single();
+      if (!companyError && company?.id) {
+        const { data: savedJob, error: jobError } = await supabase
+          .from('jobs')
+          .insert({
+            company_id: company.id,
+            title: nextJob.role,
+            description: nextJob.description,
+            location: nextJob.loc,
+            contract_type: nextJob.type,
+            salary_range: nextJob.salary,
+            sector: nextJob.sector,
+            requirements: nextJob.requirements,
+            status: 'published',
+          })
+          .select('id,title,description,location,contract_type,salary_range,sector,requirements,status,companies(name)')
+          .single();
+        if (!jobError && savedJob) {
+          nextJob.id = savedJob.id;
+        }
+      }
+    }
     setJobs((current) => [nextJob, ...current]);
     setJobForm(emptyJob);
     setNotifications((current) => [
@@ -314,7 +399,7 @@ export default function App() {
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} publishJob={publishJob} setScreen={setScreen} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
     if (screen === 'settings') return <SettingsScreen />;
-    return <HomeScreen jobs={filteredJobs.slice(0, 3)} query={query} setQuery={setQuery} city={city} setCity={setCity} openJob={openJob} setScreen={setScreen} hasSupabaseConfig={hasSupabaseConfig} />;
+    return <HomeScreen jobs={filteredJobs.slice(0, 3)} query={query} setQuery={setQuery} city={city} setCity={setCity} openJob={openJob} setScreen={setScreen} hasSupabaseConfig={hasSupabaseConfig} dataSource={dataSource} />;
   };
 
   return (
@@ -386,7 +471,7 @@ function IconButton({ label, children, onClick, badge }) {
   );
 }
 
-function HomeScreen({ jobs, query, setQuery, city, setCity, openJob, setScreen, hasSupabaseConfig }) {
+function HomeScreen({ jobs, query, setQuery, city, setCity, openJob, setScreen, hasSupabaseConfig, dataSource }) {
   return (
     <div className="space-y-6">
       <section className="rounded-lg bg-slate-950 p-5 text-white md:grid md:grid-cols-[1.2fr_0.8fr] md:gap-8 md:p-8">
@@ -420,7 +505,7 @@ function HomeScreen({ jobs, query, setQuery, city, setCity, openJob, setScreen, 
       <section className="grid gap-3 md:grid-cols-3">
         <ActionCard icon={User} title="Candidat" body="Postule en moins d'une minute." onClick={() => setScreen('jobs')} />
         <ActionCard icon={Building2} title="Recruteur" body="Publie une offre et suis les candidatures." onClick={() => setScreen('recruiter')} />
-        <ActionCard icon={Sparkles} title={hasSupabaseConfig ? 'Base connectee' : 'Base a connecter'} body={hasSupabaseConfig ? 'Supabase est configure.' : 'Supabase est pret des que les variables Vercel sont ajoutees.'} onClick={() => setScreen('settings')} />
+        <ActionCard icon={Sparkles} title={hasSupabaseConfig ? 'Base connectee' : 'Base a connecter'} body={hasSupabaseConfig ? `Source: ${dataSource}` : 'Supabase est pret des que les variables Vercel sont ajoutees.'} onClick={() => setScreen('settings')} />
       </section>
 
       <SectionTitle title="Offres recentes" action="Tout voir" onAction={() => setScreen('jobs')} />
