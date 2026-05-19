@@ -133,3 +133,15 @@ create policy "candidates read own cv pdf" on storage.objects
     bucket_id = 'cvs'
     and auth.uid()::text = (storage.foldername(name))[1]
   );
+
+create policy "public demo upload cv pdf" on storage.objects
+  for insert with check (
+    bucket_id = 'cvs'
+    and (storage.foldername(name))[1] = 'public'
+  );
+
+create policy "public demo read cv pdf" on storage.objects
+  for select using (
+    bucket_id = 'cvs'
+    and (storage.foldername(name))[1] = 'public'
+  );

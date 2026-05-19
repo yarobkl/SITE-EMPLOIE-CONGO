@@ -109,6 +109,7 @@ const emptyApplication = {
   cvName: '',
   cvSize: 0,
   cvType: '',
+  cvFile: null,
 };
 const emptyJob = { role: '', company: '', loc: 'Brazzaville', type: 'CDI', salary: '', sector: '', description: '' };
 
@@ -266,6 +267,26 @@ export default function App() {
       return;
     }
     const trackingEnabled = applicationForm.mode === 'tracked' && isLoggedIn;
+    let cvPath = '';
+    if (hasSupabaseConfig && supabase && applicationForm.cvFile) {
+      const safeName = applicationForm.cvName
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      const filePath = `public/${Date.now()}-${safeName || 'cv.pdf'}`;
+      const { error: uploadError } = await supabase.storage
+        .from('cvs')
+        .upload(filePath, applicationForm.cvFile, {
+          contentType: 'application/pdf',
+          upsert: false,
+        });
+      if (!uploadError) {
+        cvPath = filePath;
+      } else {
+        notify('CV garde localement, stockage indisponible.');
+      }
+    }
+    const { cvFile, ...applicationValues } = applicationForm;
     const application = {
       id: Date.now(),
       jobId: activeJob.id,
@@ -276,7 +297,8 @@ export default function App() {
       applicationOpened: false,
       cvOpened: false,
       createdAt: new Date().toISOString(),
-      ...applicationForm,
+      cvPath,
+      ...applicationValues,
       nom: applicationForm.nom || `${profile.prenom} ${profile.nom}`.trim(),
       email: applicationForm.email || profile.email,
       phone: applicationForm.phone || profile.phone,
@@ -290,6 +312,7 @@ export default function App() {
         email: application.email,
         phone: application.phone,
         message: application.message,
+        cv_url: cvPath,
         cv_name: application.cvName,
         cv_size: application.cvSize || 0,
         tracking_enabled: application.trackingEnabled,
@@ -592,17 +615,17 @@ function ApplyScreen({ job, form, setForm, submitApplication, setScreen, isLogge
     if (!file) return;
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
       event.target.value = '';
-      setForm({ ...form, cvName: '', cvSize: 0, cvType: '' });
+      setForm({ ...form, cvName: '', cvSize: 0, cvType: '', cvFile: null });
       notify('Le CV doit etre un fichier PDF.');
       return;
     }
     if (file.size > MAX_CV_BYTES) {
       event.target.value = '';
-      setForm({ ...form, cvName: '', cvSize: 0, cvType: '' });
+      setForm({ ...form, cvName: '', cvSize: 0, cvType: '', cvFile: null });
       notify(`Le CV ne doit pas depasser ${MAX_CV_LABEL}.`);
       return;
     }
-    setForm({ ...form, cvName: file.name, cvSize: file.size, cvType: file.type || 'application/pdf' });
+    setForm({ ...form, cvName: file.name, cvSize: file.size, cvType: file.type || 'application/pdf', cvFile: file });
     notify('CV PDF ajoute');
   };
 
