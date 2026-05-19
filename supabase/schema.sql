@@ -83,8 +83,13 @@ alter table public.notifications enable row level security;
 grant usage on schema public to anon, authenticated;
 grant select on public.companies, public.jobs to anon, authenticated;
 grant insert on public.companies, public.jobs, public.applications to anon, authenticated;
+grant select, update on public.applications to authenticated;
+grant insert on public.profiles to authenticated;
 grant select, insert, update, delete on public.saved_jobs, public.notifications to authenticated;
 grant select, update on public.profiles to authenticated;
+
+create policy "profiles insert own" on public.profiles
+  for insert with check (auth.uid() = id);
 
 create policy "profiles read own" on public.profiles
   for select using (auth.uid() = id);

@@ -11,6 +11,7 @@ import {
   FileText,
   Home,
   LayoutDashboard,
+  LogOut,
   MapPin,
   PlusCircle,
   Search,
@@ -88,13 +89,13 @@ const initialJobs = [
 ];
 
 const initialProfile = {
-  nom: 'Yaro',
-  prenom: 'B',
-  email: 'demo@congoemploi.cg',
-  phone: '+242 06 000 0000',
+  nom: '',
+  prenom: '',
+  email: '',
+  phone: '',
   city: 'Brazzaville',
   role: 'candidat',
-  title: 'Candidat mobile',
+  title: '',
 };
 
 const MAX_CV_BYTES = 2 * 1024 * 1024;
@@ -153,27 +154,60 @@ function normalizeJob(row) {
   };
 }
 
+function normalizeApplication(row) {
+  return {
+    id: row.id,
+    jobId: row.job_id,
+    jobRole: row.jobs?.title || 'Offre',
+    company: row.jobs?.companies?.name || 'Entreprise',
+    status: row.status,
+    trackingEnabled: row.tracking_enabled,
+    applicationOpened: row.application_opened,
+    cvOpened: row.cv_opened,
+    createdAt: row.created_at,
+    cvPath: row.cv_url,
+    cvName: row.cv_name,
+    cvSize: row.cv_size,
+    nom: row.nom,
+    email: row.email,
+    phone: row.phone,
+    message: row.message || '',
+  };
+}
+
+function normalizeNotification(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    read: row.read,
+    createdAt: row.created_at,
+  };
+}
+
 export default function App() {
   const [screen, setScreen] = useState('home');
   const [selectedJob, setSelectedJob] = useState(null);
   const [query, setQuery] = useState('');
   const [city, setCity] = useState('Toutes');
   const [toast, setToast] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
+  const [authMode, setAuthMode] = useState('signin');
   const [loginEmail, setLoginEmail] = useState('');
-  const [otp, setOtp] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [authUser, setAuthUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
   const [applicationForm, setApplicationForm] = useState(emptyApplication);
   const [jobForm, setJobForm] = useState(emptyJob);
   const [dataSource, setDataSource] = useState(hasSupabaseConfig ? 'Connexion base...' : 'Mode local');
 
   const [jobs, setJobs] = useStoredState('congoemploi.v2.jobs', initialJobs);
   const [profile, setProfile] = useStoredState('congoemploi.v2.profile', initialProfile);
-  const [isLoggedIn, setIsLoggedIn] = useStoredState('congoemploi.v2.isLoggedIn', false);
   const [savedIds, setSavedIds] = useStoredState('congoemploi.v2.savedIds', []);
   const [applications, setApplications] = useStoredState('congoemploi.v2.applications', []);
   const [notifications, setNotifications] = useStoredState('congoemploi.v2.notifications', [
     { id: 1, title: 'Bienvenue sur CONGOEMPLOI', body: 'Votre espace mobile est pret.', read: false },
   ]);
+  const isLoggedIn = Boolean(authUser);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) return;
@@ -200,6 +234,86 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase) {
+      setAuthLoading(false);
+      return undefined;
+    }
+
+    let active = true;
+
+    async function bootstrapAuth() {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      setAuthUser(data.session?.user || null);
+      setAuthLoading(false);
+    }
+
+    bootstrapAuth();
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthUser(session?.user || null);
+      setAuthLoading(false);
+    });
+
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !authUser) return;
+    let cancelled = false;
+
+    async function loadUserData() {
+      const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('nom,prenom,email,phone,city,role,title')
+        .eq('id', authUser.id)
+        .maybeSingle();
+
+      if (!cancelled) {
+        if (profileRow) {
+          setProfile((current) => ({ ...current, ...profileRow, email: profileRow.email || authUser.email || current.email }));
+        } else {
+          setProfile((current) => ({ ...current, email: authUser.email || current.email }));
+        }
+      }
+
+      const { data: userApplications } = await supabase
+        .from('applications')
+        .select('id,job_id,nom,email,phone,message,cv_url,cv_name,cv_size,tracking_enabled,application_opened,cv_opened,status,created_at,jobs(title,companies(name))')
+        .order('created_at', { ascending: false });
+
+      if (!cancelled && userApplications) {
+        setApplications(userApplications.map(normalizeApplication));
+      }
+
+      const { data: userSaved } = await supabase
+        .from('saved_jobs')
+        .select('job_id')
+        .order('created_at', { ascending: false });
+
+      if (!cancelled && userSaved) {
+        setSavedIds(userSaved.map((item) => item.job_id));
+      }
+
+      const { data: userNotifications } = await supabase
+        .from('notifications')
+        .select('id,title,body,read,created_at')
+        .order('created_at', { ascending: false });
+
+      if (!cancelled && userNotifications) {
+        setNotifications(userNotifications.map(normalizeNotification));
+      }
+    }
+
+    loadUserData();
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser?.id]);
+
   const publishedJobs = jobs.filter((job) => job.status === 'published');
   const filteredJobs = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -225,34 +339,93 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const toggleSave = (job) => {
+  const toggleSave = async (job) => {
+    const exists = savedIds.includes(job.id);
     setSavedIds((current) => {
-      const exists = current.includes(job.id);
       return exists ? current.filter((id) => id !== job.id) : [...current, job.id];
     });
-    notify(savedIds.includes(job.id) ? 'Offre retiree des favoris' : 'Offre sauvegardee');
+    if (hasSupabaseConfig && supabase && authUser) {
+      if (exists) {
+        await supabase.from('saved_jobs').delete().eq('job_id', job.id);
+      } else {
+        await supabase.from('saved_jobs').insert({ job_id: job.id, candidate_id: authUser.id });
+      }
+    }
+    notify(exists ? 'Offre retiree des favoris' : 'Offre sauvegardee');
   };
 
-  const handleLogin = (event) => {
+  const handleAuth = async (event) => {
     event.preventDefault();
-    setOtpSent(true);
-    setOtp('246810');
-    notify('Code demo envoye: 246810');
-  };
-
-  const verifyOtp = (event) => {
-    event.preventDefault();
-    if (otp === '246810') {
-      setProfile((current) => ({ ...current, email: loginEmail || current.email }));
-      setIsLoggedIn(true);
-      setOtpSent(false);
-      setLoginEmail('');
-      setOtp('');
-      setScreen('profile');
-      notify('Connexion reussie');
+    if (!hasSupabaseConfig || !supabase) {
+      notify('Supabase doit etre configure pour la connexion reelle.');
       return;
     }
-    notify('Code invalide. Essaie 246810 pour la demo.');
+    if (loginPassword.length < 6) {
+      notify('Mot de passe: 6 caracteres minimum.');
+      return;
+    }
+
+    if (authMode === 'signup') {
+      const { data, error } = await supabase.auth.signUp({
+        email: loginEmail,
+        password: loginPassword,
+        options: {
+          data: {
+            role: profile.role || 'candidat',
+            nom: profile.nom,
+            prenom: profile.prenom,
+          },
+        },
+      });
+      if (error) {
+        notify(error.message);
+        return;
+      }
+      if (data.user) {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          email: data.user.email,
+          role: profile.role || 'candidat',
+          nom: profile.nom,
+          prenom: profile.prenom,
+          phone: profile.phone,
+          city: profile.city,
+          title: profile.title,
+        });
+      }
+      setLoginPassword('');
+      setScreen('profile');
+      notify(data.session ? 'Compte cree et connecte' : 'Compte cree. Verifie ton email pour te connecter.');
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password: loginPassword,
+    });
+    if (error) {
+      notify(error.message);
+      return;
+    }
+    setAuthUser(data.user);
+    setProfile((current) => ({ ...current, email: data.user.email || current.email }));
+    setLoginEmail('');
+    setLoginPassword('');
+    setScreen('profile');
+    notify('Connexion reussie');
+  };
+
+  const handleLogout = async () => {
+    if (hasSupabaseConfig && supabase) {
+      await supabase.auth.signOut();
+    }
+    setAuthUser(null);
+    setProfile(initialProfile);
+    setApplications([]);
+    setSavedIds([]);
+    setNotifications([]);
+    setScreen('home');
+    notify('Deconnexion reussie');
   };
 
   const submitApplication = async (event) => {
@@ -273,7 +446,8 @@ export default function App() {
         .toLowerCase()
         .replace(/[^a-z0-9._-]+/g, '-')
         .replace(/^-+|-+$/g, '');
-      const filePath = `public/${Date.now()}-${safeName || 'cv.pdf'}`;
+      const cvOwnerFolder = trackingEnabled && authUser ? authUser.id : 'public';
+      const filePath = `${cvOwnerFolder}/${Date.now()}-${safeName || 'cv.pdf'}`;
       const { error: uploadError } = await supabase.storage
         .from('cvs')
         .upload(filePath, applicationForm.cvFile, {
@@ -307,7 +481,7 @@ export default function App() {
     if (hasSupabaseConfig && supabase) {
       const { error } = await supabase.from('applications').insert({
         job_id: typeof activeJob.id === 'string' ? activeJob.id : null,
-        candidate_id: null,
+        candidate_id: trackingEnabled && authUser ? authUser.id : null,
         nom: application.nom,
         email: application.email,
         phone: application.phone,
@@ -322,15 +496,21 @@ export default function App() {
       });
       if (error) notify('Candidature gardee localement, base indisponible.');
     }
-    setNotifications((current) => [
-      {
-        id: Date.now(),
-        title: trackingEnabled ? 'Candidature suivie envoyee' : 'Candidature rapide envoyee',
-        body: trackingEnabled ? `${activeJob.role}: le suivi temps reel est actif.` : `${activeJob.role}: CV recu, sans suivi temps reel.`,
+    const nextNotification = {
+      id: Date.now(),
+      title: trackingEnabled ? 'Candidature suivie envoyee' : 'Candidature rapide envoyee',
+      body: trackingEnabled ? `${activeJob.role}: le suivi temps reel est actif.` : `${activeJob.role}: CV recu, sans suivi temps reel.`,
+      read: false,
+    };
+    setNotifications((current) => [nextNotification, ...current]);
+    if (trackingEnabled && hasSupabaseConfig && supabase && authUser) {
+      await supabase.from('notifications').insert({
+        user_id: authUser.id,
+        title: nextNotification.title,
+        body: nextNotification.body,
         read: false,
-      },
-      ...current,
-    ]);
+      });
+    }
     setApplicationForm(emptyApplication);
     setScreen('profile');
     notify('Candidature envoyee au recruteur');
@@ -399,8 +579,24 @@ export default function App() {
     notify('Offre publiee');
   };
 
-  const updateProfile = (event) => {
+  const updateProfile = async (event) => {
     event.preventDefault();
+    if (hasSupabaseConfig && supabase && authUser) {
+      const { error } = await supabase.from('profiles').upsert({
+        id: authUser.id,
+        email: authUser.email,
+        role: profile.role || 'candidat',
+        nom: profile.nom,
+        prenom: profile.prenom,
+        phone: profile.phone,
+        city: profile.city,
+        title: profile.title,
+      });
+      if (error) {
+        notify('Profil garde localement, base indisponible.');
+        return;
+      }
+    }
     notify('Profil mis a jour');
   };
 
@@ -416,8 +612,8 @@ export default function App() {
     if (screen === 'job') return <JobScreen job={activeJob} saved={savedIds.includes(activeJob?.id)} toggleSave={toggleSave} setScreen={setScreen} />;
     if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} setScreen={setScreen} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
-    if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} isLoggedIn={isLoggedIn} />;
-    if (screen === 'login') return <LoginScreen otpSent={otpSent} loginEmail={loginEmail} setLoginEmail={setLoginEmail} otp={otp} setOtp={setOtp} handleLogin={handleLogin} verifyOtp={verifyOtp} setScreen={setScreen} />;
+    if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} />;
+    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} setScreen={setScreen} />;
     if (screen === 'recruiter') return <RecruiterScreen jobs={jobs} applications={applications} setScreen={setScreen} markApplicationActivity={markApplicationActivity} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} publishJob={publishJob} setScreen={setScreen} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
@@ -694,13 +890,28 @@ function SavedScreen({ jobs, openJob }) {
   );
 }
 
-function ProfileScreen({ profile, setProfile, applications, updateProfile, setScreen, isLoggedIn }) {
+function ProfileScreen({ profile, setProfile, applications, updateProfile, setScreen, isLoggedIn, authLoading, handleLogout }) {
   const trackedApplications = applications.filter((item) => item.trackingEnabled);
   const cvOpenedCount = trackedApplications.filter((item) => item.cvOpened).length;
   const applicationOpenedCount = trackedApplications.filter((item) => item.applicationOpened).length;
   return (
     <div className="space-y-5">
-      <PageHeader title="Profil" subtitle={isLoggedIn ? 'Candidat et suivi des candidatures' : 'Connecte-toi pour activer le suivi temps reel'} />
+      <div className="flex items-start justify-between gap-3">
+        <PageHeader title="Profil" subtitle={authLoading ? 'Verification de la session...' : isLoggedIn ? 'Candidat et suivi des candidatures' : 'Connecte-toi pour activer le suivi temps reel'} />
+        {isLoggedIn && (
+          <button onClick={handleLogout} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 transition hover:border-red-600 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-600">
+            <LogOut size={17} /> Sortir
+          </button>
+        )}
+      </div>
+      {!isLoggedIn && !authLoading && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <p className="text-sm font-bold leading-6 text-blue-950">Connexion reelle Supabase active. Cree ton compte ou connecte-toi pour synchroniser ton profil, tes favoris, tes CV et tes candidatures.</p>
+          <button onClick={() => setScreen('login')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+            Se connecter
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-3 gap-2">
         <StatCard value={trackedApplications.length} label="Suivies" />
         <StatCard value={applicationOpenedCount} label="Demandes vues" />
@@ -709,7 +920,7 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
       <form onSubmit={updateProfile} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-5 md:grid-cols-2">
         <TextField label="Nom" value={profile.nom} onChange={(nom) => setProfile({ ...profile, nom })} />
         <TextField label="Prenom" value={profile.prenom} onChange={(prenom) => setProfile({ ...profile, prenom })} />
-        <TextField label="Email" type="email" value={profile.email} onChange={(email) => setProfile({ ...profile, email })} />
+        <TextField label="Email" type="email" value={profile.email} onChange={(email) => setProfile({ ...profile, email })} disabled={isLoggedIn} />
         <TextField label="Telephone" type="tel" value={profile.phone} onChange={(phone) => setProfile({ ...profile, phone })} />
         <TextField label="Ville" value={profile.city} onChange={(city) => setProfile({ ...profile, city })} />
         <TextField label="Titre" value={profile.title} onChange={(title) => setProfile({ ...profile, title })} />
@@ -750,20 +961,29 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
   );
 }
 
-function LoginScreen({ otpSent, loginEmail, setLoginEmail, otp, setOtp, handleLogin, verifyOtp, setScreen }) {
+function LoginScreen({ authMode, setAuthMode, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, setScreen }) {
+  const isSignup = authMode === 'signup';
   return (
     <div className="mx-auto max-w-md space-y-5">
       <BackButton onClick={() => setScreen('home')} label="Accueil" />
-      <PageHeader title="Connexion" subtitle="Code OTP de demonstration" />
-      <form onSubmit={otpSent ? verifyOtp : handleLogin} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
-        {!otpSent ? (
-          <TextField label="Email" type="email" value={loginEmail} onChange={setLoginEmail} required />
-        ) : (
-          <TextField label="Code OTP" value={otp} onChange={setOtp} required placeholder="246810" />
-        )}
-        <button type="submit" className="min-h-12 w-full rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
-          {otpSent ? 'Valider le code' : 'Recevoir le code'}
+      <PageHeader title={isSignup ? 'Creer un compte' : 'Connexion'} subtitle="Compte reel securise avec Supabase" />
+      <div className="grid grid-cols-2 rounded-lg border border-slate-200 bg-white p-1">
+        <button type="button" onClick={() => setAuthMode('signin')} className={classNames('min-h-11 rounded-md text-sm font-black', !isSignup ? 'bg-blue-700 text-white' : 'text-slate-600')}>
+          Connexion
         </button>
+        <button type="button" onClick={() => setAuthMode('signup')} className={classNames('min-h-11 rounded-md text-sm font-black', isSignup ? 'bg-blue-700 text-white' : 'text-slate-600')}>
+          Inscription
+        </button>
+      </div>
+      <form onSubmit={handleAuth} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
+        <TextField label="Email" type="email" value={loginEmail} onChange={setLoginEmail} required />
+        <TextField label="Mot de passe" type="password" value={loginPassword} onChange={setLoginPassword} required placeholder="Minimum 6 caracteres" />
+        <button type="submit" className="min-h-12 w-full rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          {isSignup ? 'Creer mon compte' : 'Me connecter'}
+        </button>
+        <p className="text-xs font-semibold leading-5 text-slate-500">
+          {isSignup ? 'Si la confirmation email est active sur Supabase, tu devras valider le lien recu avant la premiere connexion.' : 'Tes candidatures suivies seront reliees a ce compte.'}
+        </p>
       </form>
     </div>
   );
@@ -928,11 +1148,11 @@ function JobCard({ job, onClick, saved, onSave }) {
   );
 }
 
-function TextField({ label, value, onChange, type = 'text', required, placeholder }) {
+function TextField({ label, value, onChange, type = 'text', required, placeholder, disabled = false }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-black text-slate-800">{label}</span>
-      <input type={type} required={required} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base font-semibold outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-600" />
+      <input type={type} required={required} disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base font-semibold outline-none transition disabled:bg-slate-100 disabled:text-slate-500 focus:border-blue-700 focus:ring-2 focus:ring-blue-600" />
     </label>
   );
 }
