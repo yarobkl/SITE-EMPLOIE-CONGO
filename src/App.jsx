@@ -198,7 +198,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
   const [applicationForm, setApplicationForm] = useState(emptyApplication);
   const [jobForm, setJobForm] = useState(emptyJob);
-  const [dataSource, setDataSource] = useState(hasSupabaseConfig ? 'Connexion base...' : 'Mode local');
+  const [dataSource, setDataSource] = useState(hasSupabaseConfig ? 'Connexion en cours' : 'Hors ligne');
 
   const [jobs, setJobs] = useStoredState('congoemploi.v2.jobs', initialJobs);
   const [profile, setProfile] = useStoredState('congoemploi.v2.profile', initialProfile);
@@ -220,7 +220,7 @@ export default function App() {
         .order('created_at', { ascending: false });
       if (cancelled) return;
       if (error) {
-        setDataSource('Mode local');
+        setDataSource('Hors ligne');
         return;
       }
       if (data?.length) {
@@ -536,6 +536,11 @@ export default function App() {
 
   const publishJob = async (event) => {
     event.preventDefault();
+    if (!isLoggedIn) {
+      notify('Connecte-toi pour publier une offre.');
+      setScreen('login');
+      return;
+    }
     const nextJob = {
       id: Date.now(),
       requirements: ['Experience pertinente', 'Disponibilite', 'Motivation'],
@@ -614,7 +619,7 @@ export default function App() {
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} />;
     if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} setScreen={setScreen} />;
-    if (screen === 'recruiter') return <RecruiterScreen jobs={jobs} applications={applications} setScreen={setScreen} markApplicationActivity={markApplicationActivity} />;
+    if (screen === 'recruiter') return <RecruiterScreen jobs={jobs} applications={applications} setScreen={setScreen} markApplicationActivity={markApplicationActivity} isLoggedIn={isLoggedIn} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} publishJob={publishJob} setScreen={setScreen} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
     if (screen === 'settings') return <SettingsScreen />;
@@ -724,7 +729,7 @@ function HomeScreen({ jobs, query, setQuery, city, setCity, openJob, setScreen, 
       <section className="grid gap-3 md:grid-cols-3">
         <ActionCard icon={User} title="Candidat" body="Postule en moins d'une minute." onClick={() => setScreen('jobs')} />
         <ActionCard icon={Building2} title="Recruteur" body="Publie une offre et suis les candidatures." onClick={() => setScreen('recruiter')} />
-        <ActionCard icon={Sparkles} title={hasSupabaseConfig ? 'Base connectee' : 'Base a connecter'} body={hasSupabaseConfig ? `Source: ${dataSource}` : 'Supabase est pret des que les variables Vercel sont ajoutees.'} onClick={() => setScreen('settings')} />
+        <ActionCard icon={Sparkles} title={hasSupabaseConfig ? 'Base connectee' : 'Configuration requise'} body={hasSupabaseConfig ? `Source: ${dataSource}` : 'Ajoute les variables Supabase pour activer la production.'} onClick={() => setScreen('settings')} />
       </section>
 
       <SectionTitle title="Offres recentes" action="Tout voir" onAction={() => setScreen('jobs')} />
@@ -989,11 +994,19 @@ function LoginScreen({ authMode, setAuthMode, loginEmail, setLoginEmail, loginPa
   );
 }
 
-function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivity }) {
+function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivity, isLoggedIn }) {
   const ownJobs = jobs.slice(0, 4);
   return (
     <div className="space-y-5">
       <PageHeader title="Recruteur" subtitle="Publier et suivre les candidatures" />
+      {!isLoggedIn && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <p className="text-sm font-bold leading-6 text-blue-950">Connecte-toi pour publier une offre et garder un tableau de bord recruteur fiable.</p>
+          <button onClick={() => setScreen('login')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+            Se connecter
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-3 gap-2">
         <StatCard value={jobs.length} label="Offres" />
         <StatCard value={applications.length} label="Candidats" />
@@ -1084,16 +1097,16 @@ function NotificationsScreen({ notifications, setNotifications }) {
 function SettingsScreen() {
   return (
     <div className="space-y-5">
-      <PageHeader title="Base de donnees" subtitle="Supabase est prepare pour Vercel" />
+      <PageHeader title="Base de donnees" subtitle="Supabase est connecte a la production" />
       <div className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex items-center gap-3">
           <div className={classNames('flex h-11 w-11 items-center justify-center rounded-lg text-white', hasSupabaseConfig ? 'bg-emerald-600' : 'bg-blue-700')}>
             <ShieldCheck size={20} />
           </div>
           <div>
-            <h2 className="font-black">{hasSupabaseConfig ? 'Supabase connecte' : 'Mode local actif'}</h2>
+            <h2 className="font-black">{hasSupabaseConfig ? 'Supabase connecte' : 'Configuration requise'}</h2>
             <p className="text-sm font-semibold text-slate-500">
-              {hasSupabaseConfig ? 'Les variables Vercel sont presentes.' : 'Ajoute VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sur Vercel pour brancher la base.'}
+              {hasSupabaseConfig ? 'Les offres, candidatures, comptes et CV sont relies a Supabase.' : 'Ajoute les variables Supabase sur Vercel pour activer la production.'}
             </p>
           </div>
         </div>
