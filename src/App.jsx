@@ -644,6 +644,9 @@ export default function App() {
             <IconButton label="Notifications" onClick={() => setScreen('notifications')} badge={unreadCount}>
               <Bell size={20} />
             </IconButton>
+            <IconButton label="Profil" onClick={() => setScreen('profile')}>
+              <User size={20} />
+            </IconButton>
             <IconButton label="Recruteur" onClick={() => setScreen('recruiter')}>
               <LayoutDashboard size={20} />
             </IconButton>
