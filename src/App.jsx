@@ -119,6 +119,12 @@ const initialProfile = {
 
 const MAX_CV_BYTES = 2 * 1024 * 1024;
 const MAX_CV_LABEL = '2 Mo';
+const OAUTH_PROVIDERS = [
+  { provider: 'google', label: 'Google', mark: 'G' },
+  { provider: 'apple', label: 'Apple', mark: 'A' },
+  { provider: 'facebook', label: 'Facebook', mark: 'f' },
+  { provider: 'linkedin_oidc', label: 'LinkedIn', mark: 'in' },
+];
 
 const emptyApplication = {
   nom: '',
@@ -299,7 +305,21 @@ export default function App() {
         if (profileRow) {
           setProfile((current) => ({ ...current, ...profileRow, email: profileRow.email || authUser.email || current.email }));
         } else {
-          setProfile((current) => ({ ...current, email: authUser.email || current.email }));
+          const metadata = authUser.user_metadata || {};
+          const displayName = metadata.full_name || metadata.name || '';
+          const [firstName = '', ...lastNameParts] = displayName.split(' ').filter(Boolean);
+          const nextProfile = {
+            id: authUser.id,
+            email: authUser.email,
+            role: metadata.role || 'candidat',
+            prenom: metadata.prenom || firstName,
+            nom: metadata.nom || lastNameParts.join(' '),
+            phone: '',
+            city: 'Brazzaville',
+            title: '',
+          };
+          await supabase.from('profiles').upsert(nextProfile);
+          setProfile((current) => ({ ...current, ...nextProfile }));
         }
       }
 
@@ -481,6 +501,20 @@ export default function App() {
     setLoginPassword('');
     setScreen('profile');
     notify('Connexion reussie');
+  };
+
+  const handleOAuthSignIn = async (provider) => {
+    if (!hasSupabaseConfig || !supabase) {
+      notify('Supabase doit etre configure pour la connexion reelle.');
+      return;
+    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) notify(error.message);
   };
 
   const handleLogout = async () => {
@@ -726,7 +760,7 @@ export default function App() {
     if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} setScreen={setScreen} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} />;
-    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} setScreen={setScreen} />;
+    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} setScreen={setScreen} />;
     if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} setScreen={setScreen} markApplicationActivity={markApplicationActivity} isLoggedIn={isLoggedIn} role={profile.role} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} publishJob={publishJob} setScreen={setScreen} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
@@ -1081,12 +1115,20 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
   );
 }
 
-function LoginScreen({ authMode, setAuthMode, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, setScreen }) {
+function LoginScreen({ authMode, setAuthMode, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleOAuthSignIn, setScreen }) {
   const isSignup = authMode === 'signup';
   return (
     <div className="mx-auto max-w-md space-y-5">
       <BackButton onClick={() => setScreen('home')} label="Accueil" />
       <PageHeader title={isSignup ? 'Creer un compte' : 'Connexion'} subtitle="Compte reel securise avec Supabase" />
+      <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <p className="text-sm font-black text-slate-900">Continuer avec</p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {OAUTH_PROVIDERS.map((item) => (
+            <SocialLoginButton key={item.provider} item={item} onClick={() => handleOAuthSignIn(item.provider)} />
+          ))}
+        </div>
+      </div>
       <div className="grid grid-cols-2 rounded-lg border border-slate-200 bg-white p-1">
         <button type="button" onClick={() => setAuthMode('signin')} className={classNames('min-h-11 rounded-md text-sm font-black', !isSignup ? 'bg-blue-700 text-white' : 'text-slate-600')}>
           Connexion
@@ -1106,6 +1148,17 @@ function LoginScreen({ authMode, setAuthMode, loginEmail, setLoginEmail, loginPa
         </p>
       </form>
     </div>
+  );
+}
+
+function SocialLoginButton({ item, onClick }) {
+  return (
+    <button type="button" onClick={onClick} className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-800 transition hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-600">
+      <span className={classNames('grid h-7 w-7 place-items-center rounded-full text-xs font-black', item.provider === 'facebook' ? 'bg-blue-700 text-white' : item.provider === 'linkedin_oidc' ? 'bg-sky-700 text-white' : item.provider === 'apple' ? 'bg-slate-950 text-white' : 'border border-slate-200 bg-white text-blue-700')}>
+        {item.mark}
+      </span>
+      {item.label}
+    </button>
   );
 }
 
@@ -1386,6 +1439,11 @@ function BrandLogo() {
           d="M27.9 10.8L31.2 12.4L32.8 15.1L31.7 18.1L34.5 20.8L33.3 24.6L30.7 25.6L29.5 28.3L31.3 31.4L28.9 36.5L26.2 37.8L23.8 35.7L22.3 31.9L19.5 30.4L18.4 27.4L15.2 25.9L14.1 22.6L16.1 19.8L16.8 16.1L20.1 15.4L22.1 12.2L25.2 13.1L27.9 10.8Z"
           fill="#0F172A"
           opacity="0.88"
+        />
+        <path
+          d="M35.7 30.5L37.2 33.4L36.5 37.5L34.8 40.4L33.7 38.1L34.1 34.2L35.7 30.5Z"
+          fill="#0F172A"
+          opacity="0.72"
         />
         <circle cx="26" cy="24" r="2.5" fill="white" />
       </svg>
