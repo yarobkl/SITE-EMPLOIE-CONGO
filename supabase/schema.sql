@@ -190,9 +190,3 @@ create policy "quick applicants upload cv pdf" on storage.objects
     bucket_id = 'cvs'
     and (storage.foldername(name))[1] = 'public'
   );
-
-create policy "quick applicants read cv pdf" on storage.objects
-  for select using (
-    bucket_id = 'cvs'
-    and (storage.foldername(name))[1] = 'public'
-  );

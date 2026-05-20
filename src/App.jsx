@@ -88,6 +88,25 @@ const initialJobs = [
   },
 ];
 
+const CONGO_CITIES = [
+  'Brazzaville',
+  'Pointe-Noire',
+  'Dolisie',
+  'Nkayi',
+  'Ouesso',
+  'Owando',
+  'Oyo',
+  'Impfondo',
+  'Madingou',
+  'Sibiti',
+  'Kinkala',
+  'Djambala',
+  'Gamboma',
+  'Mossendjo',
+];
+
+const CONTRACT_TYPES = ['CDI', 'CDD', 'Stage', 'Freelance', 'Hybride'];
+
 const initialProfile = {
   nom: '',
   prenom: '',
@@ -377,10 +396,15 @@ export default function App() {
     window.setTimeout(() => setToast(''), 2600);
   };
 
-  const openJob = (job) => {
+  const openJob = (job, nextScreen = 'job') => {
     setSelectedJob(job);
-    setScreen('job');
+    setScreen(nextScreen);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const clearSearch = () => {
+    setQuery('');
+    setCity('Toutes');
   };
 
   const toggleSave = async (job) => {
@@ -697,7 +721,7 @@ export default function App() {
   ];
 
   const renderScreen = () => {
-    if (screen === 'jobs') return <JobsScreen jobs={filteredJobs} query={query} setQuery={setQuery} city={city} setCity={setCity} openJob={openJob} savedIds={savedIds} toggleSave={toggleSave} />;
+    if (screen === 'jobs') return <JobsScreen jobs={filteredJobs} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} savedIds={savedIds} toggleSave={toggleSave} />;
     if (screen === 'job') return <JobScreen job={activeJob} saved={savedIds.includes(activeJob?.id)} toggleSave={toggleSave} setScreen={setScreen} />;
     if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} setScreen={setScreen} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
@@ -707,7 +731,7 @@ export default function App() {
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} publishJob={publishJob} setScreen={setScreen} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
     if (screen === 'settings') return <SettingsScreen />;
-    return <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} openJob={openJob} setScreen={setScreen} hasSupabaseConfig={hasSupabaseConfig} dataSource={dataSource} />;
+    return <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} hasSupabaseConfig={hasSupabaseConfig} dataSource={dataSource} />;
   };
 
   return (
@@ -782,13 +806,13 @@ function IconButton({ label, children, onClick, badge }) {
   );
 }
 
-function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, openJob, setScreen, hasSupabaseConfig, dataSource }) {
+function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, clearSearch, openJob, setScreen, hasSupabaseConfig, dataSource }) {
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:grid md:grid-cols-[1.2fr_0.8fr] md:gap-8 md:p-8">
         <div>
           <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-            <ShieldCheck size={14} /> Brazzaville, Pointe-Noire, Dolisie
+            <ShieldCheck size={14} /> Brazzaville, Pointe-Noire et les departements
           </div>
           <h1 className="max-w-2xl text-3xl font-black leading-tight text-slate-950 md:text-5xl">
             Trouver un emploi ou recruter au Congo, depuis ton telephone.
@@ -803,7 +827,7 @@ function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, openJob, 
           </div>
         </div>
         <div className="mt-6 rounded-lg bg-slate-50 p-3 text-slate-950 md:mt-0">
-          <SearchPanel query={query} setQuery={setQuery} city={city} setCity={setCity} onSubmit={() => setScreen('jobs')} />
+          <SearchPanel query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} compact onSubmit={() => setScreen('jobs')} />
           <button onClick={() => setScreen('jobs')} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
             Rechercher <Search size={18} />
           </button>
@@ -821,23 +845,23 @@ function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, openJob, 
 
       <SectionTitle title="Offres recentes" action="Tout voir" onAction={() => setScreen('jobs')} />
       <div className="grid gap-3">
-        {jobs.map((job) => <JobCard key={job.id} job={job} onClick={() => openJob(job)} />)}
+        {jobs.map((job) => <JobCard key={job.id} job={job} onClick={() => openJob(job)} onApply={() => openJob(job, 'apply')} />)}
       </div>
     </div>
   );
 }
 
-function JobsScreen({ jobs, query, setQuery, city, setCity, openJob, savedIds, toggleSave }) {
+function JobsScreen({ jobs, query, setQuery, city, setCity, clearSearch, openJob, savedIds, toggleSave }) {
   return (
     <div className="space-y-5">
       <PageHeader title="Offres" subtitle={`${jobs.length} resultat(s) disponible(s)`} />
-      <SearchPanel query={query} setQuery={setQuery} city={city} setCity={setCity} />
+      <SearchPanel query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} />
       <div className="grid gap-3 lg:grid-cols-2">
         {jobs.map((job) => (
-          <JobCard key={job.id} job={job} onClick={() => openJob(job)} saved={savedIds.includes(job.id)} onSave={() => toggleSave(job)} />
+          <JobCard key={job.id} job={job} onClick={() => openJob(job)} onApply={() => openJob(job, 'apply')} saved={savedIds.includes(job.id)} onSave={() => toggleSave(job)} />
         ))}
       </div>
-      {jobs.length === 0 && <EmptyState title="Aucune offre trouvee" body="Essaie une autre ville ou un autre mot cle." />}
+      {jobs.length === 0 && <EmptyState title="Aucune offre trouvee" body="Modifie la ville ou le mot cle pour relancer la recherche." action="Reinitialiser" onAction={clearSearch} />}
     </div>
   );
 }
@@ -879,7 +903,7 @@ function JobScreen({ job, saved, toggleSave, setScreen }) {
             </ul>
           </div>
         </div>
-        <button onClick={() => setScreen('apply')} className="mt-7 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+        <button onClick={() => setScreen('apply')} className="sticky bottom-20 mt-7 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 md:static">
           Postuler maintenant <Send size={18} />
         </button>
       </article>
@@ -889,6 +913,7 @@ function JobScreen({ job, saved, toggleSave, setScreen }) {
 
 function ApplyScreen({ job, form, setForm, submitApplication, setScreen, isLoggedIn, profile, notify }) {
   const trackingEnabled = form.mode === 'tracked';
+  const contactReady = Boolean((form.nom || profile.nom || profile.prenom) && (form.email || profile.email) && (form.phone || profile.phone));
   const fillFromProfile = () => {
     setForm({
       ...form,
@@ -921,6 +946,11 @@ function ApplyScreen({ job, form, setForm, submitApplication, setScreen, isLogge
     <div className="space-y-4">
       <BackButton onClick={() => setScreen('job')} label="Retour" />
       <PageHeader title="Postuler" subtitle={`${job.role} - ${job.company}`} />
+      <div className="grid grid-cols-3 gap-2">
+        <StepPill active done label="Mode" />
+        <StepPill active={contactReady} done={contactReady} label="Contact" />
+        <StepPill active={Boolean(form.cvName)} done={Boolean(form.cvName)} label="CV" />
+      </div>
       <div className="grid gap-2 md:grid-cols-2">
         <button
           type="button"
@@ -957,12 +987,12 @@ function ApplyScreen({ job, form, setForm, submitApplication, setScreen, isLogge
             Utiliser mon profil
           </button>
         )}
-        <TextField label="Nom complet" value={form.nom} onChange={(nom) => setForm({ ...form, nom })} required />
-        <TextField label="Email" type="email" value={form.email} onChange={(email) => setForm({ ...form, email })} required />
-        <TextField label="Telephone" type="tel" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} required />
+        <TextField label="Nom complet" value={form.nom} onChange={(nom) => setForm({ ...form, nom })} required placeholder="Ex: Grace Moungala" />
+        <TextField label="Email" type="email" value={form.email} onChange={(email) => setForm({ ...form, email })} required placeholder="nom@email.com" />
+        <TextField label="Telephone" type="tel" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} required placeholder="+242 06 ..." />
         <TextArea label="Message au recruteur" value={form.message} onChange={(message) => setForm({ ...form, message })} placeholder="Disponibilite, experience, motivation..." />
         <CvUpload cvName={form.cvName} cvSize={form.cvSize} onChange={handleCvChange} />
-        <button type="submit" className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+        <button type="submit" className="sticky bottom-20 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 md:static">
           {trackingEnabled ? 'Envoyer et suivre' : 'Envoyer rapidement'} <Send size={18} />
         </button>
       </form>
@@ -1014,7 +1044,7 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
         <TextField label="Prenom" value={profile.prenom} onChange={(prenom) => setProfile({ ...profile, prenom })} />
         <TextField label="Email" type="email" value={profile.email} onChange={(email) => setProfile({ ...profile, email })} disabled={isLoggedIn} />
         <TextField label="Telephone" type="tel" value={profile.phone} onChange={(phone) => setProfile({ ...profile, phone })} />
-        <TextField label="Ville" value={profile.city} onChange={(city) => setProfile({ ...profile, city })} />
+        <SelectField label="Ville" value={profile.city} onChange={(city) => setProfile({ ...profile, city })} options={CONGO_CITIES} />
         <TextField label="Titre" value={profile.title} onChange={(title) => setProfile({ ...profile, title })} />
         <SelectField label="Type de compte" value={profile.role} onChange={(role) => setProfile({ ...profile, role })} options={['candidat', 'recruteur']} />
         <button type="submit" className="min-h-12 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 md:col-span-2">
@@ -1160,8 +1190,8 @@ function PostJobScreen({ form, setForm, publishJob, setScreen }) {
       <form onSubmit={publishJob} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
         <TextField label="Titre du poste" value={form.role} onChange={(role) => setForm({ ...form, role })} required />
         <TextField label="Entreprise" value={form.company} onChange={(company) => setForm({ ...form, company })} required />
-        <SelectField label="Ville" value={form.loc} onChange={(loc) => setForm({ ...form, loc })} options={['Brazzaville', 'Pointe-Noire', 'Dolisie']} />
-        <SelectField label="Contrat" value={form.type} onChange={(type) => setForm({ ...form, type })} options={['CDI', 'CDD', 'Stage', 'Freelance', 'Hybride']} />
+        <SelectField label="Ville" value={form.loc} onChange={(loc) => setForm({ ...form, loc })} options={CONGO_CITIES} />
+        <SelectField label="Contrat" value={form.type} onChange={(type) => setForm({ ...form, type })} options={CONTRACT_TYPES} />
         <TextField label="Salaire" value={form.salary} onChange={(salary) => setForm({ ...form, salary })} placeholder="Attractif, 500k XAF, Negociable..." />
         <TextField label="Secteur" value={form.sector} onChange={(sector) => setForm({ ...form, sector })} />
         <TextArea label="Description" value={form.description} onChange={(description) => setForm({ ...form, description })} required />
@@ -1216,24 +1246,47 @@ function SettingsScreen() {
   );
 }
 
-function SearchPanel({ query, setQuery, city, setCity, onSubmit }) {
+function SearchPanel({ query, setQuery, city, setCity, clearSearch, compact = false, onSubmit }) {
+  const cityOptions = ['Toutes', ...CONGO_CITIES];
+  const featuredCities = ['Toutes', 'Brazzaville', 'Pointe-Noire', 'Dolisie', 'Nkayi', 'Ouesso'];
   return (
-    <form onSubmit={(event) => { event.preventDefault(); onSubmit?.(); }} className="grid gap-2 md:grid-cols-[1fr_220px]">
-      <label className="flex min-h-12 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 focus-within:ring-2 focus-within:ring-blue-600">
-        <Search size={18} className="text-slate-400" />
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Poste, entreprise, secteur..." className="w-full bg-transparent text-base font-semibold outline-none" />
-      </label>
-      <label className="flex min-h-12 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 focus-within:ring-2 focus-within:ring-blue-600">
-        <MapPin size={18} className="text-slate-400" />
-        <select value={city} onChange={(event) => setCity(event.target.value)} className="w-full bg-transparent text-base font-semibold outline-none">
-          {['Toutes', 'Brazzaville', 'Pointe-Noire', 'Dolisie'].map((option) => <option key={option}>{option}</option>)}
-        </select>
-      </label>
+    <form onSubmit={(event) => { event.preventDefault(); onSubmit?.(); }} className="space-y-3">
+      <div className="grid gap-2 md:grid-cols-[1fr_220px]">
+        <label className="flex min-h-12 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 focus-within:ring-2 focus-within:ring-blue-600">
+          <Search size={18} className="text-slate-400" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Poste, entreprise, secteur..." className="w-full bg-transparent text-base font-semibold outline-none" />
+          {(query || city !== 'Toutes') && (
+            <button type="button" onClick={clearSearch} aria-label="Effacer la recherche" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+              <X size={18} />
+            </button>
+          )}
+        </label>
+        <label className="flex min-h-12 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 focus-within:ring-2 focus-within:ring-blue-600">
+          <MapPin size={18} className="text-slate-400" />
+          <select value={city} onChange={(event) => setCity(event.target.value)} className="w-full bg-transparent text-base font-semibold outline-none">
+            {cityOptions.map((option) => <option key={option}>{option}</option>)}
+          </select>
+        </label>
+      </div>
+      {!compact && (
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          {featuredCities.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setCity(option)}
+              className={classNames('min-h-10 shrink-0 rounded-full border px-4 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-blue-600', city === option ? 'border-blue-700 bg-blue-700 text-white' : 'border-slate-200 bg-white text-slate-600')}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
     </form>
   );
 }
 
-function JobCard({ job, onClick, saved, onSave }) {
+function JobCard({ job, onClick, onApply, saved, onSave }) {
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-4 transition hover:border-blue-300">
       <div className="flex items-start gap-3">
@@ -1255,6 +1308,11 @@ function JobCard({ job, onClick, saved, onSave }) {
           </button>
         )}
       </div>
+      {onApply && (
+        <button onClick={onApply} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          Postuler <Send size={16} />
+        </button>
+      )}
     </article>
   );
 }
@@ -1300,6 +1358,14 @@ function SelectField({ label, value, onChange, options }) {
         {options.map((option) => <option key={option}>{option}</option>)}
       </select>
     </label>
+  );
+}
+
+function StepPill({ label, active, done }) {
+  return (
+    <div className={classNames('rounded-lg border px-3 py-2 text-center text-xs font-black transition', done ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : active ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500')}>
+      {label}
+    </div>
   );
 }
 
