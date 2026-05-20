@@ -1,71 +1,67 @@
-# CONGOEMPLOI - Plateforme de Recrutement
+# CONGOEMPLOI
 
-Plateforme mobile-first de recrutement pour la République du Congo, connectant les entreprises aux talents de Brazzaville, Pointe-Noire et Dolisie.
+Plateforme mobile-first de recrutement pour le Congo: recherche d'offres, candidature avec CV PDF, suivi candidat et espace recruteur.
 
-## 🚀 Démarrage rapide
+## Production
 
-### Installation
+- Site: https://site-emploie-congo.vercel.app
+- Frontend: React, Vite, Tailwind CSS
+- Backend: Supabase Auth, Database, Storage
+- Deploiement: Vercel
+
+## Fonctionnalites
+
+- Offres chargees depuis Supabase.
+- Inscription et connexion reelles par email/mot de passe.
+- Profil candidat ou recruteur.
+- Candidature suivie avec compte connecte.
+- Candidature rapide avec CV PDF, sans suivi temps reel.
+- CV PDF limite a 2 Mo via Supabase Storage.
+- Favoris synchronises par utilisateur connecte.
+- Tableau recruteur base sur les offres publiees par le recruteur.
+- Candidatures recues visibles par le recruteur proprietaire de l'offre.
+- Ouverture du CV via URL signee Supabase.
+- Notifications candidat quand une demande ou un CV est ouvert.
+
+## Installation
 
 ```bash
 npm install
-```
-
-### Développement
-
-```bash
 npm run dev
 ```
 
-L'application sera accessible sur `http://localhost:3000` ou le port Vite disponible.
-
-### Build pour production
+## Build
 
 ```bash
 npm run build
 ```
 
-## 📋 Technologies
+## Variables d'environnement
 
-- **React 18** - Interface utilisateur
-- **Vite** - Build tool moderne
-- **Tailwind CSS** - Styling
-- **Lucide React** - Icons
-
-## 🎨 Design
-
-- Palette de couleurs: Bleu profond (#0A2540), Bleu électrique (#0061FF)
-- Design responsive et moderne
-- Animations fluides
-- Interface accessible
-
-## 📱 Fonctionnalités
-
-- Recherche d'offres d'emploi
-- Espace candidat
-- Espace recruteur
-- Navigation responsive
-- Parcours mobile-first candidat/recruteur
-- Sauvegarde locale des favoris, candidatures, offres et notifications
-- Candidature suivie avec connexion, CV PDF et KPI d'ouverture
-- Candidature rapide avec CV PDF, sans suivi temps réel
-- Préparation Supabase pour la base de données
-
-## Base de données Supabase
-
-La V1 fonctionne en mode local pour pouvoir tester tout de suite. Pour brancher Supabase:
-
-1. Créer un projet Supabase.
-2. Exécuter `supabase/schema.sql` dans le SQL Editor.
-3. Copier `.env.example` vers `.env.local`.
-4. Renseigner:
+Copier `.env.example` vers `.env.local` en local, puis renseigner les memes variables dans Vercel:
 
 ```bash
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
 ```
 
-Sur Vercel, ajouter les mêmes variables dans Project Settings > Environment Variables.
+## Base de donnees
 
-## 📝 Licence
+Pour une nouvelle base Supabase, executer:
 
-© 2024 CONGOEMPLOI SARL
+```sql
+-- supabase/schema.sql
+```
+
+Pour durcir une base deja creee pendant le developpement, executer ensuite:
+
+```sql
+-- supabase/final-hardening.sql
+```
+
+Le fichier `final-hardening.sql` retire les anciennes permissions de demonstration et active les regles finales:
+
+- seules les entreprises du recruteur connecte peuvent publier ses offres;
+- seules les candidatures recues sur ses offres sont visibles au recruteur;
+- seuls le candidat et les recruteurs autorises peuvent ouvrir les CV selon le flux;
+- les candidatures rapides restent possibles sans suivi temps reel.

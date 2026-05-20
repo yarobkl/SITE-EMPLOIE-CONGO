@@ -185,13 +185,13 @@ create policy "recruiters read candidate cv pdf" on storage.objects
     )
   );
 
-create policy "public demo upload cv pdf" on storage.objects
+create policy "quick applicants upload cv pdf" on storage.objects
   for insert with check (
     bucket_id = 'cvs'
     and (storage.foldername(name))[1] = 'public'
   );
 
-create policy "public demo read cv pdf" on storage.objects
+create policy "quick applicants read cv pdf" on storage.objects
   for select using (
     bucket_id = 'cvs'
     and (storage.foldername(name))[1] = 'public'

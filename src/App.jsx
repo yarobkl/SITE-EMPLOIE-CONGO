@@ -561,17 +561,20 @@ export default function App() {
   };
 
   const markApplicationActivity = async (applicationId, field, shouldOpenCv = false) => {
-    let changedApplication;
+    const currentApplication = [...recruiterApplications, ...applications].find((item) => item.id === applicationId);
+    if (!currentApplication) return;
+    const wasAlreadyOpened = Boolean(currentApplication[field]);
+    const changedApplication = wasAlreadyOpened
+      ? currentApplication
+      : { ...currentApplication, [field]: true, status: 'reviewed' };
     const updateItem = (item) => {
-      if (item.id !== applicationId || item[field]) return item;
-      changedApplication = { ...item, [field]: true, status: 'reviewed' };
-      return changedApplication;
+      if (item.id !== applicationId) return item;
+      return item[field] ? item : { ...item, [field]: true, status: 'reviewed' };
     };
     setApplications((current) => current.map(updateItem));
     setRecruiterApplications((current) => current.map(updateItem));
-    if (!changedApplication) return;
 
-    if (hasSupabaseConfig && supabase && typeof applicationId === 'string') {
+    if (!wasAlreadyOpened && hasSupabaseConfig && supabase && typeof applicationId === 'string') {
       await supabase
         .from('applications')
         .update({
@@ -581,7 +584,7 @@ export default function App() {
         .eq('id', applicationId);
     }
 
-    if (changedApplication.trackingEnabled) {
+    if (changedApplication.trackingEnabled && !wasAlreadyOpened) {
       const title = field === 'cvOpened' ? 'CV ouvert' : 'Demande consultee';
       const body = `${changedApplication.company} a ${field === 'cvOpened' ? 'ouvert ton CV' : 'ouvert ta candidature'}.`;
       setNotifications((current) => [{ id: Date.now(), title, body, read: false }, ...current]);
@@ -594,7 +597,7 @@ export default function App() {
         });
       }
       notify(title);
-    } else {
+    } else if (!changedApplication.trackingEnabled) {
       notify('Action recruteur enregistree, pas de notification pour candidature rapide.');
     }
 
@@ -704,7 +707,7 @@ export default function App() {
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} publishJob={publishJob} setScreen={setScreen} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
     if (screen === 'settings') return <SettingsScreen />;
-    return <HomeScreen jobs={filteredJobs.slice(0, 3)} query={query} setQuery={setQuery} city={city} setCity={setCity} openJob={openJob} setScreen={setScreen} hasSupabaseConfig={hasSupabaseConfig} dataSource={dataSource} />;
+    return <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} openJob={openJob} setScreen={setScreen} hasSupabaseConfig={hasSupabaseConfig} dataSource={dataSource} />;
   };
 
   return (
@@ -779,7 +782,7 @@ function IconButton({ label, children, onClick, badge }) {
   );
 }
 
-function HomeScreen({ jobs, query, setQuery, city, setCity, openJob, setScreen, hasSupabaseConfig, dataSource }) {
+function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, openJob, setScreen, hasSupabaseConfig, dataSource }) {
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:grid md:grid-cols-[1.2fr_0.8fr] md:gap-8 md:p-8">
@@ -794,9 +797,9 @@ function HomeScreen({ jobs, query, setQuery, city, setCity, openJob, setScreen, 
             Une experience mobile simple pour chercher, sauvegarder, postuler et publier une offre.
           </p>
           <div className="mt-6 grid grid-cols-3 gap-2">
-            <Metric value="580" label="Offres" />
-            <Metric value="2.4k" label="Talents" />
-            <Metric value="94%" label="Match" />
+            <Metric value={totalJobs} label="Offres" />
+            <Metric value="PDF" label="CV requis" />
+            <Metric value="Suivi" label="Candidatures" />
           </div>
         </div>
         <div className="mt-6 rounded-lg bg-slate-50 p-3 text-slate-950 md:mt-0">
@@ -1082,6 +1085,7 @@ function LoginScreen({ authMode, setAuthMode, loginEmail, setLoginEmail, loginPa
 function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivity, isLoggedIn, role }) {
   const ownJobs = jobs.slice(0, 4);
   const canRecruit = isLoggedIn && ['recruteur', 'admin'].includes(role);
+  const reviewedCount = applications.filter((item) => item.status === 'reviewed' || item.applicationOpened || item.cvOpened).length;
   return (
     <div className="space-y-5">
       <PageHeader title="Recruteur" subtitle="Publier et suivre les candidatures" />
@@ -1104,7 +1108,7 @@ function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivit
       <div className="grid grid-cols-3 gap-2">
         <StatCard value={ownJobs.length} label="Mes offres" />
         <StatCard value={applications.length} label="Candidats" />
-        <StatCard value="94%" label="Match" />
+        <StatCard value={reviewedCount} label="Dossiers vus" />
       </div>
       <button onClick={() => setScreen('post-job')} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
         Publier une offre <PlusCircle size={18} />
