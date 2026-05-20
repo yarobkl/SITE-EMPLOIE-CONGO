@@ -744,7 +744,6 @@ export default function App() {
             </div>
             <div>
               <p className="text-base font-black leading-none text-slate-950">CONGO<span className="text-blue-700">EMPLOI</span></p>
-              <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">Mobile first</p>
             </div>
           </button>
 
