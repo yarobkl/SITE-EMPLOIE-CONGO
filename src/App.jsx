@@ -121,9 +121,7 @@ const MAX_CV_BYTES = 2 * 1024 * 1024;
 const MAX_CV_LABEL = '2 Mo';
 const OAUTH_PROVIDERS = [
   { provider: 'google', label: 'Google' },
-  { provider: 'apple', label: 'Apple' },
   { provider: 'facebook', label: 'Facebook' },
-  { provider: 'linkedin_oidc', label: 'LinkedIn' },
 ];
 
 const emptyApplication = {
