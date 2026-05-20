@@ -1370,15 +1370,24 @@ function BrandLogo() {
   return (
     <div className="relative h-12 w-12 shrink-0">
       <svg viewBox="0 0 48 48" className="h-12 w-12 drop-shadow-sm" aria-hidden="true">
-        <rect x="4" y="4" width="40" height="40" rx="14" fill="#0F172A" />
-        <path d="M4 29L29 4H39L14 44H4V29Z" fill="#16A34A" />
-        <path d="M14 44L39 4H44V19L25 44H14Z" fill="#FACC15" />
-        <path d="M25 44L44 19V34C44 39.5 39.5 44 34 44H25Z" fill="#DC2626" />
-        <rect x="12" y="12" width="24" height="24" rx="9" fill="white" />
-        <path d="M18 22.5H30C31.1 22.5 32 23.4 32 24.5V29C32 30.1 31.1 31 30 31H18C16.9 31 16 30.1 16 29V24.5C16 23.4 16.9 22.5 18 22.5Z" fill="#1D4ED8" />
-        <path d="M21 22.5V20.8C21 19.8 21.8 19 22.8 19H25.2C26.2 19 27 19.8 27 20.8V22.5" fill="none" stroke="#1D4ED8" strokeWidth="2" strokeLinecap="round" />
-        <path d="M18 26.5H30" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.85" />
-        <circle cx="33.5" cy="14.5" r="4.5" fill="#2563EB" stroke="white" strokeWidth="2" />
+        <defs>
+          <clipPath id="congo-flag-mark">
+            <rect x="4" y="4" width="40" height="40" rx="13" />
+          </clipPath>
+        </defs>
+        <rect x="4" y="4" width="40" height="40" rx="13" fill="white" />
+        <g clipPath="url(#congo-flag-mark)">
+          <rect x="4" y="4" width="40" height="40" fill="#009543" />
+          <polygon points="4,44 44,4 44,44" fill="#DC241F" />
+          <polygon points="4,44 44,4 44,14 14,44" fill="#FBDE4A" />
+        </g>
+        <rect x="4" y="4" width="40" height="40" rx="13" fill="none" stroke="#E2E8F0" />
+        <path
+          d="M27.9 10.8L31.2 12.4L32.8 15.1L31.7 18.1L34.5 20.8L33.3 24.6L30.7 25.6L29.5 28.3L31.3 31.4L28.9 36.5L26.2 37.8L23.8 35.7L22.3 31.9L19.5 30.4L18.4 27.4L15.2 25.9L14.1 22.6L16.1 19.8L16.8 16.1L20.1 15.4L22.1 12.2L25.2 13.1L27.9 10.8Z"
+          fill="#0F172A"
+          opacity="0.88"
+        />
+        <circle cx="26" cy="24" r="2.5" fill="white" />
       </svg>
     </div>
   );
