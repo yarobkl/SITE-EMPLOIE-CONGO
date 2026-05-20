@@ -739,12 +739,7 @@ export default function App() {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <button onClick={() => setScreen('home')} className="flex min-h-11 items-center gap-3 rounded-lg text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
-            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <span className="absolute inset-x-0 top-0 h-1.5 bg-emerald-500" />
-              <span className="absolute inset-y-0 left-0 w-1.5 bg-red-500" />
-              <span className="absolute bottom-0 right-0 h-3 w-3 rounded-tl-lg bg-yellow-400" />
-              <span className="relative text-sm font-black text-blue-800">CE</span>
-            </div>
+            <BrandLogo />
             <div>
               <p className="text-[15px] font-black leading-none text-slate-950">CONGO<span className="text-blue-700">EMPLOI</span></p>
             </div>
@@ -1367,6 +1362,24 @@ function StepPill({ label, active, done }) {
   return (
     <div className={classNames('rounded-lg border px-3 py-2 text-center text-xs font-black transition', done ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : active ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500')}>
       {label}
+    </div>
+  );
+}
+
+function BrandLogo() {
+  return (
+    <div className="relative h-12 w-12 shrink-0">
+      <svg viewBox="0 0 48 48" className="h-12 w-12 drop-shadow-sm" aria-hidden="true">
+        <rect x="4" y="4" width="40" height="40" rx="14" fill="#0F172A" />
+        <path d="M4 29L29 4H39L14 44H4V29Z" fill="#16A34A" />
+        <path d="M14 44L39 4H44V19L25 44H14Z" fill="#FACC15" />
+        <path d="M25 44L44 19V34C44 39.5 39.5 44 34 44H25Z" fill="#DC2626" />
+        <rect x="12" y="12" width="24" height="24" rx="9" fill="white" />
+        <path d="M18 22.5H30C31.1 22.5 32 23.4 32 24.5V29C32 30.1 31.1 31 30 31H18C16.9 31 16 30.1 16 29V24.5C16 23.4 16.9 22.5 18 22.5Z" fill="#1D4ED8" />
+        <path d="M21 22.5V20.8C21 19.8 21.8 19 22.8 19H25.2C26.2 19 27 19.8 27 20.8V22.5" fill="none" stroke="#1D4ED8" strokeWidth="2" strokeLinecap="round" />
+        <path d="M18 26.5H30" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.85" />
+        <circle cx="33.5" cy="14.5" r="4.5" fill="#2563EB" stroke="white" strokeWidth="2" />
+      </svg>
     </div>
   );
 }
