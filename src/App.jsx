@@ -738,12 +738,15 @@ export default function App() {
     <div className="min-h-screen bg-white text-slate-950">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <button onClick={() => setScreen('home')} className="flex min-h-11 items-center gap-2 rounded-lg text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-700 text-white">
-              <Briefcase size={20} />
+          <button onClick={() => setScreen('home')} className="flex min-h-11 items-center gap-3 rounded-lg text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <span className="absolute inset-x-0 top-0 h-1.5 bg-emerald-500" />
+              <span className="absolute inset-y-0 left-0 w-1.5 bg-red-500" />
+              <span className="absolute bottom-0 right-0 h-3 w-3 rounded-tl-lg bg-yellow-400" />
+              <span className="relative text-sm font-black text-blue-800">CE</span>
             </div>
             <div>
-              <p className="text-base font-black leading-none text-slate-950">CONGO<span className="text-blue-700">EMPLOI</span></p>
+              <p className="text-[15px] font-black leading-none text-slate-950">CONGO<span className="text-blue-700">EMPLOI</span></p>
             </div>
           </button>
 
