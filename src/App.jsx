@@ -220,6 +220,7 @@ export default function App() {
   const [city, setCity] = useState('Toutes');
   const [toast, setToast] = useState('');
   const [authMode, setAuthMode] = useState('signin');
+  const [loginRole, setLoginRole] = useState('candidat');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [authUser, setAuthUser] = useState(null);
@@ -307,12 +308,13 @@ export default function App() {
           setProfile((current) => ({ ...current, ...profileRow, email: profileRow.email || authUser.email || current.email }));
         } else {
           const metadata = authUser.user_metadata || {};
+          const pendingRole = readStorage('congoemploi.pendingLoginRole', 'candidat');
           const displayName = metadata.full_name || metadata.name || '';
           const [firstName = '', ...lastNameParts] = displayName.split(' ').filter(Boolean);
           const nextProfile = {
             id: authUser.id,
             email: authUser.email,
-            role: metadata.role || 'candidat',
+            role: metadata.role || pendingRole || 'candidat',
             prenom: metadata.prenom || firstName,
             nom: metadata.nom || lastNameParts.join(' '),
             phone: '',
@@ -320,6 +322,7 @@ export default function App() {
             title: '',
           };
           await supabase.from('profiles').upsert(nextProfile);
+          localStorage.removeItem('congoemploi.pendingLoginRole');
           setProfile((current) => ({ ...current, ...nextProfile }));
         }
       }
@@ -417,6 +420,13 @@ export default function App() {
     window.setTimeout(() => setToast(''), 2600);
   };
 
+  const openLogin = (role = 'candidat', mode = 'signin') => {
+    setLoginRole(role);
+    setAuthMode(mode);
+    setScreen('login');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const openJob = (job, nextScreen = 'job') => {
     setSelectedJob(job);
     setScreen(nextScreen);
@@ -460,7 +470,7 @@ export default function App() {
         password: loginPassword,
         options: {
           data: {
-            role: profile.role || 'candidat',
+            role: loginRole,
             nom: profile.nom,
             prenom: profile.prenom,
           },
@@ -474,7 +484,7 @@ export default function App() {
         await supabase.from('profiles').upsert({
           id: data.user.id,
           email: data.user.email,
-          role: profile.role || 'candidat',
+          role: loginRole,
           nom: profile.nom,
           prenom: profile.prenom,
           phone: profile.phone,
@@ -496,11 +506,23 @@ export default function App() {
       notify(error.message);
       return;
     }
+    const { data: signedProfile } = await supabase
+      .from('profiles')
+      .select('nom,prenom,email,phone,city,role,title')
+      .eq('id', data.user.id)
+      .maybeSingle();
+    const signedRole = signedProfile?.role || data.user.user_metadata?.role || 'candidat';
+    if (loginRole === 'recruteur' && !['recruteur', 'admin'].includes(signedRole)) {
+      notify('Ce compte est candidat. Utilise un compte recruteur ou change le type dans ton profil.');
+      setProfile((current) => ({ ...current, ...(signedProfile || {}), email: data.user.email || current.email }));
+      setScreen('profile');
+      return;
+    }
     setAuthUser(data.user);
-    setProfile((current) => ({ ...current, email: data.user.email || current.email }));
+    setProfile((current) => ({ ...current, ...(signedProfile || {}), email: data.user.email || signedProfile?.email || current.email }));
     setLoginEmail('');
     setLoginPassword('');
-    setScreen('profile');
+    setScreen(loginRole === 'recruteur' ? 'recruiter' : 'profile');
     notify('Connexion reussie');
   };
 
@@ -509,6 +531,7 @@ export default function App() {
       notify('Supabase doit etre configure pour la connexion reelle.');
       return;
     }
+    localStorage.setItem('congoemploi.pendingLoginRole', JSON.stringify(loginRole));
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -539,7 +562,7 @@ export default function App() {
     }
     if (applicationForm.mode === 'tracked' && !isLoggedIn) {
       notify('Connecte-toi pour suivre cette candidature.');
-      setScreen('login');
+      openLogin('candidat');
       return;
     }
     const trackingEnabled = applicationForm.mode === 'tracked' && isLoggedIn;
@@ -685,7 +708,7 @@ export default function App() {
     event.preventDefault();
     if (!isLoggedIn) {
       notify('Connecte-toi pour publier une offre.');
-      setScreen('login');
+      openLogin('recruteur');
       return;
     }
     if (!['recruteur', 'admin'].includes(profile.role)) {
@@ -769,15 +792,15 @@ export default function App() {
   const renderScreen = () => {
     if (screen === 'jobs') return <JobsScreen jobs={filteredJobs} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} savedIds={savedIds} toggleSave={toggleSave} />;
     if (screen === 'job') return <JobScreen job={activeJob} saved={savedIds.includes(activeJob?.id)} toggleSave={toggleSave} setScreen={setScreen} />;
-    if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} setScreen={setScreen} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
+    if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
-    if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} />;
-    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} setScreen={setScreen} />;
-    if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} setScreen={setScreen} markApplicationActivity={markApplicationActivity} isLoggedIn={isLoggedIn} role={profile.role} />;
+    if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} />;
+    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} setScreen={setScreen} />;
+    if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} isLoggedIn={isLoggedIn} role={profile.role} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} publishJob={publishJob} setScreen={setScreen} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
     if (screen === 'settings') return <SettingsScreen />;
-    return <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} hasSupabaseConfig={hasSupabaseConfig} dataSource={dataSource} />;
+    return <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} openLogin={openLogin} hasSupabaseConfig={hasSupabaseConfig} dataSource={dataSource} />;
   };
 
   return (
@@ -849,7 +872,7 @@ function IconButton({ label, children, onClick, badge }) {
   );
 }
 
-function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, clearSearch, openJob, setScreen, hasSupabaseConfig, dataSource }) {
+function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, clearSearch, openJob, setScreen, openLogin, hasSupabaseConfig, dataSource }) {
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:grid md:grid-cols-[1.2fr_0.8fr] md:gap-8 md:p-8">
@@ -874,15 +897,15 @@ function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, clearSear
           <button onClick={() => setScreen('jobs')} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
             Rechercher <Search size={18} />
           </button>
-          <button onClick={() => setScreen('post-job')} className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 font-black text-slate-950 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <button onClick={() => openLogin('recruteur')} className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 font-black text-slate-950 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
             Publier une offre <PlusCircle size={18} />
           </button>
         </div>
       </section>
 
       <section className="grid gap-3 md:grid-cols-3">
-        <ActionCard icon={User} title="Candidat" body="Postule en moins d'une minute." onClick={() => setScreen('jobs')} />
-        <ActionCard icon={Building2} title="Recruteur" body="Publie une offre et suis les candidatures." onClick={() => setScreen('recruiter')} />
+        <ActionCard icon={User} title="Candidat" body="Postule en moins d'une minute." onClick={() => openLogin('candidat')} />
+        <ActionCard icon={Building2} title="Recruteur" body="Publie une offre et suis les candidatures." onClick={() => openLogin('recruteur')} />
         <ActionCard icon={Sparkles} title={hasSupabaseConfig ? 'Base connectee' : 'Configuration requise'} body={hasSupabaseConfig ? `Source: ${dataSource}` : 'Ajoute les variables Supabase pour activer la production.'} onClick={() => setScreen('settings')} />
       </section>
 
@@ -954,7 +977,7 @@ function JobScreen({ job, saved, toggleSave, setScreen }) {
   );
 }
 
-function ApplyScreen({ job, form, setForm, submitApplication, setScreen, isLoggedIn, profile, notify }) {
+function ApplyScreen({ job, form, setForm, submitApplication, setScreen, openLogin, isLoggedIn, profile, notify }) {
   const trackingEnabled = form.mode === 'tracked';
   const contactReady = Boolean((form.nom || profile.nom || profile.prenom) && (form.email || profile.email) && (form.phone || profile.phone));
   const fillFromProfile = () => {
@@ -1019,7 +1042,7 @@ function ApplyScreen({ job, form, setForm, submitApplication, setScreen, isLogge
       {trackingEnabled && !isLoggedIn && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm font-bold leading-6 text-amber-900">Connecte-toi pour activer le suivi de candidature.</p>
-          <button onClick={() => setScreen('login')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <button onClick={() => openLogin('candidat')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
             Se connecter
           </button>
         </div>
@@ -1055,7 +1078,7 @@ function SavedScreen({ jobs, openJob }) {
   );
 }
 
-function ProfileScreen({ profile, setProfile, applications, updateProfile, setScreen, isLoggedIn, authLoading, handleLogout }) {
+function ProfileScreen({ profile, setProfile, applications, updateProfile, setScreen, openLogin, isLoggedIn, authLoading, handleLogout }) {
   const trackedApplications = applications.filter((item) => item.trackingEnabled);
   const cvOpenedCount = trackedApplications.filter((item) => item.cvOpened).length;
   const applicationOpenedCount = trackedApplications.filter((item) => item.applicationOpened).length;
@@ -1072,8 +1095,8 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
       {!isLoggedIn && !authLoading && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
           <p className="text-sm font-bold leading-6 text-blue-950">Connexion reelle Supabase active. Cree ton compte ou connecte-toi pour synchroniser ton profil, tes favoris, tes CV et tes candidatures.</p>
-          <button onClick={() => setScreen('login')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
-            Se connecter
+          <button onClick={() => openLogin('candidat')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+            Connexion candidat
           </button>
         </div>
       )}
@@ -1127,14 +1150,25 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
   );
 }
 
-function LoginScreen({ authMode, setAuthMode, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleOAuthSignIn, setScreen }) {
+function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleOAuthSignIn, setScreen }) {
   const isSignup = authMode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
+  const isRecruiterLogin = loginRole === 'recruteur';
+  const loginTitle = `${isSignup ? 'Inscription' : 'Connexion'} ${isRecruiterLogin ? 'recruteur' : 'candidat'}`;
+  const loginSubtitle = isRecruiterLogin ? 'Espace employeur pour publier les offres et voir les CV' : 'Espace candidat pour postuler et suivre tes candidatures';
 
   return (
     <div className="mx-auto max-w-md space-y-5">
       <BackButton onClick={() => setScreen('home')} label="Accueil" />
-      <PageHeader title={isSignup ? 'Creer un compte' : 'Connexion'} subtitle="Compte reel securise avec Supabase" />
+      <PageHeader title={loginTitle} subtitle={loginSubtitle} />
+      <div className="grid grid-cols-2 rounded-lg border border-slate-200 bg-white p-1">
+        <button type="button" onClick={() => setLoginRole('candidat')} className={classNames('min-h-11 rounded-md text-sm font-black', !isRecruiterLogin ? 'bg-blue-700 text-white' : 'text-slate-600')}>
+          Candidat
+        </button>
+        <button type="button" onClick={() => setLoginRole('recruteur')} className={classNames('min-h-11 rounded-md text-sm font-black', isRecruiterLogin ? 'bg-blue-700 text-white' : 'text-slate-600')}>
+          Recruteur
+        </button>
+      </div>
       <div className="rounded-lg border border-slate-200 bg-white p-4">
         <p className="text-sm font-black text-slate-900">Continuer avec</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
@@ -1163,10 +1197,14 @@ function LoginScreen({ authMode, setAuthMode, loginEmail, setLoginEmail, loginPa
           onToggle={() => setShowPassword((visible) => !visible)}
         />
         <button type="submit" className="min-h-12 w-full rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
-          {isSignup ? 'Creer mon compte' : 'Me connecter'}
+          {isSignup ? `Creer mon compte ${isRecruiterLogin ? 'recruteur' : 'candidat'}` : `Me connecter comme ${isRecruiterLogin ? 'recruteur' : 'candidat'}`}
         </button>
         <p className="text-xs font-semibold leading-5 text-slate-500">
-          {isSignup ? 'Si la confirmation email est active sur Supabase, tu devras valider le lien recu avant la premiere connexion.' : 'Tes candidatures suivies seront reliees a ce compte.'}
+          {isSignup
+            ? `Ce compte sera cree comme ${isRecruiterLogin ? 'recruteur' : 'candidat'}. Si la confirmation email est active sur Supabase, tu devras valider le lien recu.`
+            : isRecruiterLogin
+              ? 'Utilise ici ton compte recruteur pour voir tes offres, tes candidats et leurs CV.'
+              : 'Utilise ici ton compte candidat pour postuler et suivre tes candidatures.'}
         </p>
       </form>
     </div>
@@ -1225,7 +1263,7 @@ function OAuthProviderLogo({ provider }) {
   );
 }
 
-function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivity, isLoggedIn, role }) {
+function RecruiterScreen({ jobs, applications, setScreen, openLogin, markApplicationActivity, isLoggedIn, role }) {
   const [selectedJobId, setSelectedJobId] = useState('all');
   const ownJobs = jobs;
   const canRecruit = isLoggedIn && ['recruteur', 'admin'].includes(role);
@@ -1248,8 +1286,8 @@ function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivit
       {!isLoggedIn && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
           <p className="text-sm font-bold leading-6 text-blue-950">Connecte-toi pour publier une offre et garder un tableau de bord recruteur fiable.</p>
-          <button onClick={() => setScreen('login')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
-            Se connecter
+          <button onClick={() => openLogin('recruteur')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+            Connexion recruteur
           </button>
         </div>
       )}
