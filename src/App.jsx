@@ -8,6 +8,8 @@ import {
   Check,
   ChevronRight,
   ClipboardList,
+  Eye,
+  EyeOff,
   FileText,
   Home,
   LayoutDashboard,
@@ -1115,6 +1117,8 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
 
 function LoginScreen({ authMode, setAuthMode, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleOAuthSignIn, setScreen }) {
   const isSignup = authMode === 'signup';
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
     <div className="mx-auto max-w-md space-y-5">
       <BackButton onClick={() => setScreen('home')} label="Accueil" />
@@ -1137,7 +1141,15 @@ function LoginScreen({ authMode, setAuthMode, loginEmail, setLoginEmail, loginPa
       </div>
       <form onSubmit={handleAuth} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
         <TextField label="Email" type="email" value={loginEmail} onChange={setLoginEmail} required />
-        <TextField label="Mot de passe" type="password" value={loginPassword} onChange={setLoginPassword} required placeholder="Minimum 6 caracteres" />
+        <PasswordField
+          label="Mot de passe"
+          value={loginPassword}
+          onChange={setLoginPassword}
+          required
+          placeholder="Minimum 6 caracteres"
+          visible={showPassword}
+          onToggle={() => setShowPassword((visible) => !visible)}
+        />
         <button type="submit" className="min-h-12 w-full rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
           {isSignup ? 'Creer mon compte' : 'Me connecter'}
         </button>
@@ -1411,6 +1423,36 @@ function TextField({ label, value, onChange, type = 'text', required, placeholde
     <label className="block">
       <span className="mb-2 block text-sm font-black text-slate-800">{label}</span>
       <input type={type} required={required} disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base font-semibold outline-none transition disabled:bg-slate-100 disabled:text-slate-500 focus:border-blue-700 focus:ring-2 focus:ring-blue-600" />
+    </label>
+  );
+}
+
+function PasswordField({ label, value, onChange, required, placeholder, visible, onToggle }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-black text-slate-800">{label}</span>
+      <span className="flex min-h-12 w-full items-center rounded-lg border border-slate-300 bg-white pr-2 transition focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-600">
+        <input
+          type={visible ? 'text' : 'password'}
+          required={required}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          className="min-h-12 min-w-0 flex-1 rounded-lg bg-transparent px-3 text-base font-semibold outline-none"
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+          aria-pressed={visible}
+          className={classNames(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition focus:outline-none focus:ring-2 focus:ring-blue-600',
+            visible ? 'text-blue-700 hover:bg-blue-50' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
+          )}
+        >
+          {visible ? <EyeOff size={20} /> : <Eye size={20} />}
+        </button>
+      </span>
     </label>
   );
 }
