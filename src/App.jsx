@@ -1226,9 +1226,22 @@ function OAuthProviderLogo({ provider }) {
 }
 
 function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivity, isLoggedIn, role }) {
-  const ownJobs = jobs.slice(0, 4);
+  const [selectedJobId, setSelectedJobId] = useState('all');
+  const ownJobs = jobs;
   const canRecruit = isLoggedIn && ['recruteur', 'admin'].includes(role);
   const reviewedCount = applications.filter((item) => item.status === 'reviewed' || item.applicationOpened || item.cvOpened).length;
+  const applicationsByJobId = useMemo(() => {
+    return applications.reduce((groups, item) => {
+      const key = item.jobId || 'unknown';
+      groups[key] = groups[key] ? [...groups[key], item] : [item];
+      return groups;
+    }, {});
+  }, [applications]);
+  const selectedJobExists = selectedJobId === 'all' || ownJobs.some((job) => job.id === selectedJobId);
+  const activeJobId = selectedJobExists ? selectedJobId : 'all';
+  const visibleApplications = activeJobId === 'all' ? applications : applications.filter((item) => item.jobId === activeJobId);
+  const selectedJob = ownJobs.find((job) => job.id === activeJobId);
+
   return (
     <div className="space-y-5">
       <PageHeader title="Recruteur" subtitle="Publier et suivre les candidatures" />
@@ -1256,32 +1269,76 @@ function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivit
       <button onClick={() => setScreen('post-job')} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
         Publier une offre <PlusCircle size={18} />
       </button>
-      <SectionTitle title="Dernieres offres" />
-      <div className="grid gap-3">
-        {ownJobs.map((job) => (
-          <div key={job.id} className="rounded-lg border border-slate-200 bg-white p-4">
-            <h3 className="font-black">{job.role}</h3>
-            <p className="mt-1 text-sm font-semibold text-slate-500">{job.company} - {job.loc}</p>
-          </div>
-        ))}
-      </div>
-      <SectionTitle title="Candidatures recues" />
-      <div className="grid gap-3">
-        {applications.map((item) => (
-          <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="font-black">{item.jobRole}</h3>
-                <p className="text-sm font-semibold text-slate-500">{item.nom} - {item.email}</p>
-                <p className="mt-2 text-xs font-black text-slate-500">
-                  {item.cvName ? `CV PDF: ${item.cvName}` : 'Aucun CV'} - {item.trackingEnabled ? 'suivi candidat actif' : 'candidature rapide'}
-                </p>
+
+      <SectionTitle title="Mes offres" />
+      <div className="grid gap-2">
+        <button
+          type="button"
+          onClick={() => setSelectedJobId('all')}
+          className={classNames(
+            'flex min-h-12 items-center justify-between gap-3 rounded-lg border px-4 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-600',
+            activeJobId === 'all' ? 'border-blue-700 bg-blue-50 text-blue-900' : 'border-slate-200 bg-white text-slate-700',
+          )}
+        >
+          <span className="text-sm font-black">Toutes les offres</span>
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600">{applications.length} candidat(s)</span>
+        </button>
+        {ownJobs.map((job) => {
+          const count = applicationsByJobId[job.id]?.length || 0;
+          return (
+            <button
+              key={job.id}
+              type="button"
+              onClick={() => setSelectedJobId(job.id)}
+              className={classNames(
+                'rounded-lg border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-600',
+                activeJobId === job.id ? 'border-blue-700 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-300',
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="font-black text-slate-950">{job.role}</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">{job.company} - {job.loc}</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{count} candidat(s)</span>
               </div>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{item.status === 'reviewed' ? 'Vu' : 'Nouveau'}</span>
+            </button>
+          );
+        })}
+        {ownJobs.length === 0 && <EmptyState title="Aucune offre publiee" body="Publie une offre pour recevoir des candidatures." />}
+      </div>
+
+      <SectionTitle title={selectedJob ? `Candidats - ${selectedJob.role}` : 'Toutes les candidatures'} />
+      <div className="grid gap-3">
+        {visibleApplications.map((item) => (
+          <article key={item.id} className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase text-blue-700">{item.jobRole}</p>
+                <h3 className="mt-1 text-lg font-black text-slate-950">{item.nom}</h3>
+                <div className="mt-2 grid gap-1 text-sm font-semibold text-slate-600">
+                  <span>{item.email}</span>
+                  <span>{item.phone || 'Telephone non renseigne'}</span>
+                </div>
+              </div>
+              <span className={classNames('w-fit rounded-full px-3 py-1 text-xs font-black', item.status === 'reviewed' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-50 text-blue-700')}>
+                {item.status === 'reviewed' ? 'Vu' : 'Nouveau'}
+              </span>
             </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {item.message && (
+              <div className="mt-4 rounded-lg bg-slate-50 p-3">
+                <p className="text-xs font-black uppercase text-slate-500">Message</p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-slate-700">{item.message}</p>
+              </div>
+            )}
+            <div className="mt-4 flex flex-wrap gap-2 text-xs font-black text-slate-600">
+              <span className="rounded-full bg-slate-100 px-3 py-1">{item.cvName ? `CV: ${item.cvName}` : 'Aucun CV'}</span>
+              <span className="rounded-full bg-slate-100 px-3 py-1">{item.trackingEnabled ? 'Candidature suivie' : 'Candidature rapide'}</span>
+              <span className="rounded-full bg-slate-100 px-3 py-1">{item.createdAt ? new Date(item.createdAt).toLocaleDateString('fr-FR') : 'Date locale'}</span>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr]">
               <button onClick={() => markApplicationActivity(item.id, 'applicationOpened')} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
-                Ouvrir la demande
+                Marquer la demande vue
               </button>
               <button
                 onClick={() => markApplicationActivity(item.id, 'cvOpened', true)}
@@ -1291,9 +1348,9 @@ function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivit
                 Ouvrir le CV <ExternalLink size={16} />
               </button>
             </div>
-          </div>
+          </article>
         ))}
-        {applications.length === 0 && <EmptyState title="Aucune candidature recue" body="Les candidatures apparaitront ici avec leur CV PDF." />}
+        {visibleApplications.length === 0 && <EmptyState title="Aucune candidature recue" body="Les candidats apparaitront ici avec leurs messages et leurs CV PDF." />}
       </div>
     </div>
   );
