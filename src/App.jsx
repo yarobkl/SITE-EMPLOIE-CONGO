@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Eye,
   EyeOff,
+  ExternalLink,
   FileText,
   Home,
   LayoutDashboard,
@@ -559,7 +560,8 @@ export default function App() {
       if (!uploadError) {
         cvPath = filePath;
       } else {
-        notify('CV garde localement, stockage indisponible.');
+        notify("Le CV n'a pas pu etre envoye. Reessaie avant d'envoyer la candidature.");
+        return;
       }
     }
     const { cvFile, ...applicationValues } = applicationForm;
@@ -621,6 +623,24 @@ export default function App() {
   const markApplicationActivity = async (applicationId, field, shouldOpenCv = false) => {
     const currentApplication = [...recruiterApplications, ...applications].find((item) => item.id === applicationId);
     if (!currentApplication) return;
+
+    if (shouldOpenCv) {
+      if (!currentApplication.cvPath) {
+        notify('Aucun fichier CV ouvrable pour cette candidature.');
+        return;
+      }
+      if (!hasSupabaseConfig || !supabase) {
+        notify('Supabase doit etre configure pour ouvrir les CV.');
+        return;
+      }
+      const { data, error } = await supabase.storage.from('cvs').createSignedUrl(currentApplication.cvPath, 60 * 5);
+      if (error || !data?.signedUrl) {
+        notify('CV indisponible pour le moment.');
+        return;
+      }
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    }
+
     const wasAlreadyOpened = Boolean(currentApplication[field]);
     const changedApplication = wasAlreadyOpened
       ? currentApplication
@@ -659,14 +679,6 @@ export default function App() {
       notify('Action recruteur enregistree, pas de notification pour candidature rapide.');
     }
 
-    if (shouldOpenCv && changedApplication.cvPath && hasSupabaseConfig && supabase) {
-      const { data, error } = await supabase.storage.from('cvs').createSignedUrl(changedApplication.cvPath, 60 * 5);
-      if (!error && data?.signedUrl) {
-        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-      } else {
-        notify('CV indisponible pour le moment.');
-      }
-    }
   };
 
   const publishJob = async (event) => {
@@ -1271,8 +1283,12 @@ function RecruiterScreen({ jobs, applications, setScreen, markApplicationActivit
               <button onClick={() => markApplicationActivity(item.id, 'applicationOpened')} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
                 Ouvrir la demande
               </button>
-              <button onClick={() => markApplicationActivity(item.id, 'cvOpened', true)} className="min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
-                Ouvrir le CV
+              <button
+                onClick={() => markApplicationActivity(item.id, 'cvOpened', true)}
+                disabled={!item.cvPath}
+                className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+              >
+                Ouvrir le CV <ExternalLink size={16} />
               </button>
             </div>
           </div>
