@@ -65,9 +65,12 @@ create policy "recruiters read candidate cv pdf" on storage.objects
   for select using (
     bucket_id = 'cvs'
     and exists (
-      select 1 from public.profiles
-      where profiles.id = auth.uid()
-      and profiles.role in ('recruteur', 'admin')
+      select 1
+      from public.applications
+      join public.jobs on jobs.id = applications.job_id
+      join public.companies on companies.id = jobs.company_id
+      where applications.cv_url = storage.objects.name
+      and companies.owner_id = auth.uid()
     )
   );
 
