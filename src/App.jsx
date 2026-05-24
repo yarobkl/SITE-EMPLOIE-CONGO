@@ -1757,28 +1757,19 @@ function BrandLogo() {
     <div className="relative h-12 w-12 shrink-0">
       <svg viewBox="0 0 48 48" className="h-12 w-12 drop-shadow-sm" aria-hidden="true">
         <defs>
-          <clipPath id="congo-flag-mark">
-            <rect x="4" y="4" width="40" height="40" rx="13" />
-          </clipPath>
+          <linearGradient id="work-mark-bg" x1="8" y1="7" x2="40" y2="42" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#2563EB" />
+            <stop offset="1" stopColor="#0F172A" />
+          </linearGradient>
         </defs>
-        <rect x="4" y="4" width="40" height="40" rx="13" fill="white" />
-        <g clipPath="url(#congo-flag-mark)">
-          <rect x="4" y="4" width="40" height="40" fill="#009543" />
-          <polygon points="4,44 44,4 44,44" fill="#DC241F" />
-          <polygon points="4,44 44,4 44,14 14,44" fill="#FBDE4A" />
-        </g>
-        <rect x="4" y="4" width="40" height="40" rx="13" fill="none" stroke="#E2E8F0" />
-        <path
-          d="M27.9 10.8L31.2 12.4L32.8 15.1L31.7 18.1L34.5 20.8L33.3 24.6L30.7 25.6L29.5 28.3L31.3 31.4L28.9 36.5L26.2 37.8L23.8 35.7L22.3 31.9L19.5 30.4L18.4 27.4L15.2 25.9L14.1 22.6L16.1 19.8L16.8 16.1L20.1 15.4L22.1 12.2L25.2 13.1L27.9 10.8Z"
-          fill="#0F172A"
-          opacity="0.88"
-        />
-        <path
-          d="M35.7 30.5L37.2 33.4L36.5 37.5L34.8 40.4L33.7 38.1L34.1 34.2L35.7 30.5Z"
-          fill="#0F172A"
-          opacity="0.72"
-        />
-        <circle cx="26" cy="24" r="2.5" fill="white" />
+        <rect x="4" y="4" width="40" height="40" rx="12" fill="url(#work-mark-bg)" />
+        <rect x="4.5" y="4.5" width="39" height="39" rx="11.5" fill="none" stroke="#DBEAFE" opacity="0.55" />
+        <path d="M18 18V16.8C18 14.7 19.7 13 21.8 13H26.2C28.3 13 30 14.7 30 16.8V18" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" />
+        <rect x="12" y="18" width="24" height="17" rx="5" fill="white" />
+        <path d="M12 24.5H36" stroke="#BFDBFE" strokeWidth="2" />
+        <path d="M22 27L25 30L31 23.5" fill="none" stroke="#2563EB" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="15" cy="38" r="2" fill="#93C5FD" />
+        <path d="M19 38H33" stroke="#93C5FD" strokeWidth="3" strokeLinecap="round" />
       </svg>
     </div>
   );
