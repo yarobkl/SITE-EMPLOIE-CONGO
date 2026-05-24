@@ -8,6 +8,7 @@ import {
   Check,
   ChevronRight,
   ClipboardList,
+  Edit3,
   Eye,
   EyeOff,
   ExternalLink,
@@ -22,6 +23,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Trash2,
   User,
   Users,
   X,
@@ -165,6 +167,15 @@ function classNames(...values) {
   return values.filter(Boolean).join(' ');
 }
 
+function getVisitorKey() {
+  const storageKey = 'congoemploi.v2.visitorKey';
+  const existing = localStorage.getItem(storageKey);
+  if (existing) return existing;
+  const next = crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  localStorage.setItem(storageKey, next);
+  return next;
+}
+
 function normalizeJob(row) {
   return {
     id: row.id,
@@ -227,6 +238,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
   const [applicationForm, setApplicationForm] = useState(emptyApplication);
   const [jobForm, setJobForm] = useState(emptyJob);
+  const [editingJob, setEditingJob] = useState(null);
   const [dataSource, setDataSource] = useState(hasSupabaseConfig ? 'Connexion en cours' : 'Hors ligne');
 
   const [jobs, setJobs] = useStoredState('congoemploi.v2.jobs', initialJobs);
@@ -235,6 +247,7 @@ export default function App() {
   const [applications, setApplications] = useStoredState('congoemploi.v2.applications', []);
   const [recruiterJobs, setRecruiterJobs] = useState([]);
   const [recruiterApplications, setRecruiterApplications] = useState([]);
+  const [recruiterJobStats, setRecruiterJobStats] = useState({});
   const [notifications, setNotifications] = useStoredState('congoemploi.v2.notifications', [
     { id: 1, title: 'Bienvenue sur CONGOEMPLOI', body: 'Votre espace mobile est pret.', read: false },
   ]);
@@ -380,7 +393,10 @@ export default function App() {
       }
 
       if (!ownedJobIds.length) {
-        if (!cancelled) setRecruiterApplications([]);
+        if (!cancelled) {
+          setRecruiterApplications([]);
+          setRecruiterJobStats({});
+        }
         return;
       }
 
@@ -393,6 +409,19 @@ export default function App() {
       if (!cancelled && receivedApplications) {
         setRecruiterApplications(receivedApplications.map(normalizeApplication));
       }
+
+      const nextStats = Object.fromEntries(ownedJobIds.map((id) => [id, { views: 0, saves: 0 }]));
+      const [{ data: viewRows }, { data: saveRows }] = await Promise.all([
+        supabase.from('job_views').select('job_id').in('job_id', ownedJobIds),
+        supabase.from('saved_jobs').select('job_id').in('job_id', ownedJobIds),
+      ]);
+      viewRows?.forEach((row) => {
+        if (nextStats[row.job_id]) nextStats[row.job_id].views += 1;
+      });
+      saveRows?.forEach((row) => {
+        if (nextStats[row.job_id]) nextStats[row.job_id].saves += 1;
+      });
+      if (!cancelled) setRecruiterJobStats(nextStats);
     }
 
     loadUserData();
@@ -431,6 +460,13 @@ export default function App() {
     setSelectedJob(job);
     setScreen(nextScreen);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (nextScreen === 'job' && hasSupabaseConfig && supabase && typeof job.id === 'string') {
+      supabase.from('job_views').upsert({
+        job_id: job.id,
+        viewer_id: authUser?.id || null,
+        session_key: getVisitorKey(),
+      }, { onConflict: 'job_id,session_key' });
+    }
   };
 
   const clearSearch = () => {
@@ -772,6 +808,76 @@ export default function App() {
     notify('Offre publiee');
   };
 
+  const startEditJob = (job) => {
+    setEditingJob(job);
+    setJobForm({
+      role: job.role || '',
+      company: job.company || '',
+      loc: job.loc || 'Brazzaville',
+      type: job.type || 'CDI',
+      salary: job.salary || '',
+      sector: job.sector || '',
+      description: job.description || '',
+    });
+    setScreen('post-job');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const saveJobEdit = async (event) => {
+    event.preventDefault();
+    if (!editingJob) return;
+    const updatedJob = { ...editingJob, ...jobForm };
+    if (hasSupabaseConfig && supabase && typeof editingJob.id === 'string') {
+      const { error } = await supabase
+        .from('jobs')
+        .update({
+          title: updatedJob.role,
+          description: updatedJob.description,
+          location: updatedJob.loc,
+          contract_type: updatedJob.type,
+          salary_range: updatedJob.salary,
+          sector: updatedJob.sector,
+        })
+        .eq('id', editingJob.id);
+      if (error) {
+        notify("Modification impossible pour l'instant.");
+        return;
+      }
+      if (updatedJob.companyId) {
+        await supabase.from('companies').update({ name: updatedJob.company, city: updatedJob.loc, sector: updatedJob.sector }).eq('id', updatedJob.companyId);
+      }
+    }
+    const replaceJob = (job) => (job.id === editingJob.id ? updatedJob : job);
+    setJobs((current) => current.map(replaceJob));
+    setRecruiterJobs((current) => current.map(replaceJob));
+    setEditingJob(null);
+    setJobForm(emptyJob);
+    setScreen('recruiter');
+    notify('Offre modifiee');
+  };
+
+  const deleteJob = async (job) => {
+    const confirmed = window.confirm(`Supprimer l'offre "${job.role}" ?`);
+    if (!confirmed) return;
+    if (hasSupabaseConfig && supabase && typeof job.id === 'string') {
+      const { error } = await supabase.from('jobs').delete().eq('id', job.id);
+      if (error) {
+        notify("Suppression impossible pour l'instant.");
+        return;
+      }
+    }
+    const removeJob = (item) => item.id !== job.id;
+    setJobs((current) => current.filter(removeJob));
+    setRecruiterJobs((current) => current.filter(removeJob));
+    setRecruiterApplications((current) => current.filter((item) => item.jobId !== job.id));
+    setRecruiterJobStats((current) => {
+      const next = { ...current };
+      delete next[job.id];
+      return next;
+    });
+    notify('Offre supprimee');
+  };
+
   const updateProfile = async (event) => {
     event.preventDefault();
     if (hasSupabaseConfig && supabase && authUser) {
@@ -807,8 +913,8 @@ export default function App() {
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} />;
     if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} setScreen={setScreen} />;
-    if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} isLoggedIn={isLoggedIn} role={profile.role} />;
-    if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} publishJob={publishJob} setScreen={setScreen} />;
+    if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} startEditJob={startEditJob} deleteJob={deleteJob} isLoggedIn={isLoggedIn} role={profile.role} />;
+    if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
     if (screen === 'settings') return <SettingsScreen />;
     return <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} openLogin={openLogin} hasSupabaseConfig={hasSupabaseConfig} dataSource={dataSource} />;
@@ -1099,7 +1205,7 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
         <PageHeader title="Profil" subtitle={authLoading ? 'Verification de la session...' : isLoggedIn ? 'Candidat et suivi des candidatures' : 'Connecte-toi pour activer le suivi temps reel'} />
         {isLoggedIn && (
           <button onClick={handleLogout} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 transition hover:border-red-600 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-600">
-            <LogOut size={17} /> Sortir
+            <LogOut size={17} /> Deconnexion
           </button>
         )}
       </div>
@@ -1274,7 +1380,7 @@ function OAuthProviderLogo({ provider }) {
   );
 }
 
-function RecruiterScreen({ jobs, applications, setScreen, openLogin, markApplicationActivity, isLoggedIn, role }) {
+function RecruiterScreen({ jobs, applications, stats, setScreen, openLogin, markApplicationActivity, startEditJob, deleteJob, isLoggedIn, role }) {
   const [selectedJobId, setSelectedJobId] = useState('all');
   const ownJobs = jobs;
   const canRecruit = isLoggedIn && ['recruteur', 'admin'].includes(role);
@@ -1334,24 +1440,38 @@ function RecruiterScreen({ jobs, applications, setScreen, openLogin, markApplica
         </button>
         {ownJobs.map((job) => {
           const count = applicationsByJobId[job.id]?.length || 0;
+          const jobStats = stats[job.id] || { views: 0, saves: 0 };
           return (
-            <button
+            <article
               key={job.id}
-              type="button"
-              onClick={() => setSelectedJobId(job.id)}
               className={classNames(
                 'rounded-lg border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-600',
                 activeJobId === job.id ? 'border-blue-700 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-300',
               )}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="font-black text-slate-950">{job.role}</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">{job.company} - {job.loc}</p>
+              <button type="button" onClick={() => setSelectedJobId(job.id)} className="w-full text-left focus:outline-none">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="font-black text-slate-950">{job.role}</h3>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">{job.company} - {job.loc}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{count} candidat(s)</span>
                 </div>
-                <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{count} candidat(s)</span>
+              </button>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <StatCard value={jobStats.views} label="Vues" />
+                <StatCard value={jobStats.saves} label="Signets" />
+                <StatCard value={count} label="Postules" />
               </div>
-            </button>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <button type="button" onClick={() => startEditJob(job)} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                  <Edit3 size={16} /> Modifier
+                </button>
+                <button type="button" onClick={() => deleteJob(job)} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-red-200 px-4 text-sm font-black text-red-700 transition hover:border-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600">
+                  <Trash2 size={16} /> Supprimer
+                </button>
+              </div>
+            </article>
           );
         })}
         {ownJobs.length === 0 && <EmptyState title="Aucune offre publiee" body="Publie une offre pour recevoir des candidatures." />}
@@ -1405,12 +1525,12 @@ function RecruiterScreen({ jobs, applications, setScreen, openLogin, markApplica
   );
 }
 
-function PostJobScreen({ form, setForm, publishJob, setScreen }) {
+function PostJobScreen({ form, setForm, onSubmit, setScreen, editing, cancelEdit }) {
   return (
     <div className="space-y-4">
-      <BackButton onClick={() => setScreen('recruiter')} label="Recruteur" />
-      <PageHeader title="Publier" subtitle="Nouvelle offre d'emploi" />
-      <form onSubmit={publishJob} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
+      <BackButton onClick={editing ? cancelEdit : () => setScreen('recruiter')} label="Recruteur" />
+      <PageHeader title={editing ? 'Modifier' : 'Publier'} subtitle={editing ? "Modifier l'offre d'emploi" : "Nouvelle offre d'emploi"} />
+      <form onSubmit={onSubmit} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
         <TextField label="Titre du poste" value={form.role} onChange={(role) => setForm({ ...form, role })} required />
         <TextField label="Entreprise" value={form.company} onChange={(company) => setForm({ ...form, company })} required />
         <SelectField label="Ville" value={form.loc} onChange={(loc) => setForm({ ...form, loc })} options={CONGO_CITIES} />
@@ -1418,9 +1538,16 @@ function PostJobScreen({ form, setForm, publishJob, setScreen }) {
         <TextField label="Salaire" value={form.salary} onChange={(salary) => setForm({ ...form, salary })} placeholder="Attractif, 500k XAF, Negociable..." />
         <TextField label="Secteur" value={form.sector} onChange={(sector) => setForm({ ...form, sector })} />
         <TextArea label="Description" value={form.description} onChange={(description) => setForm({ ...form, description })} required />
-        <button type="submit" className="min-h-12 w-full rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
-          Publier l'offre
-        </button>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {editing && (
+            <button type="button" onClick={cancelEdit} className="min-h-12 rounded-lg border border-slate-300 px-5 font-black text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+              Annuler
+            </button>
+          )}
+          <button type="submit" className={classNames('min-h-12 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600', editing ? '' : 'sm:col-span-2')}>
+            {editing ? "Enregistrer l'offre" : "Publier l'offre"}
+          </button>
+        </div>
       </form>
     </div>
   );
