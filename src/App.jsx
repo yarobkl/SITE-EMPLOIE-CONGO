@@ -902,12 +902,13 @@ export default function App() {
   const navItems = [
     { id: 'home', label: 'Accueil', icon: Home },
     { id: 'jobs', label: 'Offres', icon: Briefcase },
+    { id: 'recruiter', label: 'Recruteur', icon: LayoutDashboard },
     { id: 'saved', label: 'Favoris', icon: Bookmark },
     { id: 'profile', label: 'Profil', icon: User },
   ];
 
   const renderScreen = () => {
-    if (screen === 'jobs') return <JobsScreen jobs={filteredJobs} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} savedIds={savedIds} toggleSave={toggleSave} />;
+    if (screen === 'jobs') return <JobsScreen jobs={filteredJobs} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} savedIds={savedIds} toggleSave={toggleSave} />;
     if (screen === 'job') return <JobScreen job={activeJob} saved={savedIds.includes(activeJob?.id)} toggleSave={toggleSave} setScreen={setScreen} />;
     if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
@@ -953,7 +954,7 @@ export default function App() {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 md:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-4 px-2">
+        <div className="mx-auto grid max-w-md grid-cols-5 px-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = screen === item.id || (item.id === 'jobs' && ['job', 'apply'].includes(screen));
@@ -1034,10 +1035,15 @@ function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, clearSear
   );
 }
 
-function JobsScreen({ jobs, query, setQuery, city, setCity, clearSearch, openJob, savedIds, toggleSave }) {
+function JobsScreen({ jobs, query, setQuery, city, setCity, clearSearch, openJob, setScreen, savedIds, toggleSave }) {
   return (
     <div className="space-y-5">
-      <PageHeader title="Offres" subtitle={`${jobs.length} resultat(s) disponible(s)`} />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <PageHeader title="Offres" subtitle={`${jobs.length} resultat(s) disponible(s)`} />
+        <button onClick={() => setScreen('recruiter')} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-black text-blue-700 transition hover:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <LayoutDashboard size={17} /> Espace recruteur
+        </button>
+      </div>
       <SearchPanel query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} />
       <div className="grid gap-3 lg:grid-cols-2">
         {jobs.map((job) => (
@@ -1199,10 +1205,11 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
   const trackedApplications = applications.filter((item) => item.trackingEnabled);
   const cvOpenedCount = trackedApplications.filter((item) => item.cvOpened).length;
   const applicationOpenedCount = trackedApplications.filter((item) => item.applicationOpened).length;
+  const isRecruiter = ['recruteur', 'admin'].includes(profile.role);
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3">
-        <PageHeader title="Profil" subtitle={authLoading ? 'Verification de la session...' : isLoggedIn ? 'Candidat et suivi des candidatures' : 'Connecte-toi pour activer le suivi temps reel'} />
+        <PageHeader title="Profil" subtitle={authLoading ? 'Verification de la session...' : isLoggedIn ? (isRecruiter ? 'Compte recruteur et informations du compte' : 'Candidat et suivi des candidatures') : 'Connecte-toi pour activer le suivi temps reel'} />
         {isLoggedIn && (
           <button onClick={handleLogout} className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 transition hover:border-red-600 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-600">
             <LogOut size={17} /> Deconnexion
@@ -1216,6 +1223,11 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
             Connexion candidat
           </button>
         </div>
+      )}
+      {isLoggedIn && isRecruiter && (
+        <button onClick={() => setScreen('recruiter')} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <LayoutDashboard size={18} /> Aller a mon espace recruteur
+        </button>
       )}
       <div className="grid grid-cols-3 gap-2">
         <StatCard value={trackedApplications.length} label="Suivies" />
