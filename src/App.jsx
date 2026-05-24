@@ -660,12 +660,18 @@ export default function App() {
         notify('Supabase doit etre configure pour ouvrir les CV.');
         return;
       }
+      const cvWindow = window.open('', '_blank', 'noopener,noreferrer');
       const { data, error } = await supabase.storage.from('cvs').createSignedUrl(currentApplication.cvPath, 60 * 5);
       if (error || !data?.signedUrl) {
+        cvWindow?.close();
         notify('CV indisponible pour le moment.');
         return;
       }
-      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+      if (cvWindow) {
+        cvWindow.location.href = data.signedUrl;
+      } else {
+        window.location.href = data.signedUrl;
+      }
     }
 
     const wasAlreadyOpened = Boolean(currentApplication[field]);
