@@ -481,7 +481,7 @@ export default function App() {
         return;
       }
       if (data.user) {
-        await supabase.from('profiles').upsert({
+        const nextProfile = {
           id: data.user.id,
           email: data.user.email,
           role: loginRole,
@@ -490,10 +490,14 @@ export default function App() {
           phone: profile.phone,
           city: profile.city,
           title: profile.title,
+        };
+        await supabase.from('profiles').upsert({
+          ...nextProfile,
         });
+        setProfile((current) => ({ ...current, ...nextProfile }));
       }
       setLoginPassword('');
-      setScreen('profile');
+      setScreen(loginRole === 'recruteur' ? 'recruiter' : 'profile');
       notify(data.session ? 'Compte cree et connecte' : 'Compte cree. Verifie ton email pour te connecter.');
       return;
     }
