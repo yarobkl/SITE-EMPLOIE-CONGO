@@ -1539,11 +1539,14 @@ function TextField({ label, value, onChange, type = 'text', required, placeholde
 }
 
 function PasswordField({ label, value, onChange, required, placeholder, visible, onToggle }) {
+  const inputId = useId();
+
   return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-black text-slate-800">{label}</span>
+    <div className="block">
+      <label htmlFor={inputId} className="mb-2 block text-sm font-black text-slate-800">{label}</label>
       <span className="flex min-h-12 w-full items-center rounded-lg border border-slate-300 bg-white pr-2 transition focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-600">
         <input
+          id={inputId}
           type={visible ? 'text' : 'password'}
           required={required}
           value={value}
@@ -1564,7 +1567,7 @@ function PasswordField({ label, value, onChange, required, placeholder, visible,
           {visible ? <EyeOff size={20} /> : <Eye size={20} />}
         </button>
       </span>
-    </label>
+    </div>
   );
 }
 
