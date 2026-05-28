@@ -973,9 +973,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white text-slate-950">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm shadow-slate-200/70 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <button onClick={() => setScreen('home')} className="flex min-h-11 items-center gap-3 rounded-lg text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <button onClick={() => setScreen('home')} className="smooth-button flex min-h-11 items-center gap-3 rounded-lg px-1 text-left hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600">
             <BrandLogo />
             <div>
               <p className="text-[15px] font-black leading-none text-slate-950">CONGO<span className="text-blue-700">EMPLOI</span></p>
@@ -999,11 +999,11 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-28 pt-5 md:pb-10">
+      <main key={screen} className="soft-enter mx-auto max-w-6xl px-4 pb-28 pt-5 md:pb-10">
         {renderScreen()}
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5 px-1">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -1012,7 +1012,7 @@ export default function App() {
               <button
                 key={item.id}
                 onClick={() => (item.id === 'recruiter' ? openRecruiterSpace() : setScreen(item.id))}
-                className={classNames('flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-blue-600', active ? 'text-blue-700' : 'text-slate-500')}
+                className={classNames('smooth-button flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-600', active ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800')}
               >
                 <Icon size={21} fill={active ? 'currentColor' : 'none'} />
                 {item.label}
@@ -1023,7 +1023,7 @@ export default function App() {
       </nav>
 
       {toast && (
-        <div className="fixed bottom-24 left-4 right-4 z-[60] mx-auto max-w-sm rounded-lg border border-blue-100 bg-white px-4 py-3 text-center text-sm font-bold text-slate-900 shadow-lg md:bottom-6">
+        <div className="soft-enter fixed bottom-24 left-4 right-4 z-[60] mx-auto max-w-sm rounded-lg border border-blue-100 bg-white px-4 py-3 text-center text-sm font-bold text-slate-900 shadow-lg shadow-blue-900/10 md:bottom-6">
           {toast}
         </div>
       )}
@@ -1033,7 +1033,7 @@ export default function App() {
 
 function IconButton({ label, children, onClick, badge }) {
   return (
-    <button onClick={onClick} aria-label={label} className="relative flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+    <button onClick={onClick} aria-label={label} className="smooth-button relative flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
       {children}
       {badge > 0 && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />}
     </button>
@@ -1043,7 +1043,7 @@ function IconButton({ label, children, onClick, badge }) {
 function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, clearSearch, openJob, setScreen, openLogin }) {
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:grid md:grid-cols-[1.2fr_0.8fr] md:gap-8 md:p-8">
+      <section className="app-surface p-5 md:grid md:grid-cols-[1.2fr_0.8fr] md:gap-8 md:p-8">
         <div>
           <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
             <ShieldCheck size={14} /> Brazzaville, Pointe-Noire et les departements
@@ -1060,12 +1060,12 @@ function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, clearSear
             <Metric value="Suivi" label="Candidatures" />
           </div>
         </div>
-        <div className="mt-6 rounded-lg bg-slate-50 p-3 text-slate-950 md:mt-0">
+        <div className="rounded-lg mt-6 bg-slate-50 p-3 text-slate-950 ring-1 ring-slate-100 md:mt-0">
           <SearchPanel query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} compact onSubmit={() => setScreen('jobs')} />
-          <button onClick={() => setScreen('jobs')} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <button onClick={() => setScreen('jobs')} className="smooth-button mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 font-black text-white shadow-sm shadow-blue-900/20 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
             Rechercher <Search size={18} />
           </button>
-          <button onClick={() => openLogin('recruteur')} className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 font-black text-slate-950 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <button onClick={() => openLogin('recruteur')} className="smooth-button mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 font-black text-slate-950 hover:border-blue-700 hover:bg-white hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
             Publier une offre <PlusCircle size={18} />
           </button>
         </div>
@@ -1734,16 +1734,16 @@ function SearchPanel({ query, setQuery, city, setCity, clearSearch, compact = fa
   return (
     <form onSubmit={(event) => { event.preventDefault(); onSubmit?.(); }} className="space-y-3">
       <div className="grid gap-2 md:grid-cols-[1fr_220px]">
-        <label className="flex min-h-12 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 focus-within:ring-2 focus-within:ring-blue-600">
+        <label className="smooth-button flex min-h-12 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-600">
           <Search size={18} className="text-slate-400" />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Poste, entreprise, secteur..." className="w-full bg-transparent text-base font-semibold outline-none" />
           {(query || city !== 'Toutes') && (
-            <button type="button" onClick={clearSearch} aria-label="Effacer la recherche" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <button type="button" onClick={clearSearch} aria-label="Effacer la recherche" className="smooth-button flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
               <X size={18} />
             </button>
           )}
         </label>
-        <label className="flex min-h-12 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 focus-within:ring-2 focus-within:ring-blue-600">
+        <label className="smooth-button flex min-h-12 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-600">
           <MapPin size={18} className="text-slate-400" />
           <select value={city} onChange={(event) => setCity(event.target.value)} className="w-full bg-transparent text-base font-semibold outline-none">
             {cityOptions.map((option) => <option key={option}>{option}</option>)}
@@ -1757,7 +1757,7 @@ function SearchPanel({ query, setQuery, city, setCity, clearSearch, compact = fa
               key={option}
               type="button"
               onClick={() => setCity(option)}
-              className={classNames('min-h-10 shrink-0 rounded-full border px-4 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-blue-600', city === option ? 'border-blue-700 bg-blue-700 text-white' : 'border-slate-200 bg-white text-slate-600')}
+              className={classNames('smooth-button min-h-10 shrink-0 rounded-full border px-4 text-sm font-black focus:outline-none focus:ring-2 focus:ring-blue-600', city === option ? 'border-blue-700 bg-blue-700 text-white shadow-sm shadow-blue-900/20' : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700')}
             >
               {option}
             </button>
@@ -1770,9 +1770,9 @@ function SearchPanel({ query, setQuery, city, setCity, clearSearch, compact = fa
 
 function JobCard({ job, onClick, onApply, saved, onSave }) {
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4 transition hover:border-blue-300">
+    <article className="smooth-card p-4 hover:border-blue-300">
       <div className="flex items-start gap-3">
-        <button onClick={onClick} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+        <button onClick={onClick} className="smooth-button flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-blue-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-600">
           <Building2 size={22} />
         </button>
         <button onClick={onClick} className="min-w-0 flex-1 text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
@@ -1785,13 +1785,13 @@ function JobCard({ job, onClick, onApply, saved, onSave }) {
           </div>
         </button>
         {onSave && (
-          <button onClick={onSave} aria-label="Sauvegarder" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <button onClick={onSave} aria-label="Sauvegarder" className="smooth-button flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
             <Bookmark size={20} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-blue-700' : ''} />
           </button>
         )}
       </div>
       {onApply && (
-        <button onClick={onApply} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+        <button onClick={onApply} className="smooth-button mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-black text-white shadow-sm shadow-blue-900/20 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
           Postuler <Send size={16} />
         </button>
       )}
@@ -1803,7 +1803,7 @@ function TextField({ label, value, onChange, type = 'text', required, placeholde
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-black text-slate-800">{label}</span>
-      <input type={type} required={required} disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base font-semibold outline-none transition disabled:bg-slate-100 disabled:text-slate-500 focus:border-blue-700 focus:ring-2 focus:ring-blue-600" />
+      <input type={type} required={required} disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="smooth-button min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base font-semibold outline-none disabled:bg-slate-100 disabled:text-slate-500 focus:border-blue-700 focus:ring-2 focus:ring-blue-600" />
     </label>
   );
 }
@@ -1814,7 +1814,7 @@ function PasswordField({ label, value, onChange, required, placeholder, visible,
   return (
     <div className="block">
       <label htmlFor={inputId} className="mb-2 block text-sm font-black text-slate-800">{label}</label>
-      <span className="flex min-h-12 w-full items-center rounded-lg border border-slate-300 bg-white pr-2 transition focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-600">
+      <span className="smooth-button flex min-h-12 w-full items-center rounded-lg border border-slate-300 bg-white pr-2 focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-600">
         <input
           id={inputId}
           type={visible ? 'text' : 'password'}
@@ -1830,7 +1830,7 @@ function PasswordField({ label, value, onChange, required, placeholder, visible,
           aria-label={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
           aria-pressed={visible}
           className={classNames(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition focus:outline-none focus:ring-2 focus:ring-blue-600',
+            'smooth-button flex h-10 w-10 shrink-0 items-center justify-center rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600',
             visible ? 'text-blue-700 hover:bg-blue-50' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
           )}
         >
@@ -1845,7 +1845,7 @@ function TextArea({ label, value, onChange, required, placeholder }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-black text-slate-800">{label}</span>
-      <textarea required={required} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} rows={4} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-base font-semibold outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-600" />
+      <textarea required={required} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} rows={4} className="smooth-button w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-base font-semibold outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-600" />
     </label>
   );
 }
@@ -1855,7 +1855,7 @@ function CvUpload({ cvName, cvSize, onChange }) {
   return (
     <div>
       <span className="mb-2 block text-sm font-black text-slate-800">CV PDF</span>
-      <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center transition hover:border-blue-700 hover:bg-blue-50 focus-within:ring-2 focus-within:ring-blue-600">
+      <label className="smooth-card flex min-h-24 cursor-pointer flex-col items-center justify-center border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center hover:border-blue-700 hover:bg-blue-50 focus-within:ring-2 focus-within:ring-blue-600">
         <FileText size={26} className="text-blue-700" />
         <span className="mt-2 text-sm font-black text-slate-900">{cvName || 'Ajouter mon CV'}</span>
         <span className="mt-1 text-xs font-bold text-slate-500">{cvName ? readableSize : `PDF uniquement, ${MAX_CV_LABEL} maximum`}</span>
@@ -1869,7 +1869,7 @@ function SelectField({ label, value, onChange, options }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-black text-slate-800">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base font-semibold outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-600">
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="smooth-button min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base font-semibold outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-600">
         {options.map((option) => <option key={option}>{option}</option>)}
       </select>
     </label>
@@ -1930,7 +1930,7 @@ function EmptyState({ title, body }) {
 
 function ActionCard({ icon: Icon, title, body, onClick }) {
   return (
-    <button onClick={onClick} className="rounded-lg border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-600">
+    <button onClick={onClick} className="smooth-card p-4 text-left hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-600">
       <Icon className="text-blue-700" size={24} />
       <h3 className="mt-3 font-black">{title}</h3>
       <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">{body}</p>
@@ -1940,7 +1940,7 @@ function ActionCard({ icon: Icon, title, body, onClick }) {
 
 function Metric({ value, label }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
+    <div className="app-surface p-3">
       <p className="text-xl font-black text-slate-950">{value}</p>
       <p className="text-xs font-bold text-slate-500">{label}</p>
     </div>
@@ -1949,7 +1949,7 @@ function Metric({ value, label }) {
 
 function StatCard({ value, label }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 text-center">
+    <div className="app-surface p-4 text-center">
       <p className="text-2xl font-black text-slate-950">{value}</p>
       <p className="text-xs font-black uppercase text-slate-500">{label}</p>
     </div>
