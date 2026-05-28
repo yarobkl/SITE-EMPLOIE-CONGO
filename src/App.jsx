@@ -1886,23 +1886,8 @@ function StepPill({ label, active, done }) {
 
 function BrandLogo() {
   return (
-    <div className="relative h-12 w-12 shrink-0">
-      <svg viewBox="0 0 48 48" className="h-12 w-12 drop-shadow-sm" aria-hidden="true">
-        <defs>
-          <linearGradient id="work-mark-bg" x1="8" y1="7" x2="40" y2="42" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#2563EB" />
-            <stop offset="1" stopColor="#0F172A" />
-          </linearGradient>
-        </defs>
-        <rect x="4" y="4" width="40" height="40" rx="12" fill="url(#work-mark-bg)" />
-        <rect x="4.5" y="4.5" width="39" height="39" rx="11.5" fill="none" stroke="#DBEAFE" opacity="0.55" />
-        <path d="M18 18V16.8C18 14.7 19.7 13 21.8 13H26.2C28.3 13 30 14.7 30 16.8V18" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" />
-        <rect x="12" y="18" width="24" height="17" rx="5" fill="white" />
-        <path d="M12 24.5H36" stroke="#BFDBFE" strokeWidth="2" />
-        <path d="M22 27L25 30L31 23.5" fill="none" stroke="#2563EB" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="15" cy="38" r="2" fill="#93C5FD" />
-        <path d="M19 38H33" stroke="#93C5FD" strokeWidth="3" strokeLinecap="round" />
-      </svg>
+    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg">
+      <img src="/logo-congoemploi.svg" alt="" className="h-full w-full object-contain" />
     </div>
   );
 }
