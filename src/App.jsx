@@ -8,6 +8,7 @@ import {
   Check,
   ChevronRight,
   ClipboardList,
+  Download,
   Edit3,
   Eye,
   EyeOff,
@@ -683,32 +684,53 @@ export default function App() {
     notify('Candidature envoyee au recruteur');
   };
 
+  const openCvFile = async (application, mode = 'open') => {
+    if (!application?.cvPath) {
+      notify('Aucun fichier CV disponible pour cette candidature.');
+      return false;
+    }
+    if (!hasSupabaseConfig || !supabase) {
+      notify('Supabase doit etre configure pour ouvrir les CV.');
+      return false;
+    }
+
+    const cvWindow = mode === 'open' ? window.open('about:blank', '_blank') : null;
+    if (cvWindow) cvWindow.opener = null;
+    const { data, error } = await supabase.storage.from('cvs').createSignedUrl(application.cvPath, 60 * 5);
+    if (error || !data?.signedUrl) {
+      cvWindow?.close();
+      notify('CV indisponible pour le moment.');
+      return false;
+    }
+
+    if (mode === 'download') {
+      const link = document.createElement('a');
+      link.href = data.signedUrl;
+      link.download = application.cvName || 'cv.pdf';
+      link.target = '_blank';
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      notify('Telechargement du CV lance.');
+      return true;
+    }
+
+    if (cvWindow) {
+      cvWindow.location.href = data.signedUrl;
+    } else {
+      window.location.href = data.signedUrl;
+    }
+    return true;
+  };
+
   const markApplicationActivity = async (applicationId, field, shouldOpenCv = false) => {
     const currentApplication = [...recruiterApplications, ...applications].find((item) => item.id === applicationId);
     if (!currentApplication) return;
 
     if (shouldOpenCv) {
-      if (!currentApplication.cvPath) {
-        notify('Aucun fichier CV ouvrable pour cette candidature.');
-        return;
-      }
-      if (!hasSupabaseConfig || !supabase) {
-        notify('Supabase doit etre configure pour ouvrir les CV.');
-        return;
-      }
-      const cvWindow = window.open('about:blank', '_blank');
-      if (cvWindow) cvWindow.opener = null;
-      const { data, error } = await supabase.storage.from('cvs').createSignedUrl(currentApplication.cvPath, 60 * 5);
-      if (error || !data?.signedUrl) {
-        cvWindow?.close();
-        notify('CV indisponible pour le moment.');
-        return;
-      }
-      if (cvWindow) {
-        cvWindow.location.href = data.signedUrl;
-      } else {
-        window.location.href = data.signedUrl;
-      }
+      const opened = await openCvFile(currentApplication, 'open');
+      if (!opened) return;
     }
 
     const wasAlreadyOpened = Boolean(currentApplication[field]);
@@ -749,6 +771,13 @@ export default function App() {
       notify('Action recruteur enregistree, pas de notification pour candidature rapide.');
     }
 
+  };
+
+  const downloadApplicationCv = async (applicationId) => {
+    const currentApplication = [...recruiterApplications, ...applications].find((item) => item.id === applicationId);
+    if (!currentApplication) return;
+    const downloaded = await openCvFile(currentApplication, 'download');
+    if (downloaded) await markApplicationActivity(applicationId, 'cvOpened');
   };
 
   const publishJob = async (event) => {
@@ -914,7 +943,7 @@ export default function App() {
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} />;
     if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} setScreen={setScreen} />;
-    if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} startEditJob={startEditJob} deleteJob={deleteJob} isLoggedIn={isLoggedIn} role={profile.role} />;
+    if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} downloadApplicationCv={downloadApplicationCv} startEditJob={startEditJob} deleteJob={deleteJob} isLoggedIn={isLoggedIn} role={profile.role} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
     if (screen === 'settings') return <SettingsScreen />;
@@ -1392,7 +1421,7 @@ function OAuthProviderLogo({ provider }) {
   );
 }
 
-function RecruiterScreen({ jobs, applications, stats, setScreen, openLogin, markApplicationActivity, startEditJob, deleteJob, isLoggedIn, role }) {
+function RecruiterScreen({ jobs, applications, stats, setScreen, openLogin, markApplicationActivity, downloadApplicationCv, startEditJob, deleteJob, isLoggedIn, role }) {
   const [selectedJobId, setSelectedJobId] = useState('all');
   const ownJobs = jobs;
   const canRecruit = isLoggedIn && ['recruteur', 'admin'].includes(role);
@@ -1517,7 +1546,7 @@ function RecruiterScreen({ jobs, applications, stats, setScreen, openLogin, mark
               <span className="rounded-full bg-slate-100 px-3 py-1">{item.trackingEnabled ? 'Candidature suivie' : 'Candidature rapide'}</span>
               <span className="rounded-full bg-slate-100 px-3 py-1">{item.createdAt ? new Date(item.createdAt).toLocaleDateString('fr-FR') : 'Date locale'}</span>
             </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr]">
+            <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_1fr]">
               <button onClick={() => markApplicationActivity(item.id, 'applicationOpened')} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
                 Marquer la demande vue
               </button>
@@ -1527,6 +1556,13 @@ function RecruiterScreen({ jobs, applications, stats, setScreen, openLogin, mark
                 className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
               >
                 Ouvrir le CV <ExternalLink size={16} />
+              </button>
+              <button
+                onClick={() => downloadApplicationCv(item.id)}
+                disabled={!item.cvPath}
+                className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-4 text-sm font-black text-blue-800 transition hover:border-blue-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
+              >
+                Telecharger le CV <Download size={16} />
               </button>
             </div>
           </article>
