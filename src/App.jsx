@@ -249,7 +249,6 @@ export default function App() {
   const [applicationForm, setApplicationForm] = useState(emptyApplication);
   const [jobForm, setJobForm] = useState(emptyJob);
   const [editingJob, setEditingJob] = useState(null);
-  const [dataSource, setDataSource] = useState(hasSupabaseConfig ? 'Connexion en cours' : 'Hors ligne');
 
   const [jobs, setJobs] = useStoredState('congoemploi.v2.jobs', initialJobs);
   const [profile, setProfile] = useStoredState('congoemploi.v2.profile', initialProfile);
@@ -274,13 +273,11 @@ export default function App() {
         .order('created_at', { ascending: false });
       if (cancelled) return;
       if (error) {
-        setDataSource('Hors ligne');
         return;
       }
       if (data?.length) {
         setJobs(data.map(normalizeJob));
       }
-      setDataSource('Supabase');
     }
     loadJobs();
     return () => {
@@ -503,7 +500,7 @@ export default function App() {
   const handleAuth = async (event) => {
     event.preventDefault();
     if (!hasSupabaseConfig || !supabase) {
-      notify('Supabase doit etre configure pour la connexion reelle.');
+      notify('Connexion indisponible pour le moment.');
       return;
     }
     if (loginPassword.length < 6) {
@@ -579,7 +576,7 @@ export default function App() {
 
   const handleOAuthSignIn = async (provider) => {
     if (!hasSupabaseConfig || !supabase) {
-      notify('Supabase doit etre configure pour la connexion reelle.');
+      notify('Connexion indisponible pour le moment.');
       return;
     }
     localStorage.setItem('congoemploi.pendingLoginRole', JSON.stringify(loginRole));
@@ -700,13 +697,14 @@ export default function App() {
       return false;
     }
     if (!hasSupabaseConfig || !supabase) {
-      notify('Supabase doit etre configure pour ouvrir les CV.');
+      notify('Service de fichiers indisponible pour le moment.');
       return false;
     }
 
     const cvWindow = mode === 'open' ? window.open('about:blank', '_blank') : null;
     if (cvWindow) cvWindow.opener = null;
-    const { data, error } = await supabase.storage.from('cvs').createSignedUrl(application.cvPath, 60 * 5);
+    const signedUrlOptions = mode === 'download' ? { download: application.cvName || 'cv.pdf' } : undefined;
+    const { data, error } = await supabase.storage.from('cvs').createSignedUrl(application.cvPath, 60 * 5, signedUrlOptions);
     if (error || !data?.signedUrl) {
       cvWindow?.close();
       notify('CV indisponible pour le moment.');
@@ -970,7 +968,7 @@ export default function App() {
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
     if (screen === 'settings') return <SettingsScreen />;
-    return <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} openLogin={openLogin} hasSupabaseConfig={hasSupabaseConfig} dataSource={dataSource} />;
+    return <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} openLogin={openLogin} />;
   };
 
   return (
@@ -1042,7 +1040,7 @@ function IconButton({ label, children, onClick, badge }) {
   );
 }
 
-function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, clearSearch, openJob, setScreen, openLogin, hasSupabaseConfig, dataSource }) {
+function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, clearSearch, openJob, setScreen, openLogin }) {
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:grid md:grid-cols-[1.2fr_0.8fr] md:gap-8 md:p-8">
@@ -1076,7 +1074,7 @@ function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, clearSear
       <section className="grid gap-3 md:grid-cols-3">
         <ActionCard icon={User} title="Candidat" body="Postule en moins d'une minute." onClick={() => openLogin('candidat')} />
         <ActionCard icon={Building2} title="Recruteur" body="Publie une offre et suis les candidatures." onClick={() => openLogin('recruteur')} />
-        <ActionCard icon={Sparkles} title={hasSupabaseConfig ? 'Base connectee' : 'Configuration requise'} body={hasSupabaseConfig ? `Source: ${dataSource}` : 'Ajoute les variables Supabase pour activer la production.'} onClick={() => setScreen('settings')} />
+        <ActionCard icon={Sparkles} title="Plateforme fiable" body="Comptes, candidatures et CV restent disponibles dans ton espace." onClick={() => setScreen('settings')} />
       </section>
 
       <SectionTitle title="Offres recentes" action="Tout voir" onAction={() => setScreen('jobs')} />
@@ -1283,7 +1281,7 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
       </div>
       {!isLoggedIn && !authLoading && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <p className="text-sm font-bold leading-6 text-blue-950">Connexion reelle Supabase active. Cree ton compte ou connecte-toi pour synchroniser ton profil, tes favoris, tes CV et tes candidatures.</p>
+          <p className="text-sm font-bold leading-6 text-blue-950">Cree ton compte ou connecte-toi pour retrouver ton profil, tes favoris, tes CV et le suivi de tes candidatures.</p>
           <button onClick={() => openLogin('candidat')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
             Connexion candidat
           </button>
@@ -1424,7 +1422,7 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
         </button>
         <p className="text-xs font-semibold leading-5 text-slate-500">
           {isSignup
-            ? `Ce compte sera cree comme ${isRecruiterLogin ? 'recruteur' : 'candidat'}. Si la confirmation email est active sur Supabase, tu devras valider le lien recu.`
+            ? `Ce compte sera cree comme ${isRecruiterLogin ? 'recruteur' : 'candidat'}. Si une validation email est demandee, confirme le lien recu avant de te reconnecter.`
             : isRecruiterLogin
               ? 'Utilise ici ton compte recruteur pour voir tes offres, tes candidats et leurs CV.'
               : 'Utilise ici ton compte candidat pour postuler et suivre tes candidatures.'}
@@ -1711,21 +1709,19 @@ function NotificationsScreen({ notifications, setNotifications }) {
 function SettingsScreen() {
   return (
     <div className="space-y-5">
-      <PageHeader title="Base de donnees" subtitle="Supabase est connecte a la production" />
+      <PageHeader title="Parametres" subtitle="Gestion du compte et de la plateforme" />
       <div className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex items-center gap-3">
-          <div className={classNames('flex h-11 w-11 items-center justify-center rounded-lg text-white', hasSupabaseConfig ? 'bg-emerald-600' : 'bg-blue-700')}>
+          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-600 text-white">
             <ShieldCheck size={20} />
           </div>
           <div>
-            <h2 className="font-black">{hasSupabaseConfig ? 'Supabase connecte' : 'Configuration requise'}</h2>
-            <p className="text-sm font-semibold text-slate-500">
-              {hasSupabaseConfig ? 'Les offres, candidatures, comptes et CV sont relies a Supabase.' : 'Ajoute les variables Supabase sur Vercel pour activer la production.'}
-            </p>
+            <h2 className="font-black">Service operationnel</h2>
+            <p className="text-sm font-semibold text-slate-500">Les comptes, offres, candidatures et CV sont geres de facon securisee.</p>
           </div>
         </div>
         <div className="mt-5 rounded-lg bg-slate-100 p-4 text-sm font-semibold leading-7 text-slate-700">
-          Tables prevues: profiles, companies, jobs, applications, saved_jobs, notifications.
+          Tu peux utiliser le site normalement. Les informations techniques restent reservees a l'equipe projet.
         </div>
       </div>
     </div>
