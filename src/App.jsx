@@ -121,6 +121,7 @@ const initialProfile = {
   city: 'Brazzaville',
   role: 'candidat',
   title: '',
+  avatarDataUrl: '',
 };
 
 const MAX_CV_BYTES = 2 * 1024 * 1024;
@@ -166,6 +167,14 @@ function useStoredState(key, fallback) {
 
 function classNames(...values) {
   return values.filter(Boolean).join(' ');
+}
+
+function getInitials(profile) {
+  const letters = [profile.prenom, profile.nom]
+    .filter(Boolean)
+    .map((value) => value.trim().charAt(0))
+    .join('');
+  return (letters || profile.email?.charAt(0) || 'U').slice(0, 2).toUpperCase();
 }
 
 function getVisitorKey() {
@@ -432,6 +441,7 @@ export default function App() {
   }, [authUser?.id]);
 
   const publishedJobs = jobs.filter((job) => job.status === 'published');
+  const hasPublishedOffer = recruiterJobs.length > 0;
   const filteredJobs = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return publishedJobs.filter((job) => {
@@ -553,7 +563,7 @@ export default function App() {
       .eq('id', data.user.id)
       .maybeSingle();
     const signedRole = signedProfile?.role || data.user.user_metadata?.role || 'candidat';
-    if (loginRole === 'recruteur' && !['recruteur', 'admin'].includes(signedRole)) {
+    if (loginRole === 'recruteur' && signedRole !== 'recruteur') {
       notify('Ce compte est candidat. Utilise un compte recruteur ou change le type dans ton profil.');
       setProfile((current) => ({ ...current, ...(signedProfile || {}), email: data.user.email || current.email }));
       setScreen('profile');
@@ -787,7 +797,7 @@ export default function App() {
       openLogin('recruteur');
       return;
     }
-    if (!['recruteur', 'admin'].includes(profile.role)) {
+    if (profile.role !== 'recruteur') {
       notify('Active le mode recruteur dans ton profil.');
       setScreen('profile');
       return;
@@ -928,6 +938,19 @@ export default function App() {
     notify('Profil mis a jour');
   };
 
+  const openRecruiterSpace = () => {
+    if (!isLoggedIn) {
+      openLogin('recruteur');
+      return;
+    }
+    if (profile.role !== 'recruteur' && !hasPublishedOffer) {
+      notify("Ton compte candidat n'a pas encore d'espace recruteur actif.");
+      setScreen('profile');
+      return;
+    }
+    setScreen('recruiter');
+  };
+
   const navItems = [
     { id: 'home', label: 'Accueil', icon: Home },
     { id: 'jobs', label: 'Offres', icon: Briefcase },
@@ -941,7 +964,7 @@ export default function App() {
     if (screen === 'job') return <JobScreen job={activeJob} saved={savedIds.includes(activeJob?.id)} toggleSave={toggleSave} setScreen={setScreen} />;
     if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
-    if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} />;
+    if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} openLogin={openLogin} openRecruiterSpace={openRecruiterSpace} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} hasPublishedOffer={hasPublishedOffer} />;
     if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} setScreen={setScreen} />;
     if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} downloadApplicationCv={downloadApplicationCv} startEditJob={startEditJob} deleteJob={deleteJob} isLoggedIn={isLoggedIn} role={profile.role} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} />;
@@ -968,7 +991,7 @@ export default function App() {
             <IconButton label="Profil" onClick={() => setScreen('profile')}>
               <User size={20} />
             </IconButton>
-            <IconButton label="Recruteur" onClick={() => setScreen('recruiter')}>
+            <IconButton label="Recruteur" onClick={openRecruiterSpace}>
               <LayoutDashboard size={20} />
             </IconButton>
             <IconButton label="Parametres" onClick={() => setScreen('settings')}>
@@ -990,7 +1013,7 @@ export default function App() {
             return (
               <button
                 key={item.id}
-                onClick={() => setScreen(item.id)}
+                onClick={() => (item.id === 'recruiter' ? openRecruiterSpace() : setScreen(item.id))}
                 className={classNames('flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-blue-600', active ? 'text-blue-700' : 'text-slate-500')}
               >
                 <Icon size={21} fill={active ? 'currentColor' : 'none'} />
@@ -1230,11 +1253,24 @@ function SavedScreen({ jobs, openJob }) {
   );
 }
 
-function ProfileScreen({ profile, setProfile, applications, updateProfile, setScreen, openLogin, isLoggedIn, authLoading, handleLogout }) {
+function ProfileScreen({ profile, setProfile, applications, updateProfile, setScreen, openLogin, openRecruiterSpace, isLoggedIn, authLoading, handleLogout, hasPublishedOffer }) {
   const trackedApplications = applications.filter((item) => item.trackingEnabled);
   const cvOpenedCount = trackedApplications.filter((item) => item.cvOpened).length;
   const applicationOpenedCount = trackedApplications.filter((item) => item.applicationOpened).length;
-  const isRecruiter = ['recruteur', 'admin'].includes(profile.role);
+  const isRecruiter = profile.role === 'recruteur';
+  const displayName = `${profile.prenom || ''} ${profile.nom || ''}`.trim() || 'Profil candidat';
+  const handleAvatarChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/') || file.size > 1.5 * 1024 * 1024) {
+      event.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setProfile({ ...profile, avatarDataUrl: reader.result });
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3">
@@ -1254,15 +1290,44 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
         </div>
       )}
       {isLoggedIn && isRecruiter && (
-        <button onClick={() => setScreen('recruiter')} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
-          <LayoutDashboard size={18} /> Aller a mon espace recruteur
+        <button onClick={openRecruiterSpace} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <LayoutDashboard size={18} /> {hasPublishedOffer ? 'Aller a mon espace recruteur' : 'Publier ma premiere offre'}
         </button>
       )}
-      <div className="grid grid-cols-3 gap-2">
-        <StatCard value={trackedApplications.length} label="Suivies" />
-        <StatCard value={applicationOpenedCount} label="Demandes vues" />
-        <StatCard value={cvOpenedCount} label="CV ouverts" />
+
+      <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[0.9fr_1.1fr] md:p-5">
+        <div className="flex items-center gap-4">
+          <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-blue-700 text-white">
+            {profile.avatarDataUrl ? (
+              <img src={profile.avatarDataUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-2xl font-black">{getInitials(profile)}</div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase text-blue-700">{isRecruiter ? 'Recruteur' : 'Candidat'}</p>
+            <h2 className="mt-1 truncate text-xl font-black text-slate-950">{displayName}</h2>
+            <p className="mt-1 truncate text-sm font-semibold text-slate-500">{profile.title || 'Titre a completer'} - {profile.city}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <label className="flex min-h-10 cursor-pointer items-center justify-center rounded-lg border border-slate-300 px-3 text-xs font-black text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus-within:ring-2 focus-within:ring-blue-600">
+                Ajouter une photo
+                <input type="file" accept="image/*" onChange={handleAvatarChange} className="sr-only" />
+              </label>
+              {profile.avatarDataUrl && (
+                <button type="button" onClick={() => setProfile({ ...profile, avatarDataUrl: '' })} className="min-h-10 rounded-lg border border-red-200 px-3 text-xs font-black text-red-700 transition hover:border-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600">
+                  Retirer
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <StatCard value={trackedApplications.length} label="Suivies" />
+          <StatCard value={applicationOpenedCount} label="Demandes vues" />
+          <StatCard value={cvOpenedCount} label="CV ouverts" />
+        </div>
       </div>
+
       <form onSubmit={updateProfile} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-5 md:grid-cols-2">
         <TextField label="Nom" value={profile.nom} onChange={(nom) => setProfile({ ...profile, nom })} />
         <TextField label="Prenom" value={profile.prenom} onChange={(prenom) => setProfile({ ...profile, prenom })} />
@@ -1424,7 +1489,7 @@ function OAuthProviderLogo({ provider }) {
 function RecruiterScreen({ jobs, applications, stats, setScreen, openLogin, markApplicationActivity, downloadApplicationCv, startEditJob, deleteJob, isLoggedIn, role }) {
   const [selectedJobId, setSelectedJobId] = useState('all');
   const ownJobs = jobs;
-  const canRecruit = isLoggedIn && ['recruteur', 'admin'].includes(role);
+  const canRecruit = isLoggedIn && (role === 'recruteur' || ownJobs.length > 0);
   const reviewedCount = applications.filter((item) => item.status === 'reviewed' || item.applicationOpened || item.cvOpened).length;
   const applicationsByJobId = useMemo(() => {
     return applications.reduce((groups, item) => {
@@ -1451,12 +1516,33 @@ function RecruiterScreen({ jobs, applications, stats, setScreen, openLogin, mark
       )}
       {isLoggedIn && !canRecruit && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm font-bold leading-6 text-amber-900">Passe ton profil en type de compte recruteur pour publier et recevoir les candidatures.</p>
+          <p className="text-sm font-bold leading-6 text-amber-900">Ton compte candidat reste dans son espace candidat. Passe en compte recruteur pour publier une offre et ouvrir un vrai espace recruteur.</p>
           <button onClick={() => setScreen('profile')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
             Modifier mon profil
           </button>
         </div>
       )}
+      {canRecruit && ownJobs.length === 0 && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-5">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-700 text-white">
+            <PlusCircle size={24} />
+          </div>
+          <h2 className="mt-4 text-xl font-black text-slate-950">Publie ta premiere offre</h2>
+          <p className="mt-2 text-sm font-bold leading-6 text-blue-950">
+            Ton tableau recruteur s'ouvrira avec les candidatures, les CV et les KPI apres la premiere offre publiee. Avant cela, aucun espace admin inutile n'est affiche.
+          </p>
+          <button onClick={() => setScreen('post-job')} className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+            Publier ma premiere offre <PlusCircle size={18} />
+          </button>
+        </div>
+      )}
+      {(!isLoggedIn || !canRecruit || ownJobs.length === 0) && (
+        <button onClick={() => setScreen('jobs')} className="flex min-h-11 w-full items-center justify-center rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          Retour aux offres
+        </button>
+      )}
+      {canRecruit && ownJobs.length > 0 && (
+        <>
       <div className="grid grid-cols-3 gap-2">
         <StatCard value={ownJobs.length} label="Mes offres" />
         <StatCard value={applications.length} label="Candidats" />
@@ -1569,6 +1655,8 @@ function RecruiterScreen({ jobs, applications, stats, setScreen, openLogin, mark
         ))}
         {visibleApplications.length === 0 && <EmptyState title="Aucune candidature recue" body="Les candidats apparaitront ici avec leurs messages et leurs CV PDF." />}
       </div>
+        </>
+      )}
     </div>
   );
 }
