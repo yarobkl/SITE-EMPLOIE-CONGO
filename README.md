@@ -36,6 +36,21 @@ npm run dev
 npm run build
 ```
 
+## Qualite
+
+```bash
+npm run lint   # ESLint (regles React + hooks)
+npm test       # Tests unitaires (Vitest)
+```
+
+## Structure du code
+
+- `src/constants.js` : donnees et constantes partagees.
+- `src/lib/` : client Supabase, stockage local, helpers de formatage/normalisation.
+- `src/components/` : composants UI reutilisables et Error Boundary.
+- `src/screens/` : un fichier par ecran de l'application.
+- `src/App.jsx` : etat global, appels Supabase et routage entre les ecrans.
+
 ## Variables d'environnement
 
 Copier `.env.example` vers `.env.local` en local, puis renseigner les memes variables dans Vercel:
