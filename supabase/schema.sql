@@ -93,7 +93,8 @@ alter table public.notifications enable row level security;
 grant usage on schema public to anon, authenticated;
 grant select on public.companies, public.jobs to anon, authenticated;
 grant insert on public.companies, public.jobs, public.applications to anon, authenticated;
-grant insert, select on public.job_views to anon, authenticated;
+grant insert on public.job_views to anon, authenticated;
+grant select on public.job_views to authenticated;
 grant update, delete on public.jobs to authenticated;
 grant update on public.companies to authenticated;
 grant select, update on public.applications to authenticated;
@@ -109,6 +110,28 @@ create policy "profiles read own" on public.profiles
 
 create policy "profiles update own" on public.profiles
   for update using (auth.uid() = id);
+
+-- Privilege escalation guard: only the backend (service_role) may grant the
+-- admin role. A regular authenticated user editing their own profile cannot
+-- promote themselves to admin through the REST API.
+create or replace function public.enforce_profile_role()
+returns trigger
+language plpgsql
+as $$
+begin
+  if coalesce(auth.role(), '') <> 'service_role' and new.role = 'admin' then
+    if tg_op = 'INSERT' or old.role is distinct from 'admin' then
+      new.role := 'candidat';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists enforce_profile_role on public.profiles;
+create trigger enforce_profile_role
+  before insert or update on public.profiles
+  for each row execute function public.enforce_profile_role();
 
 create policy "jobs are public" on public.jobs
   for select using (status = 'published');
@@ -201,8 +224,15 @@ create policy "recruiters read saved jobs for own jobs" on public.saved_jobs
 create policy "job views insert public" on public.job_views
   for insert with check (true);
 
-create policy "job views read public" on public.job_views
-  for select using (true);
+create policy "recruiters read own job views" on public.job_views
+  for select using (
+    exists (
+      select 1 from public.jobs
+      join public.companies on companies.id = jobs.company_id
+      where jobs.id = job_views.job_id
+      and companies.owner_id = auth.uid()
+    )
+  );
 
 create policy "notifications own access" on public.notifications
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

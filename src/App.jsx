@@ -473,7 +473,7 @@ export default function App() {
         job_id: job.id,
         viewer_id: authUser?.id || null,
         session_key: getVisitorKey(),
-      }, { onConflict: 'job_id,session_key' });
+      }, { onConflict: 'job_id,session_key', ignoreDuplicates: true });
     }
   };
 
@@ -503,8 +503,8 @@ export default function App() {
       notify('Connexion indisponible pour le moment.');
       return;
     }
-    if (loginPassword.length < 6) {
-      notify('Mot de passe: 6 caracteres minimum.');
+    if (loginPassword.length < 8) {
+      notify('Mot de passe: 8 caracteres minimum.');
       return;
     }
 
@@ -1413,7 +1413,7 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
           value={loginPassword}
           onChange={setLoginPassword}
           required
-          placeholder="Minimum 6 caracteres"
+          placeholder="Minimum 8 caracteres"
           visible={showPassword}
           onToggle={() => setShowPassword((visible) => !visible)}
         />

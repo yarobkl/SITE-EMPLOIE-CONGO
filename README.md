@@ -53,10 +53,11 @@ Pour une nouvelle base Supabase, executer:
 -- supabase/schema.sql
 ```
 
-Pour durcir une base deja creee pendant le developpement, executer ensuite:
+Pour durcir une base deja creee pendant le developpement, executer ensuite, dans l'ordre:
 
 ```sql
 -- supabase/final-hardening.sql
+-- supabase/security-hardening.sql
 ```
 
 Le fichier `final-hardening.sql` retire les anciennes permissions de demonstration et active les regles finales:
@@ -65,3 +66,8 @@ Le fichier `final-hardening.sql` retire les anciennes permissions de demonstrati
 - seules les candidatures recues sur ses offres sont visibles au recruteur;
 - seuls le candidat et les recruteurs autorises peuvent ouvrir les CV selon le flux;
 - les candidatures rapides restent possibles sans suivi temps reel.
+
+Le fichier `security-hardening.sql` ajoute les protections de securite finales (deja incluses dans `schema.sql` pour une nouvelle base):
+
+- un compte ne peut pas s'auto-attribuer le role `admin` via l'API;
+- les statistiques de vues d'offres ne sont lisibles que par le recruteur proprietaire.
