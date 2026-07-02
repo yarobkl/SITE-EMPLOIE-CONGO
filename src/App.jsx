@@ -126,6 +126,7 @@ const initialProfile = {
 
 const MAX_CV_BYTES = 2 * 1024 * 1024;
 const MAX_CV_LABEL = '2 Mo';
+const PENDING_LOGIN_ROLE_KEY = 'congoemploi.pendingLoginRole';
 const OAUTH_PROVIDERS = [
   { provider: 'google', label: 'Google' },
   { provider: 'facebook', label: 'Facebook' },
@@ -167,6 +168,57 @@ function useStoredState(key, fallback) {
 
 function classNames(...values) {
   return values.filter(Boolean).join(' ');
+}
+
+function getAuthRedirectUrl() {
+  return window.location.origin;
+}
+
+function getOAuthErrorFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  return params.get('error_description') || params.get('error') || hashParams.get('error_description') || hashParams.get('error') || '';
+}
+
+function cleanAuthParamsFromUrl() {
+  const url = new URL(window.location.href);
+  const hadSearchAuthParams = ['error', 'error_description', 'code'].some((key) => url.searchParams.has(key));
+  const hadHashAuthParams = /access_token|refresh_token|error|code/.test(url.hash);
+  if (!hadSearchAuthParams && !hadHashAuthParams) return;
+  url.searchParams.delete('error');
+  url.searchParams.delete('error_description');
+  url.searchParams.delete('code');
+  url.hash = '';
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
+}
+
+function friendlyAuthError(message) {
+  if (!message) return 'Connexion interrompue. Reessaie dans quelques instants.';
+  const lower = message.toLowerCase();
+  if (lower.includes('redirect') || lower.includes('callback')) {
+    return 'Connexion Google mal configuree. Verifie les URLs autorisees dans Supabase et Google Cloud.';
+  }
+  if (lower.includes('provider') || lower.includes('disabled')) {
+    return 'Connexion Google non activee pour le moment.';
+  }
+  return 'Connexion interrompue. Reessaie avec Google ou ton email.';
+}
+
+function friendlyEmailAuthError(message) {
+  const lower = (message || '').toLowerCase();
+  if (lower.includes('invalid login') || lower.includes('invalid credentials')) {
+    return 'Email ou mot de passe incorrect.';
+  }
+  if (lower.includes('email not confirmed')) {
+    return 'Confirme ton email avant de te connecter.';
+  }
+  if (lower.includes('already registered') || lower.includes('already been registered')) {
+    return 'Un compte existe deja avec cet email.';
+  }
+  if (lower.includes('password')) {
+    return 'Mot de passe invalide. Utilise au moins 6 caracteres.';
+  }
+  return 'Connexion impossible pour le moment. Reessaie dans quelques instants.';
 }
 
 function getInitials(profile) {
@@ -246,6 +298,8 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [authUser, setAuthUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
+  const [authBusyProvider, setAuthBusyProvider] = useState('');
+  const [serviceStatus, setServiceStatus] = useState(hasSupabaseConfig ? 'checking' : 'offline');
   const [applicationForm, setApplicationForm] = useState(emptyApplication);
   const [jobForm, setJobForm] = useState(emptyJob);
   const [editingJob, setEditingJob] = useState(null);
@@ -273,8 +327,10 @@ export default function App() {
         .order('created_at', { ascending: false });
       if (cancelled) return;
       if (error) {
+        setServiceStatus('degraded');
         return;
       }
+      setServiceStatus('online');
       if (data?.length) {
         setJobs(data.map(normalizeJob));
       }
@@ -294,8 +350,18 @@ export default function App() {
     let active = true;
 
     async function bootstrapAuth() {
-      const { data } = await supabase.auth.getSession();
+      const oauthError = getOAuthErrorFromUrl();
+      if (oauthError) {
+        setToast(friendlyAuthError(oauthError));
+        window.setTimeout(() => setToast(''), 3200);
+      }
+      const { data, error } = await supabase.auth.getSession();
       if (!active) return;
+      cleanAuthParamsFromUrl();
+      if (error) {
+        setToast('Session expiree. Reconnecte-toi pour continuer.');
+        window.setTimeout(() => setToast(''), 3200);
+      }
       setAuthUser(data.session?.user || null);
       setAuthLoading(false);
     }
@@ -303,6 +369,7 @@ export default function App() {
     bootstrapAuth();
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setAuthUser(session?.user || null);
+      setAuthBusyProvider('');
       setAuthLoading(false);
     });
 
@@ -317,6 +384,7 @@ export default function App() {
     let cancelled = false;
 
     async function loadUserData() {
+      const pendingRole = readStorage(PENDING_LOGIN_ROLE_KEY, '');
       const { data: profileRow } = await supabase
         .from('profiles')
         .select('nom,prenom,email,phone,city,role,title')
@@ -325,10 +393,13 @@ export default function App() {
 
       if (!cancelled) {
         if (profileRow) {
+          localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
           setProfile((current) => ({ ...current, ...profileRow, email: profileRow.email || authUser.email || current.email }));
+          if (screen === 'login') {
+            setScreen(profileRow.role === 'recruteur' ? 'recruiter' : 'profile');
+          }
         } else {
           const metadata = authUser.user_metadata || {};
-          const pendingRole = readStorage('congoemploi.pendingLoginRole', 'candidat');
           const displayName = metadata.full_name || metadata.name || '';
           const [firstName = '', ...lastNameParts] = displayName.split(' ').filter(Boolean);
           const nextProfile = {
@@ -342,8 +413,11 @@ export default function App() {
             title: '',
           };
           await supabase.from('profiles').upsert(nextProfile);
-          localStorage.removeItem('congoemploi.pendingLoginRole');
+          localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
           setProfile((current) => ({ ...current, ...nextProfile }));
+          if (screen === 'login') {
+            setScreen(nextProfile.role === 'recruteur' ? 'recruiter' : 'profile');
+          }
         }
       }
 
@@ -521,7 +595,7 @@ export default function App() {
         },
       });
       if (error) {
-        notify(error.message);
+        notify(friendlyEmailAuthError(error.message));
         return;
       }
       if (data.user) {
@@ -551,7 +625,7 @@ export default function App() {
       password: loginPassword,
     });
     if (error) {
-      notify(error.message);
+      notify(friendlyEmailAuthError(error.message));
       return;
     }
     const { data: signedProfile } = await supabase
@@ -579,14 +653,20 @@ export default function App() {
       notify('Connexion indisponible pour le moment.');
       return;
     }
-    localStorage.setItem('congoemploi.pendingLoginRole', JSON.stringify(loginRole));
+    setAuthBusyProvider(provider);
+    localStorage.setItem(PENDING_LOGIN_ROLE_KEY, JSON.stringify(loginRole));
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: getAuthRedirectUrl(),
+        queryParams: provider === 'google' ? { prompt: 'select_account' } : undefined,
       },
     });
-    if (error) notify(error.message);
+    if (error) {
+      localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
+      setAuthBusyProvider('');
+      notify(friendlyAuthError(error.message));
+    }
   };
 
   const handleLogout = async () => {
@@ -963,11 +1043,11 @@ export default function App() {
     if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} openLogin={openLogin} openRecruiterSpace={openRecruiterSpace} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} hasPublishedOffer={hasPublishedOffer} />;
-    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} setScreen={setScreen} />;
+    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} authBusyProvider={authBusyProvider} setScreen={setScreen} />;
     if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} downloadApplicationCv={downloadApplicationCv} startEditJob={startEditJob} deleteJob={deleteJob} isLoggedIn={isLoggedIn} role={profile.role} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
-    if (screen === 'settings') return <SettingsScreen />;
+    if (screen === 'settings') return <SettingsScreen serviceStatus={serviceStatus} />;
     return <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} openLogin={openLogin} />;
   };
 
@@ -1371,7 +1451,7 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
   );
 }
 
-function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleOAuthSignIn, setScreen }) {
+function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleOAuthSignIn, authBusyProvider, setScreen }) {
   const isSignup = authMode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
   const isRecruiterLogin = loginRole === 'recruteur';
@@ -1394,7 +1474,7 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
         <p className="text-sm font-black text-slate-900">Continuer avec</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           {OAUTH_PROVIDERS.map((item) => (
-            <SocialLoginButton key={item.provider} item={item} onClick={() => handleOAuthSignIn(item.provider)} />
+            <SocialLoginButton key={item.provider} item={item} busy={authBusyProvider === item.provider} disabled={Boolean(authBusyProvider)} onClick={() => handleOAuthSignIn(item.provider)} />
           ))}
         </div>
       </div>
@@ -1432,11 +1512,11 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
   );
 }
 
-function SocialLoginButton({ item, onClick }) {
+function SocialLoginButton({ item, onClick, busy = false, disabled = false }) {
   return (
-    <button type="button" onClick={onClick} className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-800 transition hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-600">
+    <button type="button" onClick={onClick} disabled={disabled} className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-800 transition hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-60">
       <OAuthProviderLogo provider={item.provider} />
-      {item.label}
+      {busy ? 'Connexion...' : item.label}
     </button>
   );
 }
@@ -1706,18 +1786,41 @@ function NotificationsScreen({ notifications, setNotifications }) {
   );
 }
 
-function SettingsScreen() {
+function SettingsScreen({ serviceStatus }) {
+  const statusCopy = {
+    online: {
+      title: 'Service operationnel',
+      body: 'Les comptes, offres, candidatures et CV sont geres de facon securisee.',
+      tone: 'bg-emerald-600',
+    },
+    checking: {
+      title: 'Verification en cours',
+      body: 'Le service verifie la connexion aux comptes, offres, candidatures et CV.',
+      tone: 'bg-blue-700',
+    },
+    degraded: {
+      title: 'Service a verifier',
+      body: "Les donnees peuvent prendre du retard. L'equipe projet doit verifier la connexion de production.",
+      tone: 'bg-amber-500',
+    },
+    offline: {
+      title: 'Configuration requise',
+      body: "La connexion de production doit etre configuree avant d'utiliser les comptes et les CV.",
+      tone: 'bg-slate-700',
+    },
+  };
+  const copy = statusCopy[serviceStatus] || statusCopy.checking;
   return (
     <div className="space-y-5">
       <PageHeader title="Parametres" subtitle="Gestion du compte et de la plateforme" />
       <div className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-600 text-white">
+          <div className={classNames('flex h-11 w-11 items-center justify-center rounded-lg text-white', copy.tone)}>
             <ShieldCheck size={20} />
           </div>
           <div>
-            <h2 className="font-black">Service operationnel</h2>
-            <p className="text-sm font-semibold text-slate-500">Les comptes, offres, candidatures et CV sont geres de facon securisee.</p>
+            <h2 className="font-black">{copy.title}</h2>
+            <p className="text-sm font-semibold text-slate-500">{copy.body}</p>
           </div>
         </div>
         <div className="mt-5 rounded-lg bg-slate-100 p-4 text-sm font-semibold leading-7 text-slate-700">
