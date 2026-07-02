@@ -577,75 +577,84 @@ export default function App() {
       notify('Connexion indisponible pour le moment.');
       return;
     }
+    if (serviceStatus !== 'online') {
+      notify(serviceStatus === 'checking' ? 'Verification du service en cours. Reessaie dans quelques secondes.' : 'Connexion temporairement indisponible. La production doit etre rebranchee.');
+      return;
+    }
     if (loginPassword.length < 6) {
       notify('Mot de passe: 6 caracteres minimum.');
       return;
     }
 
-    if (authMode === 'signup') {
-      const { data, error } = await supabase.auth.signUp({
-        email: loginEmail,
-        password: loginPassword,
-        options: {
-          data: {
+    try {
+      if (authMode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({
+          email: loginEmail,
+          password: loginPassword,
+          options: {
+            data: {
+              role: loginRole,
+              nom: profile.nom,
+              prenom: profile.prenom,
+            },
+          },
+        });
+        if (error) {
+          notify(friendlyEmailAuthError(error.message));
+          return;
+        }
+        if (data.user) {
+          const nextProfile = {
+            id: data.user.id,
+            email: data.user.email,
             role: loginRole,
             nom: profile.nom,
             prenom: profile.prenom,
-          },
-        },
+            phone: profile.phone,
+            city: profile.city,
+            title: profile.title,
+          };
+          await supabase.from('profiles').upsert({
+            ...nextProfile,
+          });
+          setProfile((current) => ({ ...current, ...nextProfile }));
+        }
+        setLoginPassword('');
+        setScreen(loginRole === 'recruteur' ? 'recruiter' : 'profile');
+        notify(data.session ? 'Compte cree et connecte' : 'Compte cree. Verifie ton email pour te connecter.');
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password: loginPassword,
       });
       if (error) {
         notify(friendlyEmailAuthError(error.message));
         return;
       }
-      if (data.user) {
-        const nextProfile = {
-          id: data.user.id,
-          email: data.user.email,
-          role: loginRole,
-          nom: profile.nom,
-          prenom: profile.prenom,
-          phone: profile.phone,
-          city: profile.city,
-          title: profile.title,
-        };
-        await supabase.from('profiles').upsert({
-          ...nextProfile,
-        });
-        setProfile((current) => ({ ...current, ...nextProfile }));
+      const { data: signedProfile } = await supabase
+        .from('profiles')
+        .select('nom,prenom,email,phone,city,role,title')
+        .eq('id', data.user.id)
+        .maybeSingle();
+      const signedRole = signedProfile?.role || data.user.user_metadata?.role || 'candidat';
+      if (loginRole === 'recruteur' && signedRole !== 'recruteur') {
+        notify('Ce compte est candidat. Utilise un compte recruteur ou change le type dans ton profil.');
+        setProfile((current) => ({ ...current, ...(signedProfile || {}), email: data.user.email || current.email }));
+        setScreen('profile');
+        return;
       }
+      setAuthUser(data.user);
+      setProfile((current) => ({ ...current, ...(signedProfile || {}), email: data.user.email || signedProfile?.email || current.email }));
+      setLoginEmail('');
       setLoginPassword('');
       setScreen(loginRole === 'recruteur' ? 'recruiter' : 'profile');
-      notify(data.session ? 'Compte cree et connecte' : 'Compte cree. Verifie ton email pour te connecter.');
-      return;
+      notify('Connexion reussie');
+    } catch {
+      setServiceStatus('degraded');
+      notify('Connexion temporairement indisponible. Reessaie apres verification du service.');
     }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: loginEmail,
-      password: loginPassword,
-    });
-    if (error) {
-      notify(friendlyEmailAuthError(error.message));
-      return;
-    }
-    const { data: signedProfile } = await supabase
-      .from('profiles')
-      .select('nom,prenom,email,phone,city,role,title')
-      .eq('id', data.user.id)
-      .maybeSingle();
-    const signedRole = signedProfile?.role || data.user.user_metadata?.role || 'candidat';
-    if (loginRole === 'recruteur' && signedRole !== 'recruteur') {
-      notify('Ce compte est candidat. Utilise un compte recruteur ou change le type dans ton profil.');
-      setProfile((current) => ({ ...current, ...(signedProfile || {}), email: data.user.email || current.email }));
-      setScreen('profile');
-      return;
-    }
-    setAuthUser(data.user);
-    setProfile((current) => ({ ...current, ...(signedProfile || {}), email: data.user.email || signedProfile?.email || current.email }));
-    setLoginEmail('');
-    setLoginPassword('');
-    setScreen(loginRole === 'recruteur' ? 'recruiter' : 'profile');
-    notify('Connexion reussie');
   };
 
   const handleOAuthSignIn = async (provider) => {
@@ -653,19 +662,30 @@ export default function App() {
       notify('Connexion indisponible pour le moment.');
       return;
     }
-    setAuthBusyProvider(provider);
-    localStorage.setItem(PENDING_LOGIN_ROLE_KEY, JSON.stringify(loginRole));
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: getAuthRedirectUrl(),
-        queryParams: provider === 'google' ? { prompt: 'select_account' } : undefined,
-      },
-    });
-    if (error) {
+    if (serviceStatus !== 'online') {
+      notify(serviceStatus === 'checking' ? 'Verification du service en cours. Reessaie dans quelques secondes.' : 'Connexion sociale temporairement indisponible. La production doit etre rebranchee.');
+      return;
+    }
+    try {
+      setAuthBusyProvider(provider);
+      localStorage.setItem(PENDING_LOGIN_ROLE_KEY, JSON.stringify(loginRole));
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: getAuthRedirectUrl(),
+          queryParams: provider === 'google' ? { prompt: 'select_account' } : undefined,
+        },
+      });
+      if (error) {
+        localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
+        setAuthBusyProvider('');
+        notify(friendlyAuthError(error.message));
+      }
+    } catch {
       localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
       setAuthBusyProvider('');
-      notify(friendlyAuthError(error.message));
+      setServiceStatus('degraded');
+      notify('Connexion sociale temporairement indisponible. Reessaie apres verification du service.');
     }
   };
 
@@ -1043,7 +1063,7 @@ export default function App() {
     if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} openLogin={openLogin} openRecruiterSpace={openRecruiterSpace} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} hasPublishedOffer={hasPublishedOffer} />;
-    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} authBusyProvider={authBusyProvider} setScreen={setScreen} />;
+    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} authBusyProvider={authBusyProvider} serviceStatus={serviceStatus} setScreen={setScreen} />;
     if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} downloadApplicationCv={downloadApplicationCv} startEditJob={startEditJob} deleteJob={deleteJob} isLoggedIn={isLoggedIn} role={profile.role} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
@@ -1349,6 +1369,25 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
     reader.readAsDataURL(file);
   };
 
+  if (!isLoggedIn && !authLoading) {
+    return (
+      <div className="space-y-5">
+        <PageHeader title="Profil" subtitle="Connecte-toi pour activer le suivi temps reel" />
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-5">
+          <p className="text-sm font-bold leading-6 text-blue-950">Cree ton compte ou connecte-toi pour retrouver ton profil, tes favoris, tes CV et le suivi de tes candidatures.</p>
+          <button onClick={() => openLogin('candidat')} className="mt-4 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+            Connexion candidat
+          </button>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <ProfileInfoCard icon={FileText} title="CV et profil" body="Garde tes informations pretes pour postuler plus vite." />
+          <ProfileInfoCard icon={Bell} title="Suivi de dossier" body="Retrouve les ouvertures de demande et de CV dans ton espace." />
+          <ProfileInfoCard icon={Briefcase} title="Offres sauvegardees" body="Conserve les offres importantes pour y revenir plus tard." />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3">
@@ -1451,12 +1490,28 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
   );
 }
 
-function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleOAuthSignIn, authBusyProvider, setScreen }) {
+function ProfileInfoCard({ icon: Icon, title, body }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+        <Icon size={18} />
+      </div>
+      <h3 className="mt-3 font-black text-slate-950">{title}</h3>
+      <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">{body}</p>
+    </div>
+  );
+}
+
+function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleOAuthSignIn, authBusyProvider, serviceStatus, setScreen }) {
   const isSignup = authMode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
   const isRecruiterLogin = loginRole === 'recruteur';
   const loginTitle = `${isSignup ? 'Inscription' : 'Connexion'} ${isRecruiterLogin ? 'recruteur' : 'candidat'}`;
   const loginSubtitle = isRecruiterLogin ? 'Espace employeur pour publier les offres et voir les CV' : 'Espace candidat pour postuler et suivre tes candidatures';
+  const authUnavailable = serviceStatus !== 'online';
+  const authStatusText = serviceStatus === 'checking'
+    ? 'Verification du service en cours. La connexion sera disponible dans quelques secondes.'
+    : "Connexion temporairement indisponible. L'equipe projet doit rebrancher la production.";
 
   return (
     <div className="mx-auto max-w-md space-y-5">
@@ -1472,9 +1527,14 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
       </div>
       <div className="rounded-lg border border-slate-200 bg-white p-4">
         <p className="text-sm font-black text-slate-900">Continuer avec</p>
+        {authUnavailable && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
+            {authStatusText}
+          </p>
+        )}
         <div className="mt-3 grid grid-cols-2 gap-2">
           {OAUTH_PROVIDERS.map((item) => (
-            <SocialLoginButton key={item.provider} item={item} busy={authBusyProvider === item.provider} disabled={Boolean(authBusyProvider)} onClick={() => handleOAuthSignIn(item.provider)} />
+            <SocialLoginButton key={item.provider} item={item} busy={authBusyProvider === item.provider} disabled={authUnavailable || Boolean(authBusyProvider)} onClick={() => handleOAuthSignIn(item.provider)} />
           ))}
         </div>
       </div>
