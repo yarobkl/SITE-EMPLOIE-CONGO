@@ -1,19 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
-  <title id="title">Logo CONGOEMPLOI</title>
-  <desc id="desc">Drapeau de la Republique du Congo</desc>
+  <title id="title">Logo Nzela Jobs</title>
+  <desc id="desc">N stylise avec un chemin montant et une fleche, symbole d'opportunite et de progression</desc>
   <defs>
-    <clipPath id="badge">
-      <rect x="8" y="8" width="80" height="80" rx="20"/>
-    </clipPath>
+    <linearGradient id="bg" x1="18" y1="14" x2="82" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0b2f6b"/>
+      <stop offset="1" stop-color="#061f49"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="66" y1="15" x2="83" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d9a51c"/>
+      <stop offset="1" stop-color="#f0c34a"/>
+    </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.18"/>
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#0f172a" flood-opacity="0.18"/>
     </filter>
   </defs>
-  <rect x="8" y="8" width="80" height="80" rx="20" fill="#fff" filter="url(#shadow)"/>
-  <g clip-path="url(#badge)">
-    <polygon points="8,8 88,8 8,88" fill="#009543"/>
-    <polygon points="88,8 88,88 8,88" fill="#dc241f"/>
-    <polygon points="-6,88 88,-6 102,8 8,102" fill="#fbde4a"/>
-  </g>
-  <rect x="8.5" y="8.5" width="79" height="79" rx="19.5" fill="none" stroke="#e2e8f0"/>
+
+  <rect x="8" y="8" width="80" height="80" rx="22" fill="url(#bg)" filter="url(#shadow)"/>
+
+  <path d="M22 72V25h16l24 27V25h13v47H60L36 45v27H22Z" fill="#ffffff"/>
+
+  <path d="M18 75C33 55 51 50 74 35" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round"/>
+  <path d="M18 75C33 55 51 50 74 35" fill="none" stroke="#0b2f6b" stroke-width="5" stroke-linecap="round"/>
+  <path d="M33 78C43 61 55 50 70 40" fill="none" stroke="#2f8a45" stroke-width="5" stroke-linecap="round"/>
+  <path d="M66 22l18-8-7 20-4-8-9 1 2-5Z" fill="url(#gold)"/>
+
+  <rect x="8.5" y="8.5" width="79" height="79" rx="21.5" fill="none" stroke="#dbeafe" stroke-opacity="0.35"/>
 </svg>
