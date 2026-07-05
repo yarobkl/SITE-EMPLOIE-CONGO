@@ -47,7 +47,8 @@ function replaceTextNodes(root = document.body) {
 function polishHeaderBrand() {
   const brandNodes = Array.from(document.querySelectorAll('header p'));
   brandNodes.forEach((node) => {
-    if (node.textContent.trim().replace(/\s/g, '') !== 'CONGOEMPLOI') return;
+    const compactText = node.textContent.trim().replace(/\s/g, '').toUpperCase();
+    if (compactText !== 'CONGOEMPLOI' && compactText !== 'NZELAJOBS') return;
     node.innerHTML = 'NZELA<span class="text-blue-700">JOBS</span>';
     node.setAttribute('aria-label', 'Nzela Jobs');
   });
@@ -83,29 +84,98 @@ function addTrustStrip() {
   hero?.insertAdjacentElement('afterend', strip);
 }
 
-function tagJobCards() {
-  const cards = Array.from(document.querySelectorAll('article.smooth-card'));
-  cards.forEach((card) => {
-    if (card.dataset.nzelaCard === 'true') return;
+function buildBadge(text, variant = 'neutral') {
+  const badge = document.createElement('span');
+  badge.className = `nzela-badge nzela-badge--${variant}`;
+  badge.textContent = text;
+  return badge;
+}
+
+function inferJobBadges(card, index) {
+  const text = card.textContent.toLowerCase();
+  const badges = [
+    ['Offre structuree', 'trust'],
+  ];
+
+  if (index === 0) badges.unshift(['A la une', 'featured']);
+  if (index <= 1) badges.push(['Nouveau', 'new']);
+  if (text.includes('urgent') || text.includes('immediat')) badges.push(['Urgent', 'urgent']);
+  if (text.includes('hybride')) badges.push(['Hybride', 'remote']);
+  if (text.includes('stage')) badges.push(['Stage', 'stage']);
+  if (text.includes('cdi')) badges.push(['CDI', 'stable']);
+
+  return badges;
+}
+
+function improveJobCards() {
+  const cards = Array.from(document.querySelectorAll('article.smooth-card'))
+    .filter((card) => card.textContent.includes('Postuler'));
+
+  cards.forEach((card, index) => {
+    if (card.dataset.nzelaCard === 'enhanced') return;
     const title = card.querySelector('h3');
     const company = card.querySelector('p');
     if (!title || !company) return;
-    if (!card.textContent.includes('Postuler')) return;
 
-    const badge = document.createElement('span');
-    badge.className = 'nzela-card-badge';
-    badge.textContent = 'Offre structuree';
-    title.insertAdjacentElement('beforebegin', badge);
-    card.dataset.nzelaCard = 'true';
+    card.classList.add('nzela-job-card');
+
+    const badgeRow = document.createElement('div');
+    badgeRow.className = 'nzela-card-badges';
+    inferJobBadges(card, index).forEach(([label, variant]) => {
+      badgeRow.appendChild(buildBadge(label, variant));
+    });
+    title.insertAdjacentElement('beforebegin', badgeRow);
+
+    const reassurance = document.createElement('p');
+    reassurance.className = 'nzela-card-reassurance';
+    reassurance.textContent = 'Annonce lisible, profil attendu et candidature par CV PDF.';
+    const pills = title.parentElement?.querySelector('div');
+    pills?.insertAdjacentElement('afterend', reassurance);
+
+    card.dataset.nzelaCard = 'enhanced';
   });
+}
+
+function enhanceJobDetail() {
+  const detailTitle = Array.from(document.querySelectorAll('article h1')).find((node) => (
+    node.closest('article')?.textContent.includes('Postuler maintenant')
+  ));
+  if (!detailTitle) return;
+  const article = detailTitle.closest('article');
+  if (!article || article.querySelector('[data-nzela-detail-badges]')) return;
+
+  const badges = document.createElement('div');
+  badges.setAttribute('data-nzela-detail-badges', 'true');
+  badges.className = 'nzela-detail-badges';
+  badges.appendChild(buildBadge('Offre structuree', 'trust'));
+  badges.appendChild(buildBadge('Candidature CV PDF', 'new'));
+  badges.appendChild(buildBadge('Suivi candidat', 'featured'));
+  detailTitle.insertAdjacentElement('afterend', badges);
+
+  const safety = document.createElement('aside');
+  safety.className = 'nzela-safety-note';
+  safety.innerHTML = `
+    <strong>Conseil candidat</strong>
+    <span>Nzela Jobs ne doit jamais demander de frais de dossier pour postuler. Verifie toujours l'entreprise et signale toute demande suspecte.</span>
+  `;
+  const applyButton = article.querySelector('button.sticky');
+  applyButton?.insertAdjacentElement('beforebegin', safety);
+}
+
+function refreshDocumentMeta() {
+  if (document.title.includes('CONGOEMPLOI')) {
+    document.title = 'Nzela Jobs - Plateforme de recrutement au Congo';
+  }
 }
 
 function runBrandPass() {
   document.body.classList.add('nzela-brand');
+  refreshDocumentMeta();
   polishHeaderBrand();
   replaceTextNodes();
   addTrustStrip();
-  tagJobCards();
+  improveJobCards();
+  enhanceJobDetail();
 }
 
 export function applyBrandPolish() {
