@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 130" role="img" aria-labelledby="title desc">
+  <title id="title">Nzela Jobs - logo principal</title>
+  <desc id="desc">Logo horizontal Nzela Jobs avec un N stylise, un chemin montant et une fleche</desc>
+  <defs>
+    <linearGradient id="navy" x1="20" y1="16" x2="105" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0b2f6b"/>
+      <stop offset="1" stop-color="#061f49"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="80" y1="13" x2="108" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d9a51c"/>
+      <stop offset="1" stop-color="#f0c34a"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(14 15)">
+    <path d="M5 89V8h25l45 50V8h22v81H72L27 39v50H5Z" fill="url(#navy)"/>
+    <path d="M0 93C25 60 58 52 101 25" fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round"/>
+    <path d="M0 93C25 60 58 52 101 25" fill="none" stroke="#0b2f6b" stroke-width="9" stroke-linecap="round"/>
+    <path d="M31 98C48 68 67 49 93 31" fill="none" stroke="#2f8a45" stroke-width="8" stroke-linecap="round"/>
+    <path d="M82 13l30-13-12 34-7-14-15 2 4-9Z" fill="url(#gold)"/>
+  </g>
+
+  <text x="150" y="78" font-family="Inter, Arial, Helvetica, sans-serif" font-size="58" font-weight="900" letter-spacing="7" fill="#082a61">NZELA</text>
+  <text x="400" y="78" font-family="Inter, Arial, Helvetica, sans-serif" font-size="54" font-weight="500" fill="#2f8a45">Jobs</text>
+</svg>
