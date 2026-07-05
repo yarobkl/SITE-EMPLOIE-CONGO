@@ -5,16 +5,19 @@ import './index.css'
 import { applyBrandPolish } from './brandPolish.js'
 import { applyPricingPolish } from './pricingPolish.js'
 import { applyAuthPolish } from './authPolish.js'
+import { applyExperiencePolish } from './experiencePolish.js'
 
 function BrandedApp() {
   useEffect(() => {
     const cleanupBrand = applyBrandPolish()
     const cleanupPricing = applyPricingPolish()
     const cleanupAuth = applyAuthPolish()
+    const cleanupExperience = applyExperiencePolish()
     return () => {
       cleanupBrand?.()
       cleanupPricing?.()
       cleanupAuth?.()
+      cleanupExperience?.()
     }
   }, [])
 
