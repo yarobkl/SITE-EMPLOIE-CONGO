@@ -3,11 +3,16 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
 import { applyBrandPolish } from './brandPolish.js'
+import { applyPricingPolish } from './pricingPolish.js'
 
 function BrandedApp() {
   useEffect(() => {
-    const cleanup = applyBrandPolish()
-    return cleanup
+    const cleanupBrand = applyBrandPolish()
+    const cleanupPricing = applyPricingPolish()
+    return () => {
+      cleanupBrand?.()
+      cleanupPricing?.()
+    }
   }, [])
 
   return <App />
