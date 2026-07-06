@@ -1,7 +1,9 @@
+import { hasSupabaseConfig, supabase } from './lib/supabase';
+
 const PLANS = [
-  ['A la une', '5 000 FCFA', '7 jours', 'Badge A la une et meilleure visibilite'],
-  ['Sponsorisee', '25 000 FCFA', '30 jours', 'Priorite dans les offres'],
-  ['Pack PME', '75 000 FCFA', '1 mois', 'Jusqu a 5 offres avec suivi'],
+  ['A la une', '5 000 FCFA', '7 jours', 'Badge A la une et meilleure visibilite', 5000],
+  ['Sponsorisee', '25 000 FCFA', '30 jours', 'Priorite dans les offres', 25000],
+  ['Pack PME', '75 000 FCFA', '1 mois', 'Jusqu a 5 offres avec suivi', 75000],
 ];
 
 function textOf(node) {
@@ -38,7 +40,27 @@ function getRecruiterContainer() {
   return title?.closest('.space-y-5') || title?.parentElement?.parentElement || null;
 }
 
+async function saveBoostRequest(request) {
+  try {
+    const items = JSON.parse(localStorage.getItem('nzela.boostRequests') || '[]');
+    localStorage.setItem('nzela.boostRequests', JSON.stringify([request, ...items].slice(0, 50)));
+  } catch {}
+  if (!hasSupabaseConfig || !supabase) return;
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    await supabase.from('boost_requests').insert({
+      recruiter_id: userData?.user?.id || null,
+      reference: request.ref,
+      plan: request.plan,
+      amount: request.amount,
+      status: 'pending',
+    });
+  } catch {}
+}
+
 function showReference(plan) {
+  const selected = PLANS.find((item) => item[0] === plan);
+  const amount = selected?.[4] || 0;
   const ref = `NZJ-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
   let box = document.getElementById('nzela-boost-ref');
   if (!box) {
@@ -48,10 +70,7 @@ function showReference(plan) {
     document.getElementById('nzela-recruiter-pricing')?.appendChild(box);
   }
   box.textContent = `Reference creee: ${ref}. Option choisie: ${plan}. Statut: en attente de validation.`;
-  try {
-    const items = JSON.parse(localStorage.getItem('nzela.boostRequests') || '[]');
-    localStorage.setItem('nzela.boostRequests', JSON.stringify([{ ref, plan, status: 'pending', createdAt: new Date().toISOString() }, ...items].slice(0, 50)));
-  } catch {}
+  saveBoostRequest({ ref, plan, amount, status: 'pending', createdAt: new Date().toISOString() });
 }
 
 function addRecruiterPricing() {
