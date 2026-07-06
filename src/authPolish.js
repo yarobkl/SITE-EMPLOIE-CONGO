@@ -4,10 +4,6 @@ function textOf(node) {
   return (node?.textContent || '').trim();
 }
 
-function findButton(label) {
-  return Array.from(document.querySelectorAll('button')).find((button) => textOf(button).toLowerCase() === label.toLowerCase());
-}
-
 function getLoginTitle() {
   return Array.from(document.querySelectorAll('h1')).find((title) => {
     const text = textOf(title).toLowerCase();
@@ -46,8 +42,8 @@ function addAuthNote(container, mode) {
   note.dataset.nzelaAuthNote = 'true';
   note.className = `nzela-auth-note nzela-auth-note--${mode}`;
   note.innerHTML = mode === 'signup'
-    ? '<strong>Premiere inscription</strong><span>Choisis ton type de compte une seule fois. Ensuite Nzela Jobs reconnaitra automatiquement ton espace.</span>'
-    : '<strong>Connexion unique</strong><span>Connecte-toi normalement. Ton compte sera reconnu automatiquement comme candidat ou recruteur.</span>';
+    ? '<strong>Première inscription</strong><span>Choisis ton type de compte une seule fois. Ensuite Nzela Jobs reconnait automatiquement ton rôle.</span>'
+    : '<strong>Connexion unique</strong><span>Connecte-toi normalement. Ton compte sera reconnu automatiquement comme candidat ou employeur / recruteur.</span>';
 
   const form = container.querySelector('form');
   form?.insertAdjacentElement('beforebegin', note);
@@ -64,7 +60,7 @@ function polishAuthScreen() {
 
   if (signup) {
     title.textContent = 'Créer un compte Nzela Jobs';
-    if (subtitle) subtitle.textContent = 'Choisis ton type de compte pour activer le bon espace des la creation.';
+    if (subtitle) subtitle.textContent = 'Choisis ton type de compte pour personnaliser ton accès dès la création.';
     roleSwitch?.classList.remove('nzela-auth-hidden');
     roleSwitch?.classList.add('nzela-role-choice');
     const recruiterButton = Array.from(roleSwitch?.querySelectorAll('button') || []).find((button) => textOf(button) === 'Recruteur');
@@ -73,7 +69,7 @@ function polishAuthScreen() {
   } else {
     normalizeSigninRole(title, roleSwitch);
     title.textContent = 'Connexion à Nzela Jobs';
-    if (subtitle) subtitle.textContent = 'Un seul accès pour tous. Nzela Jobs reconnait automatiquement ton espace.';
+    if (subtitle) subtitle.textContent = 'Un seul accès pour tous. Nzela Jobs reconnait automatiquement ton compte.';
     roleSwitch?.classList.add('nzela-auth-hidden');
     addAuthNote(container, 'signin');
   }
@@ -88,28 +84,6 @@ function markAuthSubmit(event) {
   }
 }
 
-function autoOpenRecognizedSpace() {
-  const lastSubmit = Number(localStorage.getItem(AUTH_SUBMIT_KEY) || 0);
-  if (!lastSubmit || Date.now() - lastSubmit > 12000) return;
-
-  const profileTitle = Array.from(document.querySelectorAll('h1')).find((title) => textOf(title).toLowerCase() === 'profil');
-  if (!profileTitle) return;
-
-  const pageText = document.body.textContent || '';
-  if (pageText.includes('Compte recruteur') || pageText.includes('Aller a mon espace recruteur') || pageText.includes('Publier ma premiere offre')) {
-    const recruiterButton = Array.from(document.querySelectorAll('button')).find((button) => {
-      const text = textOf(button);
-      return text.includes('Aller a mon espace recruteur') || text.includes('Publier ma premiere offre');
-    });
-    if (recruiterButton) {
-      localStorage.removeItem(AUTH_SUBMIT_KEY);
-      recruiterButton.click();
-    }
-  } else if (pageText.includes('Candidat et suivi des candidatures')) {
-    localStorage.removeItem(AUTH_SUBMIT_KEY);
-  }
-}
-
 function lockProfileRoleField() {
   const labels = Array.from(document.querySelectorAll('label'));
   const roleLabel = labels.find((label) => textOf(label.querySelector('span')).toLowerCase() === 'type de compte');
@@ -120,7 +94,7 @@ function lockProfileRoleField() {
   const roleText = select.value === 'recruteur' ? 'Employeur / recruteur' : 'Candidat';
   const lock = document.createElement('div');
   lock.className = 'nzela-role-lock';
-  lock.innerHTML = `<span>Type de compte</span><strong>${roleText}</strong><small>Défini à l inscription. Ton espace est reconnu automatiquement à la connexion.</small>`;
+  lock.innerHTML = `<span>Type de compte</span><strong>${roleText}</strong><small>Défini à l inscription. Ton compte est reconnu automatiquement à la connexion.</small>`;
   roleLabel.dataset.nzelaRoleLocked = 'true';
   roleLabel.classList.add('nzela-auth-hidden');
   roleLabel.insertAdjacentElement('afterend', lock);
@@ -139,7 +113,6 @@ function addAuthStyles() {
 function runAuthPass() {
   addAuthStyles();
   polishAuthScreen();
-  autoOpenRecognizedSpace();
   lockProfileRoleField();
 }
 
