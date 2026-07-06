@@ -2292,7 +2292,7 @@ function StepPill({ label, active, done }) {
 function BrandLogo() {
   return (
     <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg">
-      <img src="/logo-congoemploi.svg" alt="" className="h-full w-full object-contain" />
+      <img src="/logo-nzela-jobs.svg" alt="" className="h-full w-full object-contain" />
     </div>
   );
 }
