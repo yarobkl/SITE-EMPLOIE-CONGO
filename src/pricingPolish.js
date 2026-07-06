@@ -77,6 +77,7 @@ export function applyPricingPolish() {
   const run = () => window.requestAnimationFrame(runPricingPass);
   run();
   import('./adminPilot.js').then((module) => module.applyAdminPilot?.());
+  import('./candidateStatusPolish.js').then((module) => module.applyCandidateStatusPolish?.());
   const root = document.getElementById('root') || document.body;
   const observer = new MutationObserver(run);
   observer.observe(root, { childList: true, subtree: true, characterData: true });
