@@ -128,7 +128,7 @@ function improveJobCards() {
 
     const reassurance = document.createElement('p');
     reassurance.className = 'nzela-card-reassurance';
-    reassurance.textContent = 'Annonce lisible, profil attendu et candidature par CV PDF.';
+    reassurance.textContent = 'Annonce lisible, candidature par CV PDF. Aucun frais ne doit etre demande au candidat.';
     const pills = title.parentElement?.querySelector('div');
     pills?.insertAdjacentElement('afterend', reassurance);
 
@@ -155,8 +155,8 @@ function enhanceJobDetail() {
   const safety = document.createElement('aside');
   safety.className = 'nzela-safety-note';
   safety.innerHTML = `
-    <strong>Conseil candidat</strong>
-    <span>Nzela Jobs ne doit jamais demander de frais de dossier pour postuler. Verifie toujours l'entreprise et signale toute demande suspecte.</span>
+    <strong>Securite candidat</strong>
+    <span>Nzela Jobs ne demande jamais d'argent aux candidats. Refuse toute offre qui exige un paiement avant recrutement.</span>
   `;
   const applyButton = article.querySelector('button.sticky');
   applyButton?.insertAdjacentElement('beforebegin', safety);
