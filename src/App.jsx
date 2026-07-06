@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Bell,
@@ -123,6 +123,16 @@ const initialProfile = {
   title: '',
   avatarDataUrl: '',
 };
+
+function useInvalidNotice(notify, message) {
+  const lastNoticeRef = useRef(0);
+  return () => {
+    const now = Date.now();
+    if (now - lastNoticeRef.current < 1200) return;
+    lastNoticeRef.current = now;
+    notify(message);
+  };
+}
 
 const MAX_CV_BYTES = 2 * 1024 * 1024;
 const MAX_CV_LABEL = '2 Mo';
@@ -776,6 +786,7 @@ export default function App() {
     const trackingNumber = createTrackingNumber();
     let cvPath = '';
     setApplicationSubmitting(true);
+    notify('Envoi de la candidature en cours...');
     try {
     if (hasSupabaseConfig && supabase && applicationForm.cvFile) {
       const safeName = applicationForm.cvName
@@ -917,6 +928,7 @@ export default function App() {
     if (!currentApplication) return;
 
     if (shouldOpenCv) {
+      notify('Ouverture du CV en cours...');
       const opened = await openCvFile(currentApplication, 'open');
       if (!opened) return;
     }
@@ -969,6 +981,7 @@ export default function App() {
   const downloadApplicationCv = async (applicationId) => {
     const currentApplication = [...recruiterApplications, ...applications].find((item) => item.id === applicationId);
     if (!currentApplication) return;
+    notify('Preparation du telechargement du CV...');
     const downloaded = await openCvFile(currentApplication, 'download');
     if (downloaded) await markApplicationActivity(applicationId, 'cvOpened');
   };
@@ -985,6 +998,7 @@ export default function App() {
       setScreen('profile');
       return;
     }
+    notify("Publication de l'offre en cours...");
     const nextJob = {
       id: Date.now(),
       requirements: ['Experience pertinente', 'Disponibilite', 'Motivation'],
@@ -1052,6 +1066,7 @@ export default function App() {
   const saveJobEdit = async (event) => {
     event.preventDefault();
     if (!editingJob) return;
+    notify("Enregistrement de l'offre en cours...");
     const updatedJob = { ...editingJob, ...jobForm };
     if (hasSupabaseConfig && supabase && typeof editingJob.id === 'string') {
       const { error } = await supabase
@@ -1085,6 +1100,7 @@ export default function App() {
   const deleteJob = async (job) => {
     const confirmed = window.confirm(`Supprimer l'offre "${job.role}" ?`);
     if (!confirmed) return;
+    notify('Suppression de l offre en cours...');
     if (hasSupabaseConfig && supabase && typeof job.id === 'string') {
       const { error } = await supabase.from('jobs').delete().eq('id', job.id);
       if (error) {
@@ -1113,6 +1129,7 @@ export default function App() {
       notify("Cette offre doit etre synchronisee avant d'activer un boost.");
       return;
     }
+    notify('Demande de boost en cours...');
     const { data, error } = await supabase
       .from('boost_requests')
       .insert({
@@ -1201,10 +1218,10 @@ export default function App() {
     if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} submitting={applicationSubmitting} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} openLogin={openLogin} openRecruiterSpace={openRecruiterSpace} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} hasPublishedOffer={hasPublishedOffer} />;
-    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} authBusyProvider={authBusyProvider} serviceStatus={serviceStatus} setScreen={setScreen} />;
+    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} authBusyProvider={authBusyProvider} serviceStatus={serviceStatus} setScreen={setScreen} notify={notify} />;
     if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} boostRequests={boostRequests} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} downloadApplicationCv={downloadApplicationCv} startEditJob={startEditJob} deleteJob={deleteJob} requestJobBoost={requestJobBoost} isLoggedIn={isLoggedIn} role={profile.role} />;
     if (screen === 'admin') return <AdminScreen boostRequests={boostRequests} reviewBoostRequest={reviewBoostRequest} role={profile.role} setScreen={setScreen} />;
-    if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} />;
+    if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} notify={notify} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
     if (screen === 'settings') return <SettingsScreen serviceStatus={serviceStatus} />;
     return <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} openLogin={openLogin} />;
@@ -1214,7 +1231,7 @@ export default function App() {
     <div className="min-h-screen bg-white text-slate-950">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm shadow-slate-200/70 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <button onClick={() => setScreen('home')} className="smooth-button flex min-h-11 items-center gap-3 rounded-lg px-1 text-left hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <button onClick={() => setScreen('home')} aria-label="Retour accueil" className="smooth-button flex min-h-11 items-center gap-3 rounded-lg px-1 text-left hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600">
             <BrandLogo />
             <div>
               <p className="text-[15px] font-black leading-none text-slate-950">CONGO<span className="text-blue-700">EMPLOI</span></p>
@@ -1250,6 +1267,7 @@ export default function App() {
             return (
               <button
                 key={item.id}
+                aria-label={`Navigation ${item.label}`}
                 onClick={() => (item.id === 'recruiter' ? openRecruiterSpace() : setScreen(item.id))}
                 className={classNames('smooth-button flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-600', active ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800')}
               >
@@ -1392,6 +1410,14 @@ function JobScreen({ job, saved, toggleSave, setScreen }) {
 function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScreen, openLogin, isLoggedIn, profile, notify }) {
   const trackingEnabled = form.mode === 'tracked';
   const contactReady = Boolean((form.nom || profile.nom || profile.prenom) && (form.email || profile.email) && (form.phone || profile.phone));
+  const notifyInvalid = useInvalidNotice(notify, 'Complete les champs obligatoires avant d envoyer.');
+  const notifySubmitBlocker = () => {
+    if (!form.nom.trim() || !form.email.trim() || !form.phone.trim()) {
+      notifyInvalid();
+      return;
+    }
+    if (!form.cvName) notify(`Ajoute un CV PDF de ${MAX_CV_LABEL} maximum.`);
+  };
   const fillFromProfile = () => {
     setForm({
       ...form,
@@ -1459,7 +1485,7 @@ function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScr
           </button>
         </div>
       )}
-      <form onSubmit={submitApplication} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
+      <form onSubmit={submitApplication} onInvalidCapture={notifyInvalid} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
         {isLoggedIn && (
           <button type="button" onClick={fillFromProfile} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
             Utiliser mon profil
@@ -1470,7 +1496,7 @@ function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScr
         <TextField label="Telephone" type="tel" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} required placeholder="+242 06 ..." />
         <TextArea label="Message au recruteur" value={form.message} onChange={(message) => setForm({ ...form, message })} placeholder="Disponibilite, experience, motivation..." />
         <CvUpload cvName={form.cvName} cvSize={form.cvSize} onChange={handleCvChange} />
-        <button type="submit" disabled={submitting} className="sticky bottom-20 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 md:static">
+        <button type="submit" onClick={notifySubmitBlocker} disabled={submitting} className="sticky bottom-20 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 md:static">
           {submitting ? 'Envoi en cours...' : trackingEnabled ? 'Envoyer et suivre' : 'Envoyer rapidement'} <Send size={18} />
         </button>
       </form>
@@ -1644,9 +1670,13 @@ function ProfileInfoCard({ icon: Icon, title, body }) {
   );
 }
 
-function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleOAuthSignIn, authBusyProvider, serviceStatus, setScreen }) {
+function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleOAuthSignIn, authBusyProvider, serviceStatus, setScreen, notify }) {
   const isSignup = authMode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
+  const notifyInvalid = useInvalidNotice(notify, 'Renseigne ton email et ton mot de passe pour continuer.');
+  const notifySubmitBlocker = () => {
+    if (!loginEmail.trim() || !loginPassword.trim()) notifyInvalid();
+  };
   const isRecruiterLogin = loginRole === 'recruteur';
   const loginTitle = `${isSignup ? 'Inscription' : 'Connexion'} ${isRecruiterLogin ? 'recruteur' : 'candidat'}`;
   const loginSubtitle = isRecruiterLogin ? 'Espace employeur pour publier les offres et voir les CV' : 'Espace candidat pour postuler et suivre tes candidatures';
@@ -1688,7 +1718,7 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
           Inscription
         </button>
       </div>
-      <form onSubmit={handleAuth} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
+      <form onSubmit={handleAuth} onInvalidCapture={notifyInvalid} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
         <TextField label="Email" type="email" value={loginEmail} onChange={setLoginEmail} required />
         <PasswordField
           label="Mot de passe"
@@ -1699,7 +1729,7 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
           visible={showPassword}
           onToggle={() => setShowPassword((visible) => !visible)}
         />
-        <button type="submit" className="min-h-12 w-full rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
+        <button type="submit" onClick={notifySubmitBlocker} className="min-h-12 w-full rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
           {isSignup ? `Creer mon compte ${isRecruiterLogin ? 'recruteur' : 'candidat'}` : `Me connecter comme ${isRecruiterLogin ? 'recruteur' : 'candidat'}`}
         </button>
         <p className="text-xs font-semibold leading-5 text-slate-500">
@@ -2007,12 +2037,16 @@ function AdminScreen({ boostRequests, reviewBoostRequest, role, setScreen }) {
   );
 }
 
-function PostJobScreen({ form, setForm, onSubmit, setScreen, editing, cancelEdit }) {
+function PostJobScreen({ form, setForm, onSubmit, setScreen, editing, cancelEdit, notify }) {
+  const notifyInvalid = useInvalidNotice(notify, 'Complete le titre, l entreprise et la description avant d envoyer.');
+  const notifySubmitBlocker = () => {
+    if (!form.role.trim() || !form.company.trim() || !form.description.trim()) notifyInvalid();
+  };
   return (
     <div className="space-y-4">
       <BackButton onClick={editing ? cancelEdit : () => setScreen('recruiter')} label="Recruteur" />
       <PageHeader title={editing ? 'Modifier' : 'Publier'} subtitle={editing ? "Modifier l'offre d'emploi" : "Nouvelle offre d'emploi"} />
-      <form onSubmit={onSubmit} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
+      <form onSubmit={onSubmit} onInvalidCapture={notifyInvalid} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
         <TextField label="Titre du poste" value={form.role} onChange={(role) => setForm({ ...form, role })} required />
         <TextField label="Entreprise" value={form.company} onChange={(company) => setForm({ ...form, company })} required />
         <SelectField label="Ville" value={form.loc} onChange={(loc) => setForm({ ...form, loc })} options={CONGO_CITIES} />
@@ -2026,7 +2060,7 @@ function PostJobScreen({ form, setForm, onSubmit, setScreen, editing, cancelEdit
               Annuler
             </button>
           )}
-          <button type="submit" className={classNames('min-h-12 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600', editing ? '' : 'sm:col-span-2')}>
+          <button type="submit" onClick={notifySubmitBlocker} className={classNames('min-h-12 rounded-lg bg-blue-700 px-5 font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600', editing ? '' : 'sm:col-span-2')}>
             {editing ? "Enregistrer l'offre" : "Publier l'offre"}
           </button>
         </div>

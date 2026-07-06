@@ -48,9 +48,20 @@ textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
+button,
+a,
+label,
+[role='button'] {
+  touch-action: manipulation;
+}
+
 button:not(:disabled),
 [role='button'] {
   cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }
 
 @layer components {
@@ -70,11 +81,13 @@ button:not(:disabled),
 
   .smooth-button {
     transition:
-      transform 160ms ease,
-      background-color 160ms ease,
-      border-color 160ms ease,
-      color 160ms ease,
-      box-shadow 160ms ease;
+      transform 90ms ease,
+      background-color 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease,
+      box-shadow 120ms ease,
+      opacity 120ms ease;
+    will-change: transform;
   }
 
   .soft-enter {
@@ -95,8 +108,12 @@ button:not(:disabled),
 
 @media (prefers-reduced-motion: no-preference) {
   button:not(:disabled):active,
-  .smooth-button:not(:disabled):active {
-    transform: translateY(0) scale(0.99);
+  a:active,
+  label:active,
+  [role='button']:active,
+  .smooth-button:not(:disabled):active,
+  .smooth-card:active {
+    transform: translateY(1px) scale(0.985);
   }
 }
 
