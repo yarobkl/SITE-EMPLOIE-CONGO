@@ -17,7 +17,10 @@ function addPricingStyles() {
 }
 
 function removePublicPricing() {
-  document.querySelectorAll('#nzela-pricing, [data-pricing-button], .nzela-pricing-button').forEach((node) => node.remove());
+  document.querySelectorAll('#nzela-pricing, [data-pricing-button], .nzela-pricing-button, [data-go="pricing"]').forEach((node) => node.remove());
+  document.querySelectorAll('[data-nzela-helpbar]').forEach((bar) => {
+    bar.style.gridTemplateColumns = 'repeat(3,minmax(0,1fr))';
+  });
 }
 
 function isPublicHome() {
