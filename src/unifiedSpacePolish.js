@@ -83,6 +83,7 @@ function runUnifiedPass() {
 export function applyUnifiedSpacePolish() {
   const run = () => requestAnimationFrame(runUnifiedPass);
   run();
+  import('./accountOnboarding.js').then((module) => module.applyAccountOnboarding?.());
   const observer = new MutationObserver(run);
   observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true, attributes: true });
   return () => observer.disconnect();
