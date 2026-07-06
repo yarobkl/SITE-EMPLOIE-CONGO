@@ -6,7 +6,6 @@ import { applyBrandPolish } from './brandPolish.js'
 import { applyPricingPolish } from './pricingPolish.js'
 import { applyAuthPolish } from './authPolish.js'
 import { applyExperiencePolish } from './experiencePolish.js'
-import { applyGoogleConnect } from './googleConnect.js'
 
 function BrandedApp() {
   useEffect(() => {
@@ -14,13 +13,11 @@ function BrandedApp() {
     const cleanupPricing = applyPricingPolish()
     const cleanupAuth = applyAuthPolish()
     const cleanupExperience = applyExperiencePolish()
-    const cleanupGoogle = applyGoogleConnect()
     return () => {
       cleanupBrand?.()
       cleanupPricing?.()
       cleanupAuth?.()
       cleanupExperience?.()
-      cleanupGoogle?.()
     }
   }, [])
 
