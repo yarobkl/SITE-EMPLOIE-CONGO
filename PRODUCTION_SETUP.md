@@ -58,9 +58,12 @@ supabase/schema.sql
 supabase/final-hardening.sql
 supabase/recruiter-cv-access.sql
 supabase/recruiter-offer-management.sql
+supabase/nzela-v1-stability.sql
 ```
 
 Le bucket Storage `cvs` doit exister. Les CV doivent etre des PDF et respecter la limite affichee dans l'application.
+
+`supabase/nzela-v1-stability.sql` ajoute les champs de suivi candidat, les dates d'ouverture de demande/CV, la table `boost_requests`, les index utiles et durcit les regles Storage du bucket `cvs`.
 
 ## 5. Test de recette
 

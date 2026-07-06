@@ -238,6 +238,18 @@ function getVisitorKey() {
   return next;
 }
 
+function isSupabaseId(value) {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function createTrackingNumber() {
+  const year = new Date().getFullYear();
+  const randomPart = crypto?.randomUUID
+    ? crypto.randomUUID().replace(/-/g, '').slice(0, 6)
+    : Math.random().toString(36).slice(2, 8);
+  return `NZJ-CAND-${year}-${randomPart.toUpperCase()}`;
+}
+
 function normalizeJob(row) {
   return {
     id: row.id,
@@ -264,6 +276,9 @@ function normalizeApplication(row) {
     trackingEnabled: row.tracking_enabled,
     applicationOpened: row.application_opened,
     cvOpened: row.cv_opened,
+    applicationSeenAt: row.application_seen_at,
+    cvOpenedAt: row.cv_opened_at,
+    trackingNumber: row.tracking_number,
     createdAt: row.created_at,
     cvPath: row.cv_url,
     cvName: row.cv_name,
@@ -286,6 +301,21 @@ function normalizeNotification(row) {
   };
 }
 
+function normalizeBoostRequest(row) {
+  return {
+    id: row.id,
+    jobId: row.job_id,
+    companyId: row.company_id,
+    recruiterId: row.recruiter_id,
+    plan: row.plan,
+    message: row.message || '',
+    status: row.status,
+    createdAt: row.created_at,
+    jobTitle: row.jobs?.title || 'Offre',
+    company: row.jobs?.companies?.name || row.companies?.name || 'Entreprise',
+  };
+}
+
 export default function App() {
   const [screen, setScreen] = useState('home');
   const [selectedJob, setSelectedJob] = useState(null);
@@ -303,6 +333,7 @@ export default function App() {
   const [applicationForm, setApplicationForm] = useState(emptyApplication);
   const [jobForm, setJobForm] = useState(emptyJob);
   const [editingJob, setEditingJob] = useState(null);
+  const [applicationSubmitting, setApplicationSubmitting] = useState(false);
 
   const [jobs, setJobs] = useStoredState('congoemploi.v2.jobs', initialJobs);
   const [profile, setProfile] = useStoredState('congoemploi.v2.profile', initialProfile);
@@ -311,6 +342,7 @@ export default function App() {
   const [recruiterJobs, setRecruiterJobs] = useState([]);
   const [recruiterApplications, setRecruiterApplications] = useState([]);
   const [recruiterJobStats, setRecruiterJobStats] = useState({});
+  const [boostRequests, setBoostRequests] = useState([]);
   const [notifications, setNotifications] = useStoredState('congoemploi.v2.notifications', [
     { id: 1, title: 'Bienvenue sur CONGOEMPLOI', body: 'Votre espace mobile est pret.', read: false },
   ]);
@@ -331,9 +363,7 @@ export default function App() {
         return;
       }
       setServiceStatus('online');
-      if (data?.length) {
-        setJobs(data.map(normalizeJob));
-      }
+      setJobs((data || []).map(normalizeJob));
     }
     loadJobs();
     return () => {
@@ -390,6 +420,7 @@ export default function App() {
         .select('nom,prenom,email,phone,city,role,title')
         .eq('id', authUser.id)
         .maybeSingle();
+      let effectiveRole = profileRow?.role || 'candidat';
 
       if (!cancelled) {
         if (profileRow) {
@@ -412,6 +443,7 @@ export default function App() {
             city: 'Brazzaville',
             title: '',
           };
+          effectiveRole = nextProfile.role;
           await supabase.from('profiles').upsert(nextProfile);
           localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
           setProfile((current) => ({ ...current, ...nextProfile }));
@@ -423,7 +455,7 @@ export default function App() {
 
       const { data: userApplications } = await supabase
         .from('applications')
-        .select('id,job_id,candidate_id,nom,email,phone,message,cv_url,cv_name,cv_size,tracking_enabled,application_opened,cv_opened,status,created_at,jobs(title,companies(name))')
+        .select('id,job_id,candidate_id,nom,email,phone,message,cv_url,cv_name,cv_size,tracking_enabled,tracking_number,application_opened,application_seen_at,cv_opened,cv_opened_at,status,created_at,jobs(title,companies(name))')
         .order('created_at', { ascending: false });
 
       if (!cancelled && userApplications) {
@@ -453,6 +485,22 @@ export default function App() {
         .select('id,name')
         .eq('owner_id', authUser.id);
       const companyIds = ownedCompanies?.map((company) => company.id) || [];
+      if (effectiveRole === 'admin') {
+        const { data: adminBoostRequests } = await supabase
+          .from('boost_requests')
+          .select('id,job_id,company_id,recruiter_id,plan,message,status,created_at,jobs(title,companies(name)),companies(name)')
+          .order('created_at', { ascending: false });
+        if (!cancelled && adminBoostRequests) setBoostRequests(adminBoostRequests.map(normalizeBoostRequest));
+      } else if (companyIds.length) {
+        const { data: ownBoostRequests } = await supabase
+          .from('boost_requests')
+          .select('id,job_id,company_id,recruiter_id,plan,message,status,created_at,jobs(title,companies(name)),companies(name)')
+          .in('company_id', companyIds)
+          .order('created_at', { ascending: false });
+        if (!cancelled && ownBoostRequests) setBoostRequests(ownBoostRequests.map(normalizeBoostRequest));
+      } else if (!cancelled) {
+        setBoostRequests([]);
+      }
       if (!companyIds.length) {
         if (!cancelled) {
           setRecruiterJobs([]);
@@ -483,7 +531,7 @@ export default function App() {
 
       const { data: receivedApplications } = await supabase
         .from('applications')
-        .select('id,job_id,candidate_id,nom,email,phone,message,cv_url,cv_name,cv_size,tracking_enabled,application_opened,cv_opened,status,created_at,jobs(title,companies(name))')
+        .select('id,job_id,candidate_id,nom,email,phone,message,cv_url,cv_name,cv_size,tracking_enabled,tracking_number,application_opened,application_seen_at,cv_opened,cv_opened_at,status,created_at,jobs(title,companies(name))')
         .in('job_id', ownedJobIds)
         .order('created_at', { ascending: false });
 
@@ -704,6 +752,12 @@ export default function App() {
 
   const submitApplication = async (event) => {
     event.preventDefault();
+    if (applicationSubmitting) return;
+    if (!activeJob) {
+      notify('Selectionne une offre avant de postuler.');
+      setScreen('jobs');
+      return;
+    }
     if (!applicationForm.cvName) {
       notify(`Ajoute un CV PDF de ${MAX_CV_LABEL} maximum.`);
       return;
@@ -713,8 +767,16 @@ export default function App() {
       openLogin('candidat');
       return;
     }
+    if (hasSupabaseConfig && !isSupabaseId(activeJob.id)) {
+      notify("Cette offre n'est pas encore synchronisee. Recharge les offres puis reessaie.");
+      setScreen('jobs');
+      return;
+    }
     const trackingEnabled = applicationForm.mode === 'tracked' && isLoggedIn;
+    const trackingNumber = createTrackingNumber();
     let cvPath = '';
+    setApplicationSubmitting(true);
+    try {
     if (hasSupabaseConfig && supabase && applicationForm.cvFile) {
       const safeName = applicationForm.cvName
         .toLowerCase()
@@ -732,11 +794,12 @@ export default function App() {
         cvPath = filePath;
       } else {
         notify("Le CV n'a pas pu etre envoye. Reessaie avant d'envoyer la candidature.");
+        setApplicationSubmitting(false);
         return;
       }
     }
     const { cvFile, ...applicationValues } = applicationForm;
-    const application = {
+    const baseApplication = {
       id: Date.now(),
       jobId: activeJob.id,
       jobRole: activeJob.role,
@@ -745,6 +808,9 @@ export default function App() {
       trackingEnabled,
       applicationOpened: false,
       cvOpened: false,
+      applicationSeenAt: null,
+      cvOpenedAt: null,
+      trackingNumber,
       createdAt: new Date().toISOString(),
       cvPath,
       ...applicationValues,
@@ -752,29 +818,38 @@ export default function App() {
       email: applicationForm.email || profile.email,
       phone: applicationForm.phone || profile.phone,
     };
-    setApplications((current) => [application, ...current]);
+    let application = baseApplication;
     if (hasSupabaseConfig && supabase) {
-      const { error } = await supabase.from('applications').insert({
-        job_id: typeof activeJob.id === 'string' ? activeJob.id : null,
+      const { data, error } = await supabase.from('applications').insert({
+        job_id: activeJob.id,
         candidate_id: trackingEnabled && authUser ? authUser.id : null,
-        nom: application.nom,
-        email: application.email,
-        phone: application.phone,
-        message: application.message,
+        nom: baseApplication.nom,
+        email: baseApplication.email,
+        phone: baseApplication.phone,
+        message: baseApplication.message,
         cv_url: cvPath,
-        cv_name: application.cvName,
-        cv_size: application.cvSize || 0,
-        tracking_enabled: application.trackingEnabled,
+        cv_name: baseApplication.cvName,
+        cv_size: baseApplication.cvSize || 0,
+        tracking_enabled: baseApplication.trackingEnabled,
+        tracking_number: trackingNumber,
         application_opened: false,
         cv_opened: false,
         status: 'pending',
-      });
-      if (error) notify('Candidature gardee localement, base indisponible.');
+      })
+        .select('id,job_id,candidate_id,nom,email,phone,message,cv_url,cv_name,cv_size,tracking_enabled,tracking_number,application_opened,application_seen_at,cv_opened,cv_opened_at,status,created_at,jobs(title,companies(name))')
+        .single();
+      if (error) {
+        setApplicationSubmitting(false);
+        notify(`Candidature non envoyee: ${error.message || 'base indisponible'}`);
+        return;
+      }
+      application = normalizeApplication(data);
     }
+    setApplications((current) => [application, ...current]);
     const nextNotification = {
       id: Date.now(),
       title: trackingEnabled ? 'Candidature suivie envoyee' : 'Candidature rapide envoyee',
-      body: trackingEnabled ? `${activeJob.role}: le suivi temps reel est actif.` : `${activeJob.role}: CV recu, sans suivi temps reel.`,
+      body: trackingEnabled ? `${activeJob.role}: suivi ${trackingNumber} actif.` : `${activeJob.role}: CV recu, reference ${trackingNumber}.`,
       read: false,
     };
     setNotifications((current) => [nextNotification, ...current]);
@@ -788,7 +863,12 @@ export default function App() {
     }
     setApplicationForm(emptyApplication);
     setScreen('profile');
-    notify('Candidature envoyee au recruteur');
+    notify(`Candidature envoyee. Suivi ${trackingNumber}`);
+    } catch (error) {
+      notify(`Candidature non envoyee: ${error?.message || 'service indisponible'}`);
+    } finally {
+      setApplicationSubmitting(false);
+    }
   };
 
   const openCvFile = async (application, mode = 'open') => {
@@ -842,12 +922,16 @@ export default function App() {
     }
 
     const wasAlreadyOpened = Boolean(currentApplication[field]);
+    const timestampField = field === 'cvOpened' ? 'cvOpenedAt' : 'applicationSeenAt';
+    const dbTimestampField = field === 'cvOpened' ? 'cv_opened_at' : 'application_seen_at';
+    const dbBooleanField = field === 'cvOpened' ? 'cv_opened' : 'application_opened';
+    const openedAt = new Date().toISOString();
     const changedApplication = wasAlreadyOpened
       ? currentApplication
-      : { ...currentApplication, [field]: true, status: 'reviewed' };
+      : { ...currentApplication, [field]: true, [timestampField]: openedAt, status: 'reviewed' };
     const updateItem = (item) => {
       if (item.id !== applicationId) return item;
-      return item[field] ? item : { ...item, [field]: true, status: 'reviewed' };
+      return item[field] ? item : { ...item, [field]: true, [timestampField]: openedAt, status: 'reviewed' };
     };
     setApplications((current) => current.map(updateItem));
     setRecruiterApplications((current) => current.map(updateItem));
@@ -856,7 +940,8 @@ export default function App() {
       await supabase
         .from('applications')
         .update({
-          [field === 'cvOpened' ? 'cv_opened' : 'application_opened']: true,
+          [dbBooleanField]: true,
+          [dbTimestampField]: openedAt,
           status: 'reviewed',
         })
         .eq('id', applicationId);
@@ -912,27 +997,31 @@ export default function App() {
         .insert({ owner_id: authUser.id, name: nextJob.company, city: nextJob.loc, sector: nextJob.sector })
         .select('id')
         .single();
-      if (!companyError && company?.id) {
-        const { data: savedJob, error: jobError } = await supabase
-          .from('jobs')
-          .insert({
-            company_id: company.id,
-            title: nextJob.role,
-            description: nextJob.description,
-            location: nextJob.loc,
-            contract_type: nextJob.type,
-            salary_range: nextJob.salary,
-            sector: nextJob.sector,
-            requirements: nextJob.requirements,
-            status: 'published',
-          })
-          .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,companies(name)')
-          .single();
-        if (!jobError && savedJob) {
-          nextJob.id = savedJob.id;
-          nextJob.companyId = savedJob.company_id;
-        }
+      if (companyError || !company?.id) {
+        notify(`Entreprise non creee: ${companyError?.message || 'base indisponible'}`);
+        return;
       }
+      const { data: savedJob, error: jobError } = await supabase
+        .from('jobs')
+        .insert({
+          company_id: company.id,
+          title: nextJob.role,
+          description: nextJob.description,
+          location: nextJob.loc,
+          contract_type: nextJob.type,
+          salary_range: nextJob.salary,
+          sector: nextJob.sector,
+          requirements: nextJob.requirements,
+          status: 'published',
+        })
+        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,companies(name)')
+        .single();
+      if (jobError || !savedJob) {
+        notify(`Offre non publiee: ${jobError?.message || 'base indisponible'}`);
+        return;
+      }
+      nextJob.id = savedJob.id;
+      nextJob.companyId = savedJob.company_id;
     }
     setJobs((current) => [nextJob, ...current]);
     setRecruiterJobs((current) => [nextJob, ...current]);
@@ -1015,6 +1104,52 @@ export default function App() {
     notify('Offre supprimee');
   };
 
+  const requestJobBoost = async (job) => {
+    if (!hasSupabaseConfig || !supabase || !authUser) {
+      notify('Connecte-toi comme recruteur pour demander un boost.');
+      return;
+    }
+    if (!isSupabaseId(job.id) || !job.companyId) {
+      notify("Cette offre doit etre synchronisee avant d'activer un boost.");
+      return;
+    }
+    const { data, error } = await supabase
+      .from('boost_requests')
+      .insert({
+        job_id: job.id,
+        company_id: job.companyId,
+        recruiter_id: authUser.id,
+        plan: 'standard',
+        message: `Demande de boost pour ${job.role}`,
+        status: 'pending',
+      })
+      .select('id,job_id,company_id,recruiter_id,plan,message,status,created_at,jobs(title,companies(name)),companies(name)')
+      .single();
+    if (error) {
+      notify(`Demande de boost non envoyee: ${error.message || 'base indisponible'}`);
+      return;
+    }
+    setBoostRequests((current) => [normalizeBoostRequest(data), ...current]);
+    notify('Demande de boost envoyee a l admin.');
+  };
+
+  const reviewBoostRequest = async (requestId, status) => {
+    if (!hasSupabaseConfig || !supabase || profile.role !== 'admin') {
+      notify('Action reservee a l admin.');
+      return;
+    }
+    const { error } = await supabase
+      .from('boost_requests')
+      .update({ status, reviewed_by: authUser.id, reviewed_at: new Date().toISOString() })
+      .eq('id', requestId);
+    if (error) {
+      notify(`Demande non mise a jour: ${error.message || 'base indisponible'}`);
+      return;
+    }
+    setBoostRequests((current) => current.map((item) => (item.id === requestId ? { ...item, status } : item)));
+    notify(status === 'approved' ? 'Boost valide' : 'Boost rejete');
+  };
+
   const updateProfile = async (event) => {
     event.preventDefault();
     if (hasSupabaseConfig && supabase && authUser) {
@@ -1056,15 +1191,19 @@ export default function App() {
     { id: 'saved', label: 'Favoris', icon: Bookmark },
     { id: 'profile', label: 'Profil', icon: User },
   ];
+  const visibleNavItems = profile.role === 'admin'
+    ? navItems.map((item) => (item.id === 'saved' ? { id: 'admin', label: 'Admin', icon: ShieldCheck } : item))
+    : navItems;
 
   const renderScreen = () => {
     if (screen === 'jobs') return <JobsScreen jobs={filteredJobs} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} savedIds={savedIds} toggleSave={toggleSave} />;
     if (screen === 'job') return <JobScreen job={activeJob} saved={savedIds.includes(activeJob?.id)} toggleSave={toggleSave} setScreen={setScreen} />;
-    if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
+    if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} submitting={applicationSubmitting} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} openLogin={openLogin} openRecruiterSpace={openRecruiterSpace} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} hasPublishedOffer={hasPublishedOffer} />;
     if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} authBusyProvider={authBusyProvider} serviceStatus={serviceStatus} setScreen={setScreen} />;
-    if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} downloadApplicationCv={downloadApplicationCv} startEditJob={startEditJob} deleteJob={deleteJob} isLoggedIn={isLoggedIn} role={profile.role} />;
+    if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} boostRequests={boostRequests} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} downloadApplicationCv={downloadApplicationCv} startEditJob={startEditJob} deleteJob={deleteJob} requestJobBoost={requestJobBoost} isLoggedIn={isLoggedIn} role={profile.role} />;
+    if (screen === 'admin') return <AdminScreen boostRequests={boostRequests} reviewBoostRequest={reviewBoostRequest} role={profile.role} setScreen={setScreen} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
     if (screen === 'settings') return <SettingsScreen serviceStatus={serviceStatus} />;
@@ -1105,7 +1244,7 @@ export default function App() {
 
       <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5 px-1">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const active = screen === item.id || (item.id === 'jobs' && ['job', 'apply'].includes(screen));
             return (
@@ -1250,7 +1389,7 @@ function JobScreen({ job, saved, toggleSave, setScreen }) {
   );
 }
 
-function ApplyScreen({ job, form, setForm, submitApplication, setScreen, openLogin, isLoggedIn, profile, notify }) {
+function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScreen, openLogin, isLoggedIn, profile, notify }) {
   const trackingEnabled = form.mode === 'tracked';
   const contactReady = Boolean((form.nom || profile.nom || profile.prenom) && (form.email || profile.email) && (form.phone || profile.phone));
   const fillFromProfile = () => {
@@ -1331,8 +1470,8 @@ function ApplyScreen({ job, form, setForm, submitApplication, setScreen, openLog
         <TextField label="Telephone" type="tel" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} required placeholder="+242 06 ..." />
         <TextArea label="Message au recruteur" value={form.message} onChange={(message) => setForm({ ...form, message })} placeholder="Disponibilite, experience, motivation..." />
         <CvUpload cvName={form.cvName} cvSize={form.cvSize} onChange={handleCvChange} />
-        <button type="submit" className="sticky bottom-20 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 md:static">
-          {trackingEnabled ? 'Envoyer et suivre' : 'Envoyer rapidement'} <Send size={18} />
+        <button type="submit" disabled={submitting} className="sticky bottom-20 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-black text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 md:static">
+          {submitting ? 'Envoi en cours...' : trackingEnabled ? 'Envoyer et suivre' : 'Envoyer rapidement'} <Send size={18} />
         </button>
       </form>
     </div>
@@ -1469,6 +1608,9 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
                 <p className="mt-2 text-xs font-black text-slate-500">
                   {item.cvName ? `CV: ${item.cvName}` : 'CV non joint'} - {item.trackingEnabled ? 'Suivi actif' : 'Candidature rapide'}
                 </p>
+                {item.trackingNumber && (
+                  <p className="mt-1 text-xs font-black text-blue-700">Numero de suivi: {item.trackingNumber}</p>
+                )}
                 {item.trackingEnabled && (
                   <div className="mt-3 flex flex-wrap gap-2 text-xs font-black">
                     <span className={classNames('rounded-full px-3 py-1', item.applicationOpened ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600')}>
@@ -1624,7 +1766,7 @@ function OAuthProviderLogo({ provider }) {
   );
 }
 
-function RecruiterScreen({ jobs, applications, stats, setScreen, openLogin, markApplicationActivity, downloadApplicationCv, startEditJob, deleteJob, isLoggedIn, role }) {
+function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, openLogin, markApplicationActivity, downloadApplicationCv, startEditJob, deleteJob, requestJobBoost, isLoggedIn, role }) {
   const [selectedJobId, setSelectedJobId] = useState('all');
   const ownJobs = jobs;
   const canRecruit = isLoggedIn && (role === 'recruteur' || ownJobs.length > 0);
@@ -1706,6 +1848,7 @@ function RecruiterScreen({ jobs, applications, stats, setScreen, openLogin, mark
         {ownJobs.map((job) => {
           const count = applicationsByJobId[job.id]?.length || 0;
           const jobStats = stats[job.id] || { views: 0, saves: 0 };
+          const boostRequest = boostRequests.find((request) => request.jobId === job.id);
           return (
             <article
               key={job.id}
@@ -1728,7 +1871,15 @@ function RecruiterScreen({ jobs, applications, stats, setScreen, openLogin, mark
                 <StatCard value={jobStats.saves} label="Signets" />
                 <StatCard value={count} label="Postules" />
               </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {boostRequest && (
+                <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-xs font-black text-blue-800">
+                  Boost {boostRequest.status === 'approved' ? 'valide' : boostRequest.status === 'rejected' ? 'rejete' : 'en attente'}
+                </p>
+              )}
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <button type="button" onClick={() => requestJobBoost(job)} disabled={Boolean(boostRequest)} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-black text-blue-800 transition hover:border-blue-700 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500">
+                  Booster
+                </button>
                 <button type="button" onClick={() => startEditJob(job)} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
                   <Edit3 size={16} /> Modifier
                 </button>
@@ -1768,6 +1919,7 @@ function RecruiterScreen({ jobs, applications, stats, setScreen, openLogin, mark
             <div className="mt-4 flex flex-wrap gap-2 text-xs font-black text-slate-600">
               <span className="rounded-full bg-slate-100 px-3 py-1">{item.cvName ? `CV: ${item.cvName}` : 'Aucun CV'}</span>
               <span className="rounded-full bg-slate-100 px-3 py-1">{item.trackingEnabled ? 'Candidature suivie' : 'Candidature rapide'}</span>
+              {item.trackingNumber && <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">{item.trackingNumber}</span>}
               <span className="rounded-full bg-slate-100 px-3 py-1">{item.createdAt ? new Date(item.createdAt).toLocaleDateString('fr-FR') : 'Date locale'}</span>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_1fr]">
@@ -1795,6 +1947,62 @@ function RecruiterScreen({ jobs, applications, stats, setScreen, openLogin, mark
       </div>
         </>
       )}
+    </div>
+  );
+}
+
+function AdminScreen({ boostRequests, reviewBoostRequest, role, setScreen }) {
+  if (role !== 'admin') {
+    return (
+      <div className="space-y-5">
+        <PageHeader title="Admin" subtitle="Acces reserve" />
+        <EmptyState title="Espace reserve" body="Ton compte n'a pas les droits admin." />
+        <button onClick={() => setScreen('profile')} className="min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
+          Retour au profil
+        </button>
+      </div>
+    );
+  }
+
+  const pendingCount = boostRequests.filter((request) => request.status === 'pending').length;
+
+  return (
+    <div className="space-y-5">
+      <PageHeader title="Admin" subtitle="Demandes de boost et controles plateforme" />
+      <div className="grid grid-cols-3 gap-2">
+        <StatCard value={boostRequests.length} label="Boosts" />
+        <StatCard value={pendingCount} label="En attente" />
+        <StatCard value={boostRequests.filter((request) => request.status === 'approved').length} label="Valides" />
+      </div>
+      <SectionTitle title="Demandes de boost" />
+      <div className="grid gap-3">
+        {boostRequests.map((request) => (
+          <article key={request.id} className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase text-blue-700">{request.company}</p>
+                <h3 className="mt-1 text-lg font-black text-slate-950">{request.jobTitle}</h3>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  Plan {request.plan} - {request.createdAt ? new Date(request.createdAt).toLocaleDateString('fr-FR') : 'Date inconnue'}
+                </p>
+              </div>
+              <span className={classNames('w-fit rounded-full px-3 py-1 text-xs font-black', request.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : request.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800')}>
+                {request.status === 'approved' ? 'Valide' : request.status === 'rejected' ? 'Rejete' : 'En attente'}
+              </span>
+            </div>
+            {request.message && <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm font-semibold leading-6 text-slate-700">{request.message}</p>}
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <button type="button" onClick={() => reviewBoostRequest(request.id, 'approved')} disabled={request.status === 'approved'} className="min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-black text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+                Valider
+              </button>
+              <button type="button" onClick={() => reviewBoostRequest(request.id, 'rejected')} disabled={request.status === 'rejected'} className="min-h-11 rounded-lg border border-red-200 px-4 text-sm font-black text-red-700 transition hover:border-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500">
+                Rejeter
+              </button>
+            </div>
+          </article>
+        ))}
+        {boostRequests.length === 0 && <EmptyState title="Aucune demande" body="Les demandes de boost apparaitront ici quand un recruteur enverra une demande." />}
+      </div>
     </div>
   );
 }
