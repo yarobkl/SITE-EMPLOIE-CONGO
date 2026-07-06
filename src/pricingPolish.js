@@ -99,6 +99,7 @@ export function applyPricingPolish() {
   import('./candidateStatusPolish.js').then((module) => module.applyCandidateStatusPolish?.());
   import('./applicationTrackingPolish.js').then((module) => module.applyApplicationTrackingPolish?.());
   import('./applyRescuePolish.js').then((module) => module.applyApplyRescuePolish?.());
+  import('./signupCodePolish.js').then((module) => module.applySignupCodePolish?.());
   const root = document.getElementById('root') || document.body;
   const observer = new MutationObserver(run);
   observer.observe(root, { childList: true, subtree: true, characterData: true });
