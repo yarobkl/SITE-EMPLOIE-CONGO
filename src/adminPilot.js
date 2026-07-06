@@ -1,4 +1,8 @@
+import { hasSupabaseConfig, supabase } from './lib/supabase';
+
 const STORE = 'nzela.boostRequests';
+let cachedRemote = [];
+let loadingRemote = false;
 
 function readItems() {
   try { return JSON.parse(localStorage.getItem(STORE) || '[]'); } catch { return []; }
@@ -12,6 +16,16 @@ function textOf(node) {
   return (node?.textContent || '').trim();
 }
 
+async function loadRemoteBoosts() {
+  if (!hasSupabaseConfig || !supabase || loadingRemote) return;
+  loadingRemote = true;
+  try {
+    const { data } = await supabase.from('boost_requests').select('id,reference,plan,amount,status,created_at').order('created_at', { ascending: false }).limit(20);
+    cachedRemote = data || [];
+  } catch {}
+  loadingRemote = false;
+}
+
 function addStyle() {
   if (document.getElementById('nzela-admin-pilot-style')) return;
   const style = document.createElement('style');
@@ -20,7 +34,14 @@ function addStyle() {
   document.head.appendChild(style);
 }
 
-function updateItem(index, status) {
+async function updateItem(index, status) {
+  const remote = cachedRemote[index];
+  if (remote?.id && hasSupabaseConfig && supabase) {
+    await supabase.from('boost_requests').update({ status, reviewed_at: new Date().toISOString() }).eq('id', remote.id);
+    await loadRemoteBoosts();
+    render();
+    return;
+  }
   const items = readItems();
   if (!items[index]) return;
   items[index].status = status;
@@ -39,14 +60,15 @@ function render() {
     panel.className = 'nzela-admin-pilot';
     container.appendChild(panel);
   }
-  const items = readItems();
-  panel.innerHTML = `<h2>Admin pilote</h2><p>Demandes de mise en avant en attente de validation.</p>${items.length ? items.map((item, index) => `<article class="nzela-admin-item"><strong>${item.ref || 'Reference'} - ${item.plan || 'Option'}</strong><span>Statut: ${item.status || 'pending'}</span><div class="nzela-admin-actions"><button type="button" data-ok="${index}">Valider</button><button type="button" data-ko="${index}">Rejeter</button></div></article>`).join('') : '<article class="nzela-admin-item"><strong>Aucune demande</strong><span>Les demandes apparaitront ici apres choix d une formule recruteur.</span></article>'}<article class="nzela-admin-item"><strong>Entreprises et signalements</strong><span>Prochaine connexion: verification des entreprises, signalements et historique admin.</span></article>`;
+  const local = readItems();
+  const items = cachedRemote.length ? cachedRemote.map((item) => ({ ref: item.reference, plan: item.plan, status: item.status, amount: item.amount })) : local;
+  panel.innerHTML = `<h2>Admin pilote</h2><p>Demandes de mise en avant branchees sur Supabase quand la table existe.</p>${items.length ? items.map((item, index) => `<article class="nzela-admin-item"><strong>${item.ref || 'Reference'} - ${item.plan || 'Option'}</strong><span>Statut: ${item.status || 'pending'}${item.amount ? ` - ${item.amount} FCFA` : ''}</span><div class="nzela-admin-actions"><button type="button" data-ok="${index}">Valider</button><button type="button" data-ko="${index}">Rejeter</button></div></article>`).join('') : '<article class="nzela-admin-item"><strong>Aucune demande</strong><span>Les demandes apparaitront ici apres choix d une formule recruteur.</span></article>'}<article class="nzela-admin-item"><strong>Entreprises et signalements</strong><span>Prochaine connexion: verification des entreprises, signalements et historique admin.</span></article>`;
   panel.querySelectorAll('[data-ok]').forEach((button) => button.addEventListener('click', () => updateItem(Number(button.dataset.ok), 'validated')));
   panel.querySelectorAll('[data-ko]').forEach((button) => button.addEventListener('click', () => updateItem(Number(button.dataset.ko), 'rejected')));
 }
 
 export function applyAdminPilot() {
-  const run = () => requestAnimationFrame(() => { addStyle(); render(); });
+  const run = () => requestAnimationFrame(async () => { addStyle(); await loadRemoteBoosts(); render(); });
   run();
   const observer = new MutationObserver(run);
   observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true, characterData: true });
