@@ -1,5 +1,8 @@
+import { hasSupabaseConfig, supabase } from './lib/supabase';
+
 const STORE = 'nzela.applicationTracking';
 const MAIL_STORE = 'nzela.mailQueue';
+const PENDING_STORE = 'nzela.pendingTrackingSync';
 
 function read(key) {
   try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
@@ -17,14 +20,34 @@ function makeRef() {
   return `NZJ-CAND-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 }
 
+async function syncLatestApplication(item) {
+  if (!hasSupabaseConfig || !supabase || !item?.ref) return;
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+    let query = supabase.from('applications').select('id,tracking_number,created_at').order('created_at', { ascending: false }).limit(1);
+    if (userId) query = query.eq('candidate_id', userId);
+    else if (item.email) query = query.eq('email', item.email);
+    else return;
+    const { data } = await query;
+    const latest = data?.[0];
+    if (!latest?.id || latest.tracking_number) return;
+    await supabase.from('applications').update({ tracking_number: item.ref }).eq('id', latest.id);
+  } catch {}
+}
+
 function ensureRecentTracking() {
   const submit = Array.from(document.querySelectorAll('button')).find((button) => ['Envoyer et suivre', 'Envoyer rapidement'].some((label) => textOf(button).includes(label)));
   if (!submit || submit.dataset.nzelaTrackSubmit === 'true') return;
   submit.dataset.nzelaTrackSubmit = 'true';
   submit.addEventListener('click', () => {
     const title = Array.from(document.querySelectorAll('h1,h2,h3')).map(textOf).find((value) => value && !value.includes('Postuler')) || 'Candidature';
-    const item = { ref: makeRef(), title, status: 'sent', createdAt: new Date().toISOString() };
+    const email = document.querySelector('input[type="email"]')?.value || '';
+    const item = { ref: makeRef(), title, email, status: 'sent', createdAt: new Date().toISOString() };
     write(STORE, [item, ...read(STORE)]);
+    localStorage.setItem(PENDING_STORE, JSON.stringify(item));
+    window.setTimeout(() => syncLatestApplication(item), 1400);
+    window.setTimeout(() => syncLatestApplication(item), 3200);
   });
 }
 
@@ -50,12 +73,26 @@ function addCandidateRefs() {
   });
 }
 
+async function syncStatusToDatabase(index, status) {
+  if (!hasSupabaseConfig || !supabase) return;
+  const items = read(STORE);
+  const item = items[index];
+  if (!item?.ref) return;
+  try {
+    const updates = status === 'cv_opened'
+      ? { cv_opened: true, cv_opened_at: new Date().toISOString(), status: 'reviewed' }
+      : { application_opened: true, application_seen_at: new Date().toISOString(), status: 'reviewed' };
+    await supabase.from('applications').update(updates).eq('tracking_number', item.ref);
+  } catch {}
+}
+
 function updateTracking(index, status) {
   const items = read(STORE);
   if (!items[index]) items[index] = { ref: makeRef(), status: 'sent', createdAt: new Date().toISOString() };
   items[index].status = status;
   items[index].updatedAt = new Date().toISOString();
   write(STORE, items);
+  syncStatusToDatabase(index, status);
   const mail = { ref: items[index].ref, status, subject: status === 'cv_opened' ? 'Votre CV a ete ouvert' : 'Votre candidature a ete consultee', createdAt: new Date().toISOString() };
   write(MAIL_STORE, [mail, ...read(MAIL_STORE)]);
 }
@@ -100,6 +137,8 @@ function runTrackingPass() {
   ensureRecentTracking();
   addCandidateRefs();
   bindRecruiterActions();
+  const pending = JSON.parse(localStorage.getItem(PENDING_STORE) || 'null');
+  if (pending?.ref) syncLatestApplication(pending);
 }
 
 export function applyApplicationTrackingPolish() {
