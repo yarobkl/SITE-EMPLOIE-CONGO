@@ -48,6 +48,10 @@ function showReference(plan) {
     document.getElementById('nzela-recruiter-pricing')?.appendChild(box);
   }
   box.textContent = `Reference creee: ${ref}. Option choisie: ${plan}. Statut: en attente de validation.`;
+  try {
+    const items = JSON.parse(localStorage.getItem('nzela.boostRequests') || '[]');
+    localStorage.setItem('nzela.boostRequests', JSON.stringify([{ ref, plan, status: 'pending', createdAt: new Date().toISOString() }, ...items].slice(0, 50)));
+  } catch {}
 }
 
 function addRecruiterPricing() {
@@ -72,6 +76,7 @@ function runPricingPass() {
 export function applyPricingPolish() {
   const run = () => window.requestAnimationFrame(runPricingPass);
   run();
+  import('./adminPilot.js').then((module) => module.applyAdminPilot?.());
   const root = document.getElementById('root') || document.body;
   const observer = new MutationObserver(run);
   observer.observe(root, { childList: true, subtree: true, characterData: true });
