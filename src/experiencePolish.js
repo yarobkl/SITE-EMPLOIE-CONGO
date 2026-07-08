@@ -2,18 +2,9 @@ function textOf(node) {
   return (node?.textContent || '').trim();
 }
 
-function clickFirstButtonContaining(label) {
-  const button = Array.from(document.querySelectorAll('button')).find((item) => textOf(item).toLowerCase().includes(label.toLowerCase()));
-  button?.click();
-}
-
 function getHomeWrapper() {
   const title = Array.from(document.querySelectorAll('h1')).find((node) => textOf(node).includes('emploi fiable au Congo'));
   return title?.closest('.space-y-6') || null;
-}
-
-function scrollToTarget(id) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function addJourneySection() {
@@ -34,13 +25,11 @@ function addJourneySection() {
         <small>Candidat</small>
         <h3>Je cherche une opportunite</h3>
         <ol><li>Je trouve une offre claire</li><li>Je depose mon CV PDF</li><li>Je suis ma candidature</li></ol>
-        <button type="button" data-nzela-action="jobs">Voir les offres</button>
       </article>
       <article>
         <small>Employeur / recruteur</small>
         <h3>Je recrute simplement</h3>
         <ol><li>Je cree mon compte recruteur</li><li>Je publie une offre structuree</li><li>Je recois les candidatures</li></ol>
-        <button type="button" data-nzela-action="publish">Publier une offre</button>
       </article>
     </div>
   `;
@@ -48,27 +37,6 @@ function addJourneySection() {
   const pricing = wrapper.querySelector('#nzela-pricing');
   const trust = wrapper.querySelector('[data-nzela-trust-strip]');
   (pricing || trust || wrapper.firstElementChild)?.insertAdjacentElement('afterend', section);
-
-  section.querySelector('[data-nzela-action="jobs"]')?.addEventListener('click', () => clickFirstButtonContaining('voir les offres'));
-  section.querySelector('[data-nzela-action="publish"]')?.addEventListener('click', () => clickFirstButtonContaining('publier'));
-}
-
-function addQuickHelpBar() {
-  if (document.querySelector('[data-nzela-helpbar]')) return;
-  const bar = document.createElement('nav');
-  bar.dataset.nzelaHelpbar = 'true';
-  bar.className = 'nzela-helpbar';
-  bar.innerHTML = `
-    <button type="button" data-go="top">Accueil</button>
-    <button type="button" data-go="jobs">Offres</button>
-    <button type="button" data-go="pricing">Tarifs</button>
-    <button type="button" data-go="publish">Publier</button>
-  `;
-  document.body.appendChild(bar);
-  bar.querySelector('[data-go="top"]')?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-  bar.querySelector('[data-go="jobs"]')?.addEventListener('click', () => clickFirstButtonContaining('voir les offres'));
-  bar.querySelector('[data-go="pricing"]')?.addEventListener('click', () => scrollToTarget('nzela-pricing'));
-  bar.querySelector('[data-go="publish"]')?.addEventListener('click', () => clickFirstButtonContaining('publier'));
 }
 
 function addFormComfort() {
@@ -105,7 +73,19 @@ function addExperienceStyles() {
   const style = document.createElement('style');
   style.id = 'nzela-experience-style';
   style.textContent = `
-    .nzela-journey{border:1px solid rgba(15,59,119,.12);border-radius:20px;background:#fff;padding:18px;box-shadow:0 18px 44px rgba(15,23,42,.06)}.nzela-journey-head span{display:inline-flex;border-radius:999px;background:#ecfdf5;color:#047857;font-size:11px;font-weight:950;text-transform:uppercase;padding:6px 10px}.nzela-journey-head h2{margin-top:10px;color:#0f172a;font-size:26px;line-height:1.1;font-weight:950;letter-spacing:-.02em}.nzela-journey-head p{margin-top:8px;color:#64748b;font-size:14px;font-weight:750;line-height:1.6}.nzela-journey-grid{display:grid;gap:12px;margin-top:16px}.nzela-journey article{border:1px solid #e2e8f0;border-radius:16px;background:linear-gradient(135deg,#fff,#f8fafc);padding:16px}.nzela-journey small{display:inline-flex;border-radius:999px;background:#eef6ff;color:#0f3b77;font-size:11px;font-weight:950;text-transform:uppercase;padding:5px 9px}.nzela-journey h3{margin-top:10px;color:#0f172a;font-size:17px;font-weight:950}.nzela-journey ol{display:grid;gap:8px;margin:12px 0 0;padding-left:20px;color:#475569;font-size:14px;font-weight:750;line-height:1.45}.nzela-journey button{margin-top:14px;min-height:44px;width:100%;border-radius:12px;background:#0f3b77;color:#fff;font-weight:950}.nzela-helpbar{position:fixed;left:12px;right:12px;bottom:12px;z-index:60;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;border:1px solid rgba(15,59,119,.14);border-radius:18px;background:rgba(255,255,255,.94);padding:8px;box-shadow:0 18px 50px rgba(15,23,42,.18);backdrop-filter:blur(14px)}.nzela-helpbar button{min-height:38px;border-radius:12px;background:#f8fafc;color:#0f3b77;font-size:12px;font-weight:950}.nzela-helpbar button:nth-child(4){background:#0f3b77;color:#fff}.nzela-field-comfort:focus{box-shadow:0 0 0 4px rgba(15,59,119,.12)!important}.nzela-form-note{display:block;margin-top:6px;color:#64748b;font-size:12px;font-weight:700;line-height:1.45}.nzela-empty-state{border:1px dashed #cbd5e1;border-radius:16px;background:#f8fafc;padding:14px!important;color:#64748b!important;font-weight:750!important;text-align:center}@media(min-width:768px){.nzela-journey{padding:22px}.nzela-journey-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.nzela-helpbar{left:auto;right:22px;bottom:22px;width:420px}.nzela-journey-head h2{font-size:32px}}body{padding-bottom:76px}@media(min-width:1024px){body{padding-bottom:0}}
+    .nzela-journey{border:1px solid rgba(15,59,119,.12);border-radius:20px;background:#fff;padding:18px;box-shadow:0 18px 44px rgba(15,23,42,.06)}
+    .nzela-journey-head span{display:inline-flex;border-radius:999px;background:#ecfdf5;color:#047857;font-size:11px;font-weight:950;text-transform:uppercase;padding:6px 10px}
+    .nzela-journey-head h2{margin-top:10px;color:#0f172a;font-size:26px;line-height:1.1;font-weight:950;letter-spacing:-.02em}
+    .nzela-journey-head p{margin-top:8px;color:#64748b;font-size:14px;font-weight:750;line-height:1.6}
+    .nzela-journey-grid{display:grid;gap:12px;margin-top:16px}
+    .nzela-journey article{border:1px solid #e2e8f0;border-radius:16px;background:linear-gradient(135deg,#fff,#f8fafc);padding:16px}
+    .nzela-journey small{display:inline-flex;border-radius:999px;background:#eef6ff;color:#0f3b77;font-size:11px;font-weight:950;text-transform:uppercase;padding:5px 9px}
+    .nzela-journey h3{margin-top:10px;color:#0f172a;font-size:17px;font-weight:950}
+    .nzela-journey ol{display:grid;gap:8px;margin:12px 0 0;padding-left:20px;color:#475569;font-size:14px;font-weight:750;line-height:1.45}
+    .nzela-field-comfort:focus{box-shadow:0 0 0 4px rgba(15,59,119,.12)!important}
+    .nzela-form-note{display:block;margin-top:6px;color:#64748b;font-size:12px;font-weight:700;line-height:1.45}
+    .nzela-empty-state{border:1px dashed #cbd5e1;border-radius:16px;background:#f8fafc;padding:14px!important;color:#64748b!important;font-weight:750!important;text-align:center}
+    @media(min-width:768px){.nzela-journey{padding:22px}.nzela-journey-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.nzela-journey-head h2{font-size:32px}}
   `;
   document.head.appendChild(style);
 }
@@ -113,7 +93,6 @@ function addExperienceStyles() {
 function runExperiencePass() {
   addExperienceStyles();
   addJourneySection();
-  addQuickHelpBar();
   addFormComfort();
   improveEmptyScreens();
 }

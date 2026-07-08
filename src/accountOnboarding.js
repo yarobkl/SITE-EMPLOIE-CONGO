@@ -1,7 +1,6 @@
 import { hasSupabaseConfig, supabase } from './lib/supabase.js';
 
 const DONE_PREFIX = 'nzela.account_setup_done.';
-const SOCIAL_START_KEY = 'nzela.social_login_started';
 const RECENT_PROFILE_WINDOW_MS = 15 * 60 * 1000;
 
 function text(node) {
@@ -19,18 +18,6 @@ function getStoredProfile() {
 function setStoredProfile(next) {
   const current = getStoredProfile();
   localStorage.setItem('congoemploi.v2.profile', JSON.stringify({ ...current, ...next }));
-}
-
-function markSocialStart() {
-  Array.from(document.querySelectorAll('button')).forEach((button) => {
-    const label = text(button);
-    if (label !== 'google' && label !== 'facebook') return;
-    if (button.dataset.nzelaSocialFlag === 'true') return;
-    button.dataset.nzelaSocialFlag = 'true';
-    button.addEventListener('click', () => {
-      sessionStorage.setItem(SOCIAL_START_KEY, 'true');
-    }, true);
-  });
 }
 
 async function getAccountState() {
@@ -58,7 +45,6 @@ function shouldShowSetup(state) {
   if (!state?.user) return false;
   if (localStorage.getItem(`${DONE_PREFIX}${state.user.id}`) === 'true') return false;
   if (state.company) return false;
-  if (sessionStorage.getItem(SOCIAL_START_KEY) === 'true') return true;
   if (!state.profile?.created_at) return false;
   const createdAt = new Date(state.profile.created_at).getTime();
   return Number.isFinite(createdAt) && Date.now() - createdAt < RECENT_PROFILE_WINDOW_MS;
@@ -152,7 +138,6 @@ function buildSetupModal(state) {
 
     setStoredProfile(profileUpdate);
     localStorage.setItem(`${DONE_PREFIX}${state.user.id}`, 'true');
-    sessionStorage.removeItem(SOCIAL_START_KEY);
     window.location.reload();
   });
 }
@@ -166,7 +151,6 @@ function addSetupStyle() {
 }
 
 async function runSetupPass() {
-  markSocialStart();
   addSetupStyle();
   const state = await getAccountState();
   if (shouldShowSetup(state)) buildSetupModal(state);

@@ -137,10 +137,6 @@ function useInvalidNotice(notify, message) {
 const MAX_CV_BYTES = 2 * 1024 * 1024;
 const MAX_CV_LABEL = '2 Mo';
 const PENDING_LOGIN_ROLE_KEY = 'congoemploi.pendingLoginRole';
-const OAUTH_PROVIDERS = [
-  { provider: 'google', label: 'Google' },
-  { provider: 'facebook', label: 'Facebook' },
-];
 
 const emptyApplication = {
   nom: '',
@@ -206,12 +202,12 @@ function friendlyAuthError(message) {
   if (!message) return 'Connexion interrompue. Reessaie dans quelques instants.';
   const lower = message.toLowerCase();
   if (lower.includes('redirect') || lower.includes('callback')) {
-    return 'Connexion Google mal configuree. Verifie les URLs autorisees dans Supabase et Google Cloud.';
+    return 'Connexion mal configuree. Verifie les URLs autorisees dans Supabase.';
   }
   if (lower.includes('provider') || lower.includes('disabled')) {
-    return 'Connexion Google non activee pour le moment.';
+    return 'Connexion externe non activee pour le moment.';
   }
-  return 'Connexion interrompue. Reessaie avec Google ou ton email.';
+  return 'Connexion interrompue. Reessaie avec ton email.';
 }
 
 function friendlyEmailAuthError(message) {
@@ -338,7 +334,6 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [authUser, setAuthUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
-  const [authBusyProvider, setAuthBusyProvider] = useState('');
   const [serviceStatus, setServiceStatus] = useState(hasSupabaseConfig ? 'checking' : 'offline');
   const [applicationForm, setApplicationForm] = useState(emptyApplication);
   const [jobForm, setJobForm] = useState(emptyJob);
@@ -409,7 +404,6 @@ export default function App() {
     bootstrapAuth();
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setAuthUser(session?.user || null);
-      setAuthBusyProvider('');
       setAuthLoading(false);
     });
 
@@ -712,38 +706,6 @@ export default function App() {
     } catch {
       setServiceStatus('degraded');
       notify('Connexion temporairement indisponible. Reessaie apres verification du service.');
-    }
-  };
-
-  const handleOAuthSignIn = async (provider) => {
-    if (!hasSupabaseConfig || !supabase) {
-      notify('Connexion indisponible pour le moment.');
-      return;
-    }
-    if (serviceStatus !== 'online') {
-      notify(serviceStatus === 'checking' ? 'Verification du service en cours. Reessaie dans quelques secondes.' : 'Connexion sociale temporairement indisponible. La production doit etre rebranchee.');
-      return;
-    }
-    try {
-      setAuthBusyProvider(provider);
-      localStorage.setItem(PENDING_LOGIN_ROLE_KEY, JSON.stringify(loginRole));
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: getAuthRedirectUrl(),
-          queryParams: provider === 'google' ? { prompt: 'select_account' } : undefined,
-        },
-      });
-      if (error) {
-        localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
-        setAuthBusyProvider('');
-        notify(friendlyAuthError(error.message));
-      }
-    } catch {
-      localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
-      setAuthBusyProvider('');
-      setServiceStatus('degraded');
-      notify('Connexion sociale temporairement indisponible. Reessaie apres verification du service.');
     }
   };
 
@@ -1218,7 +1180,7 @@ export default function App() {
     if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} submitting={applicationSubmitting} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} openLogin={openLogin} openRecruiterSpace={openRecruiterSpace} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} hasPublishedOffer={hasPublishedOffer} />;
-    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleOAuthSignIn={handleOAuthSignIn} authBusyProvider={authBusyProvider} serviceStatus={serviceStatus} setScreen={setScreen} notify={notify} />;
+    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} serviceStatus={serviceStatus} setScreen={setScreen} notify={notify} />;
     if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} boostRequests={boostRequests} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} downloadApplicationCv={downloadApplicationCv} startEditJob={startEditJob} deleteJob={deleteJob} requestJobBoost={requestJobBoost} isLoggedIn={isLoggedIn} role={profile.role} />;
     if (screen === 'admin') return <AdminScreen boostRequests={boostRequests} reviewBoostRequest={reviewBoostRequest} role={profile.role} setScreen={setScreen} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} notify={notify} />;
@@ -1670,7 +1632,7 @@ function ProfileInfoCard({ icon: Icon, title, body }) {
   );
 }
 
-function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleOAuthSignIn, authBusyProvider, serviceStatus, setScreen, notify }) {
+function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, serviceStatus, setScreen, notify }) {
   const isSignup = authMode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
   const notifyInvalid = useInvalidNotice(notify, 'Renseigne ton email et ton mot de passe pour continuer.');
@@ -1680,7 +1642,6 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
   const isRecruiterLogin = loginRole === 'recruteur';
   const loginTitle = `${isSignup ? 'Inscription' : 'Connexion'} ${isRecruiterLogin ? 'recruteur' : 'candidat'}`;
   const loginSubtitle = isRecruiterLogin ? 'Espace employeur pour publier les offres et voir les CV' : 'Espace candidat pour postuler et suivre tes candidatures';
-  const authUnavailable = serviceStatus !== 'online';
   const authStatusText = serviceStatus === 'checking'
     ? 'Verification du service en cours. La connexion sera disponible dans quelques secondes.'
     : "Connexion temporairement indisponible. L'equipe projet doit rebrancher la production.";
@@ -1697,19 +1658,11 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
           Recruteur
         </button>
       </div>
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
-        <p className="text-sm font-black text-slate-900">Continuer avec</p>
-        {authUnavailable && (
-          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
-            {authStatusText}
-          </p>
-        )}
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {OAUTH_PROVIDERS.map((item) => (
-            <SocialLoginButton key={item.provider} item={item} busy={authBusyProvider === item.provider} disabled={authUnavailable || Boolean(authBusyProvider)} onClick={() => handleOAuthSignIn(item.provider)} />
-          ))}
-        </div>
-      </div>
+      {serviceStatus !== 'online' && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
+          {authStatusText}
+        </p>
+      )}
       <div className="grid grid-cols-2 rounded-lg border border-slate-200 bg-white p-1">
         <button type="button" onClick={() => setAuthMode('signin')} className={classNames('min-h-11 rounded-md text-sm font-black', !isSignup ? 'bg-blue-700 text-white' : 'text-slate-600')}>
           Connexion
@@ -1741,58 +1694,6 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
         </p>
       </form>
     </div>
-  );
-}
-
-function SocialLoginButton({ item, onClick, busy = false, disabled = false }) {
-  return (
-    <button type="button" onClick={onClick} disabled={disabled} className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-800 transition hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-60">
-      <OAuthProviderLogo provider={item.provider} />
-      {busy ? 'Connexion...' : item.label}
-    </button>
-  );
-}
-
-function OAuthProviderLogo({ provider }) {
-  if (provider === 'google') {
-    return (
-      <span className="grid h-7 w-7 place-items-center rounded-full border border-slate-200 bg-white">
-        <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-          <path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.9c-.3 1.3-1 2.4-2.1 3.2v2.6h3.4c2-1.8 3.4-4.5 3.4-7.8Z" />
-          <path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.9l-3.4-2.6c-.9.6-2.2 1-3.9 1-3 0-5.5-2-6.4-4.8H2.1v2.7C3.9 20.3 7.7 23 12 23Z" />
-          <path fill="#FBBC05" d="M5.6 13.7c-.2-.6-.4-1.2-.4-1.9s.1-1.3.4-1.9V7.2H2.1C1.4 8.6 1 10.1 1 11.8s.4 3.2 1.1 4.6l3.5-2.7Z" />
-          <path fill="#EA4335" d="M12 5.1c1.6 0 3.1.6 4.2 1.7l3.1-3.1C17.5 2 15 1 12 1 7.7 1 3.9 3.7 2.1 7.2l3.5 2.7C6.5 7.1 9 5.1 12 5.1Z" />
-        </svg>
-      </span>
-    );
-  }
-
-  if (provider === 'apple') {
-    return (
-      <span className="grid h-7 w-7 place-items-center rounded-full bg-slate-950">
-        <svg viewBox="0 0 24 24" className="h-4 w-4 text-white" aria-hidden="true">
-          <path fill="currentColor" d="M16.8 12.7c0-2.7 2.2-4 2.3-4.1-1.3-1.9-3.2-2.1-3.9-2.2-1.7-.2-3.2 1-4.1 1-.8 0-2.1-1-3.5-.9-1.8 0-3.4 1-4.3 2.6-1.8 3.1-.5 7.8 1.3 10.3.9 1.2 1.9 2.6 3.3 2.6 1.3-.1 1.8-.8 3.4-.8s2.1.8 3.5.8 2.4-1.3 3.2-2.5c1-1.4 1.4-2.8 1.4-2.9-.1-.1-2.6-1.1-2.6-3.9ZM14.1 4.7c.7-.9 1.2-2.1 1.1-3.3-1.1 0-2.4.7-3.1 1.6-.7.8-1.3 2-1.1 3.2 1.1.1 2.3-.6 3.1-1.5Z" />
-        </svg>
-      </span>
-    );
-  }
-
-  if (provider === 'facebook') {
-    return (
-      <span className="grid h-7 w-7 place-items-center rounded-full bg-[#1877F2]">
-        <svg viewBox="0 0 24 24" className="h-4 w-4 text-white" aria-hidden="true">
-          <path fill="currentColor" d="M14.2 8.1h2.3V4.3c-.4-.1-1.8-.2-3.4-.2-3.4 0-5.7 2.1-5.7 6v3.4H3.7v4.2h3.7V24h4.5v-6.3h3.6l.6-4.2h-4.2v-3c0-1.2.3-2.4 2.3-2.4Z" />
-        </svg>
-      </span>
-    );
-  }
-
-  return (
-    <span className="grid h-7 w-7 place-items-center rounded-full bg-[#0A66C2]">
-      <svg viewBox="0 0 24 24" className="h-4 w-4 text-white" aria-hidden="true">
-        <path fill="currentColor" d="M5.4 7.9H1.7V22h3.7V7.9ZM3.5 6C2.3 6 1.4 5.1 1.4 3.9S2.3 1.8 3.5 1.8s2.1.9 2.1 2.1S4.7 6 3.5 6ZM22.6 22h-3.7v-7.3c0-1.7 0-3.9-2.4-3.9s-2.8 1.9-2.8 3.8V22H10V7.9h3.5v1.9h.1c.5-.9 1.7-2.3 3.8-2.3 4 0 5.2 2.6 5.2 6.1V22Z" />
-      </svg>
-    </span>
   );
 }
 
