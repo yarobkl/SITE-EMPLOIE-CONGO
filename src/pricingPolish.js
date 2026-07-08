@@ -31,12 +31,16 @@ function isPublicHome() {
 
 function isRecruiterContext() {
   if (isPublicHome()) return false;
+  const title = Array.from(document.querySelectorAll('h1')).find((node) => textOf(node) === 'Recruteur');
+  if (!title) return false;
   const body = document.body.textContent || '';
-  return ['Compte employeur / recruteur', 'Publier une offre', 'Gerer mes offres', 'Gérer mes offres', 'candidatures', 'CV et les KPI'].some((marker) => body.includes(marker));
+  if (body.includes('Connecte-toi pour publier une offre')) return false;
+  if (body.includes('Ton compte candidat reste dans son espace candidat')) return false;
+  return body.includes('Publier ma premiere offre') || body.includes('Mes offres') || body.includes('Publier une offre');
 }
 
 function getRecruiterContainer() {
-  const title = Array.from(document.querySelectorAll('h1')).find((node) => ['Mon espace', 'Recruteur'].includes(textOf(node)));
+  const title = Array.from(document.querySelectorAll('h1')).find((node) => textOf(node) === 'Recruteur');
   return title?.closest('.space-y-5') || title?.parentElement?.parentElement || null;
 }
 
@@ -89,6 +93,10 @@ function addRecruiterPricing() {
 function runPricingPass() {
   addPricingStyles();
   removePublicPricing();
+  if (!isRecruiterContext()) {
+    document.getElementById('nzela-recruiter-pricing')?.remove();
+    return;
+  }
   addRecruiterPricing();
 }
 
