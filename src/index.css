@@ -2,42 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 html {
   width: 100%;
   max-width: 100%;
+  overflow-x: hidden;
   scroll-behavior: smooth;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
 }
 
 body {
   width: 100%;
   max-width: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  min-height: 100vh;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  background: #ffffff;
+  color: #0f172a;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #ffffff;
-  overscroll-behavior-y: contain;
-  overflow-x: hidden;
 }
 
 #root {
   width: 100%;
   max-width: 100%;
+  min-height: 100vh;
   overflow-x: hidden;
 }
 
 ::selection {
-  background: #bfdbfe;
-  color: #0f172a;
+  background: #c6d8ec;
+  color: #081f3d;
 }
 
 button,
@@ -64,19 +60,24 @@ button:disabled {
   cursor: not-allowed;
 }
 
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
 @layer components {
   .app-surface {
-    @apply rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/60;
+    @apply rounded-xl border border-slate-200 bg-white;
   }
 
   .smooth-card {
-    @apply rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/60;
+    @apply rounded-xl border border-slate-200 bg-white;
     transition:
-      transform 180ms ease,
-      border-color 180ms ease,
-      box-shadow 180ms ease,
-      background-color 180ms ease,
-      color 180ms ease;
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease;
   }
 
   .smooth-button {
@@ -87,22 +88,77 @@ button:disabled {
       color 120ms ease,
       box-shadow 120ms ease,
       opacity 120ms ease;
-    will-change: transform;
   }
 
   .soft-enter {
-    animation: soft-enter 220ms ease-out both;
+    animation: soft-enter 180ms ease-out both;
+  }
+
+  .header-link {
+    @apply min-h-11 rounded-lg px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600;
+  }
+
+  .primary-button {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 text-[15px] font-bold text-white shadow-sm shadow-blue-900/10 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none;
+    transition:
+      transform 90ms ease,
+      background-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+
+  .secondary-button {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 text-[15px] font-bold text-slate-800 hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2;
+    transition:
+      transform 90ms ease,
+      border-color 120ms ease,
+      color 120ms ease,
+      background-color 120ms ease;
+  }
+
+  .secondary-icon-button {
+    @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2;
+    transition:
+      transform 90ms ease,
+      border-color 120ms ease,
+      color 120ms ease,
+      background-color 120ms ease;
+  }
+
+  .search-field {
+    @apply flex min-h-14 items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-600;
+  }
+
+  .filter-select {
+    @apply flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-600;
+  }
+
+  .filter-select select {
+    @apply appearance-none bg-transparent outline-none;
+  }
+
+  .job-card {
+    @apply rounded-xl border border-slate-200 bg-white p-4;
+    content-visibility: auto;
+    contain-intrinsic-size: 180px;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  .company-mark {
+    @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-700 text-white;
+  }
+
+  .neutral-chip {
+    @apply inline-flex min-h-7 items-center rounded-md bg-slate-100 px-2.5 text-xs font-semibold text-slate-700;
   }
 }
 
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .smooth-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
-  }
-
-  .smooth-button:hover {
-    transform: translateY(-1px);
+  .smooth-card:hover,
+  .job-card:hover {
+    border-color: #a7c0df;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
   }
 }
 
@@ -112,8 +168,10 @@ button:disabled {
   label:active,
   [role='button']:active,
   .smooth-button:not(:disabled):active,
-  .smooth-card:active {
-    transform: translateY(1px) scale(0.985);
+  .primary-button:not(:disabled):active,
+  .secondary-button:not(:disabled):active,
+  .secondary-icon-button:not(:disabled):active {
+    transform: scale(0.985);
   }
 }
 
@@ -131,196 +189,11 @@ button:disabled {
 @keyframes soft-enter {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-/* Nzela Jobs brand layer */
-body.nzela-brand {
-  background:
-    radial-gradient(circle at top left, rgba(15, 59, 119, 0.08), transparent 32rem),
-    #f8fafc;
-}
-
-body.nzela-brand header {
-  border-bottom-color: rgba(15, 59, 119, 0.12) !important;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06) !important;
-}
-
-body.nzela-brand .bg-blue-700,
-body.nzela-brand .hover\:bg-blue-800:hover {
-  background-color: #0f3b77 !important;
-}
-
-body.nzela-brand .text-blue-700,
-body.nzela-brand .hover\:text-blue-700:hover {
-  color: #0f3b77 !important;
-}
-
-body.nzela-brand .bg-blue-50,
-body.nzela-brand .hover\:bg-blue-50:hover {
-  background-color: #eef6ff !important;
-}
-
-body.nzela-brand .border-blue-700,
-body.nzela-brand .focus\:border-blue-700:focus,
-body.nzela-brand .focus-within\:border-blue-700:focus-within,
-body.nzela-brand .hover\:border-blue-700:hover {
-  border-color: #0f3b77 !important;
-}
-
-body.nzela-brand .ring-blue-600,
-body.nzela-brand .focus\:ring-blue-600:focus,
-body.nzela-brand .focus-within\:ring-blue-600:focus-within {
-  --tw-ring-color: rgba(15, 59, 119, 0.35) !important;
-}
-
-body.nzela-brand .app-surface,
-body.nzela-brand .smooth-card {
-  border-radius: 1rem !important;
-  border-color: rgba(15, 59, 119, 0.1) !important;
-  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.06) !important;
-}
-
-body.nzela-brand .app-surface:first-child {
-  background:
-    linear-gradient(135deg, rgba(15, 59, 119, 0.06), rgba(255, 255, 255, 0.96) 42%),
-    #ffffff !important;
-}
-
-body.nzela-brand .nzela-trust-strip article {
-  border: 1px solid rgba(15, 59, 119, 0.1);
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.94);
-  padding: 1rem;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
-}
-
-body.nzela-brand .nzela-trust-strip strong {
-  display: block;
-  color: #0f172a;
-  font-size: 0.95rem;
-  font-weight: 900;
-}
-
-body.nzela-brand .nzela-trust-strip span {
-  display: block;
-  margin-top: 0.35rem;
-  color: #64748b;
-  font-size: 0.875rem;
-  font-weight: 700;
-  line-height: 1.55;
-}
-
-body.nzela-brand .nzela-job-card {
-  position: relative;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.9)),
-    #ffffff !important;
-}
-
-body.nzela-brand .nzela-job-card::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: linear-gradient(180deg, #0f3b77, #2f8a45);
-  opacity: 0.95;
-}
-
-body.nzela-brand .nzela-card-badges,
-body.nzela-brand .nzela-detail-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-bottom: 0.55rem;
-}
-
-body.nzela-brand .nzela-detail-badges {
-  margin-top: 0.75rem;
-  margin-bottom: 0;
-}
-
-body.nzela-brand .nzela-badge,
-body.nzela-brand .nzela-card-badge {
-  display: inline-flex;
-  width: max-content;
-  align-items: center;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  line-height: 1;
-  padding: 0.34rem 0.58rem;
-  text-transform: uppercase;
-}
-
-body.nzela-brand .nzela-badge--trust,
-body.nzela-brand .nzela-card-badge {
-  background: #ecfdf5;
-  border-color: #bbf7d0;
-  color: #047857;
-}
-
-body.nzela-brand .nzela-badge--featured {
-  background: #fffbeb;
-  border-color: #fde68a;
-  color: #a16207;
-}
-
-body.nzela-brand .nzela-badge--new {
-  background: #eef6ff;
-  border-color: #bfdbfe;
-  color: #0f3b77;
-}
-
-body.nzela-brand .nzela-badge--urgent {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #b91c1c;
-}
-
-body.nzela-brand .nzela-badge--remote,
-body.nzela-brand .nzela-badge--stage,
-body.nzela-brand .nzela-badge--stable {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
-  color: #334155;
-}
-
-body.nzela-brand .nzela-card-reassurance {
-  margin-top: 0.55rem;
-  color: #64748b;
-  font-size: 0.78rem;
-  font-weight: 750;
-  line-height: 1.45;
-}
-
-body.nzela-brand .nzela-safety-note {
-  display: grid;
-  gap: 0.35rem;
-  margin-top: 1.5rem;
-  border: 1px solid #fde68a;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, #fffbeb, #ffffff);
-  padding: 1rem;
-}
-
-body.nzela-brand .nzela-safety-note strong {
-  color: #92400e;
-  font-size: 0.9rem;
-  font-weight: 950;
-}
-
-body.nzela-brand .nzela-safety-note span {
-  color: #78350f;
-  font-size: 0.86rem;
-  font-weight: 700;
-  line-height: 1.55;
 }
