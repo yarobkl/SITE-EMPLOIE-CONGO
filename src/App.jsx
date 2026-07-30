@@ -302,6 +302,10 @@ export default function App() {
   const [jobForm, setJobForm] = useState(emptyJob);
   const [editingJob, setEditingJob] = useState(null);
   const [applicationSubmitting, setApplicationSubmitting] = useState(false);
+  const [jobFormSubmitting, setJobFormSubmitting] = useState(false);
+  const [jobAction, setJobAction] = useState('');
+  const [notificationsUpdating, setNotificationsUpdating] = useState(false);
+  const [profileSubmitting, setProfileSubmitting] = useState(false);
 
   const [jobs, setJobs] = useStoredState('nzelajobs.v3.jobs', initialJobs);
   const [profile, setProfile] = useStoredState('congoemploi.v2.profile', initialProfile);
@@ -569,9 +573,9 @@ export default function App() {
     if (nextScreen === 'job' && hasSupabaseConfig && supabase && typeof job.id === 'string') {
       supabase.from('job_views').upsert({
         job_id: job.id,
-        viewer_id: authUser?.id || null,
+        viewer_id: null,
         session_key: getVisitorKey(),
-      }, { onConflict: 'job_id,session_key' });
+      }, { onConflict: 'job_id,session_key', ignoreDuplicates: true });
     }
   };
 
@@ -584,16 +588,30 @@ export default function App() {
 
   const toggleSave = async (job) => {
     const exists = savedIds.includes(job.id);
-    setSavedIds((current) => {
-      return exists ? current.filter((id) => id !== job.id) : [...current, job.id];
-    });
     if (hasSupabaseConfig && supabase && authUser) {
+      let error;
       if (exists) {
-        await supabase.from('saved_jobs').delete().eq('job_id', job.id);
+        ({ error } = await supabase
+          .from('saved_jobs')
+          .delete()
+          .eq('job_id', job.id)
+          .eq('candidate_id', authUser.id));
       } else {
-        await supabase.from('saved_jobs').insert({ job_id: job.id, candidate_id: authUser.id });
+        ({ error } = await supabase
+          .from('saved_jobs')
+          .upsert(
+            { job_id: job.id, candidate_id: authUser.id },
+            { onConflict: 'job_id,candidate_id', ignoreDuplicates: true },
+          ));
+      }
+      if (error) {
+        notify('Favori non modifie. Reessaie dans quelques instants.');
+        return;
       }
     }
+    setSavedIds((current) => (
+      exists ? current.filter((id) => id !== job.id) : [...current, job.id]
+    ));
     notify(exists ? 'Offre retiree des favoris' : 'Offre sauvegardee');
   };
 
@@ -743,7 +761,11 @@ export default function App() {
       openLogin('candidat');
       return;
     }
-    if (hasSupabaseConfig && !isSupabaseId(activeJob.id)) {
+    if (!hasSupabaseConfig || !supabase) {
+      notify('Candidature indisponible pour le moment. Reessaie dans quelques instants.');
+      return;
+    }
+    if (!isSupabaseId(activeJob.id)) {
       notify("Cette offre n'est pas encore synchronisee. Recharge les offres puis reessaie.");
       setScreen('jobs');
       return;
@@ -754,50 +776,46 @@ export default function App() {
     setApplicationSubmitting(true);
     notify('Envoi de la candidature en cours...');
     try {
-    if (hasSupabaseConfig && supabase && applicationForm.cvFile) {
-      const safeName = applicationForm.cvName
-        .toLowerCase()
-        .replace(/[^a-z0-9._-]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-      const cvOwnerFolder = trackingEnabled && authUser ? authUser.id : 'public';
-      const filePath = `${cvOwnerFolder}/${Date.now()}-${safeName || 'cv.pdf'}`;
-      const { error: uploadError } = await supabase.storage
-        .from('cvs')
-        .upload(filePath, applicationForm.cvFile, {
-          contentType: 'application/pdf',
-          upsert: false,
-        });
-      if (!uploadError) {
-        cvPath = filePath;
-      } else {
-        notify("Le CV n'a pas pu etre envoye. Reessaie avant d'envoyer la candidature.");
-        setApplicationSubmitting(false);
-        return;
+      if (applicationForm.cvFile) {
+        const fileId = crypto?.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const cvOwnerFolder = trackingEnabled && authUser ? authUser.id : 'quick';
+        const filePath = `${cvOwnerFolder}/${fileId}.pdf`;
+        const { error: uploadError } = await supabase.storage
+          .from('cvs')
+          .upload(filePath, applicationForm.cvFile, {
+            contentType: 'application/pdf',
+            upsert: false,
+          });
+        if (!uploadError) {
+          cvPath = filePath;
+        } else {
+          notify("Le CV n'a pas pu etre envoye. Reessaie avant d'envoyer la candidature.");
+          return;
+        }
       }
-    }
-    const { cvFile, ...applicationValues } = applicationForm;
-    const baseApplication = {
-      id: Date.now(),
-      jobId: activeJob.id,
-      jobRole: activeJob.role,
-      company: activeJob.company,
-      status: 'pending',
-      trackingEnabled,
-      applicationOpened: false,
-      cvOpened: false,
-      applicationSeenAt: null,
-      cvOpenedAt: null,
-      trackingNumber,
-      createdAt: new Date().toISOString(),
-      cvPath,
-      ...applicationValues,
-      nom: applicationForm.nom || `${profile.prenom} ${profile.nom}`.trim(),
-      email: applicationForm.email || profile.email,
-      phone: applicationForm.phone || profile.phone,
-    };
-    let application = baseApplication;
-    if (hasSupabaseConfig && supabase) {
-      const { data, error } = await supabase.from('applications').insert({
+      const { cvFile, ...applicationValues } = applicationForm;
+      const baseApplication = {
+        id: trackingNumber,
+        jobId: activeJob.id,
+        jobRole: activeJob.role,
+        company: activeJob.company,
+        status: 'pending',
+        trackingEnabled,
+        applicationOpened: false,
+        cvOpened: false,
+        applicationSeenAt: null,
+        cvOpenedAt: null,
+        trackingNumber,
+        createdAt: new Date().toISOString(),
+        cvPath,
+        ...applicationValues,
+        nom: applicationForm.nom || `${profile.prenom} ${profile.nom}`.trim(),
+        email: applicationForm.email || profile.email,
+        phone: applicationForm.phone || profile.phone,
+      };
+      const applicationPayload = {
         job_id: activeJob.id,
         candidate_id: trackingEnabled && authUser ? authUser.id : null,
         nom: baseApplication.nom,
@@ -812,35 +830,30 @@ export default function App() {
         application_opened: false,
         cv_opened: false,
         status: 'pending',
-      })
-        .select('id,job_id,candidate_id,nom,email,phone,message,cv_url,cv_name,cv_size,tracking_enabled,tracking_number,application_opened,application_seen_at,cv_opened,cv_opened_at,status,created_at,jobs(title,companies(name))')
-        .single();
-      if (error) {
-        setApplicationSubmitting(false);
-        notify(`Candidature non envoyee: ${error.message || 'base indisponible'}`);
-        return;
+      };
+      let application = baseApplication;
+      if (trackingEnabled) {
+        const { data, error } = await supabase
+          .from('applications')
+          .insert(applicationPayload)
+          .select('id,job_id,candidate_id,nom,email,phone,message,cv_url,cv_name,cv_size,tracking_enabled,tracking_number,application_opened,application_seen_at,cv_opened,cv_opened_at,status,created_at,jobs(title,companies(name))')
+          .single();
+        if (error || !data) {
+          notify(`Candidature non envoyee: ${error?.message || 'base indisponible'}`);
+          return;
+        }
+        application = normalizeApplication(data);
+        setApplications((current) => [application, ...current]);
+      } else {
+        const { error } = await supabase.from('applications').insert(applicationPayload);
+        if (error) {
+          notify(`Candidature non envoyee: ${error.message || 'base indisponible'}`);
+          return;
+        }
       }
-      application = normalizeApplication(data);
-    }
-    setApplications((current) => [application, ...current]);
-    const nextNotification = {
-      id: Date.now(),
-      title: trackingEnabled ? 'Candidature suivie envoyee' : 'Candidature rapide envoyee',
-      body: trackingEnabled ? `${activeJob.role}: suivi ${trackingNumber} actif.` : `${activeJob.role}: CV recu, reference ${trackingNumber}.`,
-      read: false,
-    };
-    setNotifications((current) => [nextNotification, ...current]);
-    if (trackingEnabled && hasSupabaseConfig && supabase && authUser) {
-      await supabase.from('notifications').insert({
-        user_id: authUser.id,
-        title: nextNotification.title,
-        body: nextNotification.body,
-        read: false,
-      });
-    }
-    setApplicationForm(emptyApplication);
-    setScreen('profile');
-    notify(`Candidature envoyee. Suivi ${trackingNumber}`);
+      setApplicationForm(emptyApplication);
+      setScreen(trackingEnabled ? 'profile' : 'jobs');
+      notify(`Candidature envoyee. Reference ${trackingNumber}`);
     } catch (error) {
       notify(`Candidature non envoyee: ${error?.message || 'service indisponible'}`);
     } finally {
@@ -904,41 +917,34 @@ export default function App() {
     const dbTimestampField = field === 'cvOpened' ? 'cv_opened_at' : 'application_seen_at';
     const dbBooleanField = field === 'cvOpened' ? 'cv_opened' : 'application_opened';
     const openedAt = new Date().toISOString();
-    const changedApplication = wasAlreadyOpened
-      ? currentApplication
-      : { ...currentApplication, [field]: true, [timestampField]: openedAt, status: 'reviewed' };
     const updateItem = (item) => {
       if (item.id !== applicationId) return item;
       return item[field] ? item : { ...item, [field]: true, [timestampField]: openedAt, status: 'reviewed' };
     };
-    setApplications((current) => current.map(updateItem));
-    setRecruiterApplications((current) => current.map(updateItem));
 
     if (!wasAlreadyOpened && hasSupabaseConfig && supabase && typeof applicationId === 'string') {
-      await supabase
+      const { data, error } = await supabase
         .from('applications')
         .update({
           [dbBooleanField]: true,
           [dbTimestampField]: openedAt,
           status: 'reviewed',
         })
-        .eq('id', applicationId);
+        .eq('id', applicationId)
+        .select('id')
+        .maybeSingle();
+      if (error || !data) {
+        notify("L'action n'a pas ete enregistree. Reessaie.");
+        return;
+      }
+      setApplications((current) => current.map(updateItem));
+      setRecruiterApplications((current) => current.map(updateItem));
     }
 
-    if (changedApplication.trackingEnabled && !wasAlreadyOpened) {
+    if (currentApplication.trackingEnabled && !wasAlreadyOpened) {
       const title = field === 'cvOpened' ? 'CV ouvert' : 'Demande consultee';
-      const body = `${changedApplication.company} a ${field === 'cvOpened' ? 'ouvert ton CV' : 'ouvert ta candidature'}.`;
-      setNotifications((current) => [{ id: Date.now(), title, body, read: false }, ...current]);
-      if (hasSupabaseConfig && supabase && changedApplication.candidateId) {
-        await supabase.from('notifications').insert({
-          user_id: changedApplication.candidateId,
-          title,
-          body,
-          read: false,
-        });
-      }
       notify(title);
-    } else if (!changedApplication.trackingEnabled) {
+    } else if (!currentApplication.trackingEnabled) {
       notify('Action recruteur enregistree, pas de notification pour candidature rapide.');
     }
 
@@ -952,35 +958,75 @@ export default function App() {
     if (downloaded) await markApplicationActivity(applicationId, 'cvOpened');
   };
 
+  const syncJobCollections = (updatedJob) => {
+    const replaceJob = (job) => (job.id === updatedJob.id ? updatedJob : job);
+    setRecruiterJobs((current) => (
+      current.some((job) => job.id === updatedJob.id)
+        ? current.map(replaceJob)
+        : [updatedJob, ...current]
+    ));
+    setJobs((current) => {
+      if (current.some((job) => job.id === updatedJob.id)) return current.map(replaceJob);
+      return updatedJob.status === 'published' ? [updatedJob, ...current] : current;
+    });
+    setSelectedJob((current) => (current?.id === updatedJob.id ? updatedJob : current));
+  };
+
   const publishJob = async (event) => {
     event.preventDefault();
+    if (jobFormSubmitting) return;
     if (!isLoggedIn) {
       notify('Connecte-toi pour publier une offre.');
       openLogin('recruteur');
       return;
     }
-    if (profile.role !== 'recruteur') {
+    if (!['recruteur', 'admin'].includes(profile.role)) {
       notify('Active le mode recruteur dans ton profil.');
       setScreen('profile');
       return;
     }
+    if (!hasSupabaseConfig || !supabase || !authUser) {
+      notify("Publication indisponible pour l'instant.");
+      return;
+    }
+    setJobFormSubmitting(true);
     notify("Publication de l'offre en cours...");
-    const nextJob = {
-      id: Date.now(),
-      requirements: ['Experience pertinente', 'Disponibilite', 'Motivation'],
-      status: 'published',
-      ...jobForm,
-    };
-    if (hasSupabaseConfig && supabase) {
-      const { data: company, error: companyError } = await supabase
+    try {
+      const nextJob = {
+        requirements: ['Experience pertinente', 'Disponibilite', 'Motivation'],
+        status: 'published',
+        ...jobForm,
+      };
+      let { data: company, error: companyError } = await supabase
         .from('companies')
-        .insert({ owner_id: authUser.id, name: nextJob.company, city: nextJob.loc, sector: nextJob.sector })
         .select('id')
-        .single();
+        .eq('owner_id', authUser.id)
+        .eq('name', nextJob.company.trim())
+        .limit(1)
+        .maybeSingle();
+      if (companyError) {
+        notify(`Entreprise non verifiee: ${companyError.message || 'base indisponible'}`);
+        return;
+      }
+      if (!company) {
+        const companyResult = await supabase
+          .from('companies')
+          .insert({
+            owner_id: authUser.id,
+            name: nextJob.company.trim(),
+            city: nextJob.loc,
+            sector: nextJob.sector || null,
+          })
+          .select('id')
+          .single();
+        company = companyResult.data;
+        companyError = companyResult.error;
+      }
       if (companyError || !company?.id) {
         notify(`Entreprise non creee: ${companyError?.message || 'base indisponible'}`);
         return;
       }
+
       const { data: savedJob, error: jobError } = await supabase
         .from('jobs')
         .insert({
@@ -1000,18 +1046,20 @@ export default function App() {
         notify(`Offre non publiee: ${jobError?.message || 'base indisponible'}`);
         return;
       }
-      nextJob.id = savedJob.id;
-      nextJob.companyId = savedJob.company_id;
+      const publishedJob = normalizeJob(savedJob);
+      syncJobCollections(publishedJob);
+      setJobForm(emptyJob);
+      setNotifications((current) => [
+        { id: Date.now(), title: 'Offre publiee', body: `${publishedJob.role} est maintenant visible`, read: false },
+        ...current,
+      ]);
+      setScreen('recruiter');
+      notify('Offre publiee');
+    } catch (error) {
+      notify(`Offre non publiee: ${error?.message || 'service indisponible'}`);
+    } finally {
+      setJobFormSubmitting(false);
     }
-    setJobs((current) => [nextJob, ...current]);
-    setRecruiterJobs((current) => [nextJob, ...current]);
-    setJobForm(emptyJob);
-    setNotifications((current) => [
-      { id: Date.now(), title: 'Offre publiee', body: `${nextJob.role} est maintenant visible`, read: false },
-      ...current,
-    ]);
-    setScreen('recruiter');
-    notify('Offre publiee');
   };
 
   const startEditJob = (job) => {
@@ -1031,62 +1079,132 @@ export default function App() {
 
   const saveJobEdit = async (event) => {
     event.preventDefault();
-    if (!editingJob) return;
+    if (!editingJob || jobFormSubmitting) return;
+    if (!hasSupabaseConfig || !supabase || !isSupabaseId(editingJob.id)) {
+      notify("Modification indisponible pour l'instant.");
+      return;
+    }
+    setJobFormSubmitting(true);
     notify("Enregistrement de l'offre en cours...");
-    const updatedJob = { ...editingJob, ...jobForm };
-    if (hasSupabaseConfig && supabase && typeof editingJob.id === 'string') {
-      const { error } = await supabase
+    try {
+      if (editingJob.companyId) {
+        const { data: savedCompany, error: companyError } = await supabase
+          .from('companies')
+          .update({
+            name: jobForm.company.trim(),
+            city: jobForm.loc,
+            sector: jobForm.sector || null,
+          })
+          .eq('id', editingJob.companyId)
+          .select('id')
+          .maybeSingle();
+        if (companyError || !savedCompany) {
+          notify(`Entreprise non modifiee: ${companyError?.message || 'acces refuse'}`);
+          return;
+        }
+      }
+
+      const { data: savedJob, error } = await supabase
         .from('jobs')
         .update({
-          title: updatedJob.role,
-          description: updatedJob.description,
-          location: updatedJob.loc,
-          contract_type: updatedJob.type,
-          salary_range: updatedJob.salary,
-          sector: updatedJob.sector,
+          title: jobForm.role.trim(),
+          description: jobForm.description.trim(),
+          location: jobForm.loc,
+          contract_type: jobForm.type,
+          salary_range: jobForm.salary || null,
+          sector: jobForm.sector || null,
         })
-        .eq('id', editingJob.id);
-      if (error) {
-        notify("Modification impossible pour l'instant.");
+        .eq('id', editingJob.id)
+        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,created_at,companies(name)')
+        .maybeSingle();
+      if (error || !savedJob) {
+        notify(`Modification impossible: ${error?.message || 'offre introuvable ou acces refuse'}`);
         return;
       }
-      if (updatedJob.companyId) {
-        await supabase.from('companies').update({ name: updatedJob.company, city: updatedJob.loc, sector: updatedJob.sector }).eq('id', updatedJob.companyId);
-      }
+      syncJobCollections(normalizeJob(savedJob));
+      setEditingJob(null);
+      setJobForm(emptyJob);
+      setScreen('recruiter');
+      notify('Offre modifiee');
+    } catch (error) {
+      notify(`Modification impossible: ${error?.message || 'service indisponible'}`);
+    } finally {
+      setJobFormSubmitting(false);
     }
-    const replaceJob = (job) => (job.id === editingJob.id ? updatedJob : job);
-    setJobs((current) => current.map(replaceJob));
-    setRecruiterJobs((current) => current.map(replaceJob));
-    setEditingJob(null);
-    setJobForm(emptyJob);
-    setScreen('recruiter');
-    notify('Offre modifiee');
+  };
+
+  const setJobStatus = async (job, nextStatus) => {
+    if (jobAction || !hasSupabaseConfig || !supabase || !isSupabaseId(job.id)) return;
+    const actionKey = `status:${job.id}`;
+    setJobAction(actionKey);
+    notify(nextStatus === 'published' ? "Remise en ligne de l'offre..." : "Fermeture de l'offre...");
+    try {
+      const { data: savedJob, error } = await supabase
+        .from('jobs')
+        .update({ status: nextStatus })
+        .eq('id', job.id)
+        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,created_at,companies(name)')
+        .maybeSingle();
+      if (error || !savedJob) {
+        notify(`Statut non modifie: ${error?.message || 'offre introuvable ou acces refuse'}`);
+        return;
+      }
+      syncJobCollections(normalizeJob(savedJob));
+      notify(nextStatus === 'published' ? 'Offre remise en ligne' : 'Offre fermee');
+    } catch (error) {
+      notify(`Statut non modifie: ${error?.message || 'service indisponible'}`);
+    } finally {
+      setJobAction('');
+    }
   };
 
   const deleteJob = async (job) => {
-    const confirmed = window.confirm(`Supprimer l'offre "${job.role}" ?`);
+    if (jobAction) return;
+    const applicationCount = recruiterApplications.filter((item) => item.jobId === job.id).length;
+    if (applicationCount > 0) {
+      notify("Cette offre a des candidatures. Ferme-la pour conserver les dossiers recus.");
+      return;
+    }
+    const confirmed = window.confirm(`Supprimer definitivement l'offre "${job.role}" ? Cette action est irreversible.`);
     if (!confirmed) return;
-    notify('Suppression de l offre en cours...');
-    if (hasSupabaseConfig && supabase && typeof job.id === 'string') {
-      const { error } = await supabase.from('jobs').delete().eq('id', job.id);
-      if (error) {
-        notify("Suppression impossible pour l'instant.");
+    if (!hasSupabaseConfig || !supabase || !isSupabaseId(job.id)) {
+      notify("Suppression indisponible pour l'instant.");
+      return;
+    }
+    const actionKey = `delete:${job.id}`;
+    setJobAction(actionKey);
+    notify("Suppression de l'offre en cours...");
+    try {
+      const { data: deletedJob, error } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', job.id)
+        .select('id')
+        .maybeSingle();
+      if (error || !deletedJob) {
+        notify(`Suppression impossible: ${error?.message || 'offre introuvable, non autorisee ou liee a des candidatures'}`);
         return;
       }
+      const removeJob = (item) => item.id !== job.id;
+      setJobs((current) => current.filter(removeJob));
+      setRecruiterJobs((current) => current.filter(removeJob));
+      setRecruiterApplications((current) => current.filter((item) => item.jobId !== job.id));
+      setRecruiterJobStats((current) => {
+        const next = { ...current };
+        delete next[job.id];
+        return next;
+      });
+      setSelectedJob((current) => (current?.id === job.id ? null : current));
+      notify('Offre supprimee');
+    } catch (error) {
+      notify(`Suppression impossible: ${error?.message || 'service indisponible'}`);
+    } finally {
+      setJobAction('');
     }
-    const removeJob = (item) => item.id !== job.id;
-    setJobs((current) => current.filter(removeJob));
-    setRecruiterJobs((current) => current.filter(removeJob));
-    setRecruiterApplications((current) => current.filter((item) => item.jobId !== job.id));
-    setRecruiterJobStats((current) => {
-      const next = { ...current };
-      delete next[job.id];
-      return next;
-    });
-    notify('Offre supprimee');
   };
 
   const requestJobBoost = async (job) => {
+    if (jobAction) return;
     if (!hasSupabaseConfig || !supabase || !authUser) {
       notify('Connecte-toi comme recruteur pour demander un boost.');
       return;
@@ -1095,25 +1213,31 @@ export default function App() {
       notify("Cette offre doit etre synchronisee avant d'activer un boost.");
       return;
     }
+    const actionKey = `boost:${job.id}`;
+    setJobAction(actionKey);
     notify('Demande de boost en cours...');
-    const { data, error } = await supabase
-      .from('boost_requests')
-      .insert({
-        job_id: job.id,
-        company_id: job.companyId,
-        recruiter_id: authUser.id,
-        plan: 'standard',
-        message: `Demande de boost pour ${job.role}`,
-        status: 'pending',
-      })
-      .select('id,job_id,company_id,recruiter_id,plan,message,status,created_at,jobs(title,companies(name)),companies(name)')
-      .single();
-    if (error) {
-      notify(`Demande de boost non envoyee: ${error.message || 'base indisponible'}`);
-      return;
+    try {
+      const { data, error } = await supabase
+        .from('boost_requests')
+        .insert({
+          job_id: job.id,
+          company_id: job.companyId,
+          recruiter_id: authUser.id,
+          plan: 'standard',
+          message: `Demande de boost pour ${job.role}`,
+          status: 'pending',
+        })
+        .select('id,job_id,company_id,recruiter_id,plan,message,status,created_at,jobs(title,companies(name)),companies(name)')
+        .single();
+      if (error || !data) {
+        notify(`Demande de boost non envoyee: ${error?.message || 'base indisponible'}`);
+        return;
+      }
+      setBoostRequests((current) => [normalizeBoostRequest(data), ...current]);
+      notify('Demande de boost envoyee a l admin.');
+    } finally {
+      setJobAction('');
     }
-    setBoostRequests((current) => [normalizeBoostRequest(data), ...current]);
-    notify('Demande de boost envoyee a l admin.');
   };
 
   const reviewBoostRequest = async (requestId, status) => {
@@ -1121,12 +1245,14 @@ export default function App() {
       notify('Action reservee a l admin.');
       return;
     }
-    const { error } = await supabase
+    const { data: reviewedRequest, error } = await supabase
       .from('boost_requests')
       .update({ status, reviewed_by: authUser.id, reviewed_at: new Date().toISOString() })
-      .eq('id', requestId);
-    if (error) {
-      notify(`Demande non mise a jour: ${error.message || 'base indisponible'}`);
+      .eq('id', requestId)
+      .select('id')
+      .maybeSingle();
+    if (error || !reviewedRequest) {
+      notify(`Demande non mise a jour: ${error?.message || 'demande introuvable ou acces refuse'}`);
       return;
     }
     setBoostRequests((current) => current.map((item) => (item.id === requestId ? { ...item, status } : item)));
@@ -1135,8 +1261,14 @@ export default function App() {
 
   const updateProfile = async (event) => {
     event.preventDefault();
-    if (hasSupabaseConfig && supabase && authUser) {
-      const { error } = await supabase.from('profiles').upsert({
+    if (profileSubmitting) return;
+    if (!hasSupabaseConfig || !supabase || !authUser) {
+      notify('Connecte-toi pour enregistrer ton profil.');
+      return;
+    }
+    setProfileSubmitting(true);
+    try {
+      const { data: savedProfile, error } = await supabase.from('profiles').upsert({
         id: authUser.id,
         email: authUser.email,
         role: profile.role || 'candidat',
@@ -1145,13 +1277,44 @@ export default function App() {
         phone: profile.phone,
         city: profile.city,
         title: profile.title,
-      });
-      if (error) {
-        notify('Profil garde localement, base indisponible.');
+      })
+        .select('nom,prenom,email,phone,city,role,title')
+        .single();
+      if (error || !savedProfile) {
+        notify(`Profil non enregistre: ${error?.message || 'base indisponible'}`);
         return;
       }
+      setProfile((current) => ({ ...current, ...savedProfile }));
+      notify('Profil mis a jour');
+    } catch (error) {
+      notify(`Profil non enregistre: ${error?.message || 'service indisponible'}`);
+    } finally {
+      setProfileSubmitting(false);
     }
-    notify('Profil mis a jour');
+  };
+
+  const markAllNotificationsRead = async () => {
+    if (notificationsUpdating) return;
+    const unreadNotifications = notifications.filter((item) => !item.read);
+    if (!unreadNotifications.length) return;
+    setNotificationsUpdating(true);
+    try {
+      if (hasSupabaseConfig && supabase && authUser) {
+        const { error } = await supabase
+          .from('notifications')
+          .update({ read: true })
+          .eq('user_id', authUser.id)
+          .eq('read', false);
+        if (error) {
+          notify(`Notifications non mises a jour: ${error.message || 'base indisponible'}`);
+          return;
+        }
+      }
+      setNotifications((items) => items.map((item) => ({ ...item, read: true })));
+      notify('Notifications marquees comme lues');
+    } finally {
+      setNotificationsUpdating(false);
+    }
   };
 
   const openRecruiterSpace = () => {
@@ -1186,12 +1349,12 @@ export default function App() {
     if (screen === 'apply') return <ApplyScreen job={activeJob} form={applicationForm} setForm={setApplicationForm} submitApplication={submitApplication} submitting={applicationSubmitting} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} profile={profile} notify={notify} />;
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'tracking') return <TrackingScreen applications={applications} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} authLoading={authLoading} />;
-    if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} openLogin={openLogin} openRecruiterSpace={openRecruiterSpace} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} hasPublishedOffer={hasPublishedOffer} />;
+    if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} profileSubmitting={profileSubmitting} setScreen={setScreen} openLogin={openLogin} openRecruiterSpace={openRecruiterSpace} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} hasPublishedOffer={hasPublishedOffer} />;
     if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleGoogleSignIn={handleGoogleSignIn} googleAuthLoading={googleAuthLoading} googleAuthEnabled={hasSupabaseConfig} serviceStatus={serviceStatus} setScreen={setScreen} notify={notify} />;
-    if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} boostRequests={boostRequests} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} downloadApplicationCv={downloadApplicationCv} startEditJob={startEditJob} deleteJob={deleteJob} requestJobBoost={requestJobBoost} isLoggedIn={isLoggedIn} role={profile.role} />;
+    if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} boostRequests={boostRequests} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} downloadApplicationCv={downloadApplicationCv} startEditJob={startEditJob} setJobStatus={setJobStatus} deleteJob={deleteJob} requestJobBoost={requestJobBoost} jobAction={jobAction} isLoggedIn={isLoggedIn} role={profile.role} />;
     if (screen === 'admin') return <AdminScreen boostRequests={boostRequests} reviewBoostRequest={reviewBoostRequest} role={profile.role} setScreen={setScreen} />;
-    if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} notify={notify} />;
-    if (screen === 'notifications') return <NotificationsScreen notifications={notifications} setNotifications={setNotifications} />;
+    if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} submitting={jobFormSubmitting} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} notify={notify} />;
+    if (screen === 'notifications') return <NotificationsScreen notifications={notifications} markAllRead={markAllNotificationsRead} updating={notificationsUpdating} />;
     if (screen === 'settings') return <SettingsScreen serviceStatus={serviceStatus} />;
     return <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} openLogin={openLogin} savedIds={savedIds} toggleSave={toggleSave} />;
   };
@@ -1660,7 +1823,7 @@ function TrackingScreen({ applications, setScreen, openLogin, isLoggedIn, authLo
   );
 }
 
-function ProfileScreen({ profile, setProfile, applications, updateProfile, setScreen, openLogin, openRecruiterSpace, isLoggedIn, authLoading, handleLogout, hasPublishedOffer }) {
+function ProfileScreen({ profile, setProfile, applications, updateProfile, profileSubmitting, setScreen, openLogin, openRecruiterSpace, isLoggedIn, authLoading, handleLogout, hasPublishedOffer }) {
   const isRecruiter = profile.role === 'recruteur';
   const displayName = `${profile.prenom || ''} ${profile.nom || ''}`.trim() || 'Profil candidat';
   const handleAvatarChange = (event) => {
@@ -1753,8 +1916,8 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, setSc
         <SelectField label="Ville" value={profile.city} onChange={(city) => setProfile({ ...profile, city })} options={CONGO_CITIES} />
         <TextField label="Titre professionnel" value={profile.title} onChange={(title) => setProfile({ ...profile, title })} />
         <SelectField label="Type de compte" value={profile.role} onChange={(role) => setProfile({ ...profile, role })} options={['candidat', 'recruteur']} />
-        <button type="submit" className="primary-button md:col-span-2">
-          Enregistrer
+        <button type="submit" disabled={profileSubmitting} className="primary-button md:col-span-2 disabled:cursor-not-allowed disabled:bg-slate-300">
+          {profileSubmitting ? 'Enregistrement...' : 'Enregistrer'}
         </button>
       </form>
     </div>
@@ -1864,7 +2027,7 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
   );
 }
 
-function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, openLogin, markApplicationActivity, downloadApplicationCv, startEditJob, deleteJob, requestJobBoost, isLoggedIn, role }) {
+function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, openLogin, markApplicationActivity, downloadApplicationCv, startEditJob, setJobStatus, deleteJob, requestJobBoost, jobAction, isLoggedIn, role }) {
   const [selectedJobId, setSelectedJobId] = useState('all');
   const ownJobs = jobs;
   const canRecruit = isLoggedIn && (role === 'recruteur' || ownJobs.length > 0);
@@ -1947,6 +2110,8 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
           const count = applicationsByJobId[job.id]?.length || 0;
           const jobStats = stats[job.id] || { views: 0, saves: 0 };
           const boostRequest = boostRequests.find((request) => request.jobId === job.id);
+          const jobBusy = jobAction.endsWith(`:${job.id}`);
+          const isPublished = job.status === 'published';
           return (
             <article
               key={job.id}
@@ -1961,7 +2126,12 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
                     <h3 className="font-bold text-slate-950">{job.role}</h3>
                     <p className="mt-1 text-sm font-semibold text-slate-500">{job.company} - {job.loc}</p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{count} candidat(s)</span>
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    <span className={classNames('rounded-full px-3 py-1 text-xs font-bold', isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700')}>
+                      {isPublished ? 'En ligne' : job.status === 'closed' ? 'Fermee' : 'Brouillon'}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{count} candidat(s)</span>
+                  </span>
                 </div>
               </button>
               <div className="mt-4 grid grid-cols-3 gap-2">
@@ -1974,15 +2144,24 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
                   Boost {boostRequest.status === 'approved' ? 'valide' : boostRequest.status === 'rejected' ? 'rejete' : 'en attente'}
                 </p>
               )}
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                <button type="button" onClick={() => requestJobBoost(job)} disabled={Boolean(boostRequest)} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-bold text-blue-800 transition hover:border-blue-700 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500">
-                  Booster
+              {count > 0 && (
+                <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
+                  Cette offre a recu des candidatures : ferme-la au lieu de la supprimer afin de conserver les dossiers.
+                </p>
+              )}
+              <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                <button type="button" onClick={() => requestJobBoost(job)} disabled={Boolean(boostRequest) || jobBusy} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-bold text-blue-800 transition hover:border-blue-700 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500">
+                  {jobAction === `boost:${job.id}` ? 'Envoi...' : 'Booster'}
                 </button>
-                <button type="button" onClick={() => startEditJob(job)} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <button type="button" onClick={() => setJobStatus(job, isPublished ? 'closed' : 'published')} disabled={jobBusy} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400">
+                  {isPublished ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {jobAction === `status:${job.id}` ? 'Patiente...' : isPublished ? 'Fermer' : 'Reactiver'}
+                </button>
+                <button type="button" onClick={() => startEditJob(job)} disabled={jobBusy} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400">
                   <Edit3 size={16} /> Modifier
                 </button>
-                <button type="button" onClick={() => deleteJob(job)} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-red-200 px-4 text-sm font-bold text-red-700 transition hover:border-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600">
-                  <Trash2 size={16} /> Supprimer
+                <button type="button" onClick={() => deleteJob(job)} disabled={jobBusy || count > 0} title={count > 0 ? 'Fermez cette offre pour conserver les candidatures recues.' : 'Supprimer definitivement cette offre'} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 text-sm font-bold text-red-700 transition hover:border-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400">
+                  <Trash2 size={16} /> {jobAction === `delete:${job.id}` ? 'Suppression...' : 'Supprimer'}
                 </button>
               </div>
             </article>
@@ -2105,7 +2284,7 @@ function AdminScreen({ boostRequests, reviewBoostRequest, role, setScreen }) {
   );
 }
 
-function PostJobScreen({ form, setForm, onSubmit, setScreen, editing, cancelEdit, notify }) {
+function PostJobScreen({ form, setForm, onSubmit, setScreen, editing, submitting, cancelEdit, notify }) {
   const notifyInvalid = useInvalidNotice(notify, 'Complete le titre, l entreprise et la description avant d envoyer.');
   const notifySubmitBlocker = () => {
     if (!form.role.trim() || !form.company.trim() || !form.description.trim()) notifyInvalid();
@@ -2124,12 +2303,12 @@ function PostJobScreen({ form, setForm, onSubmit, setScreen, editing, cancelEdit
         <TextArea label="Description" value={form.description} onChange={(description) => setForm({ ...form, description })} required />
         <div className="grid gap-2 sm:grid-cols-2">
           {editing && (
-            <button type="button" onClick={cancelEdit} className="min-h-12 rounded-lg border border-slate-300 px-5 font-bold text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <button type="button" onClick={cancelEdit} disabled={submitting} className="min-h-12 rounded-lg border border-slate-300 px-5 font-bold text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400">
               Annuler
             </button>
           )}
-          <button type="submit" onClick={notifySubmitBlocker} className={classNames('min-h-12 rounded-lg bg-blue-700 px-5 font-bold text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600', editing ? '' : 'sm:col-span-2')}>
-            {editing ? "Enregistrer l'offre" : "Publier l'offre"}
+          <button type="submit" onClick={notifySubmitBlocker} disabled={submitting} className={classNames('min-h-12 rounded-lg bg-blue-700 px-5 font-bold text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-300', editing ? '' : 'sm:col-span-2')}>
+            {submitting ? 'Enregistrement...' : editing ? "Enregistrer l'offre" : "Publier l'offre"}
           </button>
         </div>
       </form>
@@ -2137,12 +2316,13 @@ function PostJobScreen({ form, setForm, onSubmit, setScreen, editing, cancelEdit
   );
 }
 
-function NotificationsScreen({ notifications, setNotifications }) {
+function NotificationsScreen({ notifications, markAllRead, updating }) {
+  const unreadCount = notifications.filter((item) => !item.read).length;
   return (
     <div className="space-y-5">
       <PageHeader title="Notifications" subtitle={`${notifications.length} message(s)`} />
-      <button onClick={() => setNotifications((items) => items.map((item) => ({ ...item, read: true })))} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700">
-        Tout marquer comme lu
+      <button onClick={markAllRead} disabled={updating || unreadCount === 0} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400">
+        {updating ? 'Mise a jour...' : unreadCount === 0 ? 'Tout est lu' : 'Tout marquer comme lu'}
       </button>
       <div className="grid gap-3">
         {notifications.map((item) => (
