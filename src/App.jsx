@@ -1208,7 +1208,7 @@ export default function App() {
                 key={item.id}
                 aria-label={`Navigation ${item.label}`}
                 onClick={() => (item.id === 'recruiter' ? openRecruiterSpace() : setScreen(item.id))}
-                className={classNames('smooth-button flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600', active ? 'text-blue-700' : 'text-slate-500 hover:text-slate-800')}
+                className={classNames('smooth-button flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600', active ? 'text-blue-700' : 'text-slate-500 hover:text-slate-800')}
               >
                 <Icon size={21} strokeWidth={active ? 2.4 : 1.8} />
                 {item.label}
@@ -1232,7 +1232,7 @@ function IconButton({ label, children, onClick, badge }) {
   return (
     <button onClick={onClick} aria-label={badge > 0 ? `${label}, ${badge} non lue${badge > 1 ? 's' : ''}` : label} className="smooth-button relative flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
       {children}
-      {badge > 0 && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />}
+      {badge > 0 && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-blue-700 ring-2 ring-white" />}
     </button>
   );
 }
