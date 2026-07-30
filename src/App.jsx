@@ -294,6 +294,7 @@ export default function App() {
   const [loginRole, setLoginRole] = useState('candidat');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
   const [authUser, setAuthUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
   const [serviceStatus, setServiceStatus] = useState(hasSupabaseConfig ? 'checking' : 'offline');
@@ -349,6 +350,7 @@ export default function App() {
     async function bootstrapAuth() {
       const oauthError = getOAuthErrorFromUrl();
       if (oauthError) {
+        localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
         setToast(friendlyAuthError(oauthError));
         window.setTimeout(() => setToast(''), 3200);
       }
@@ -381,6 +383,7 @@ export default function App() {
 
     async function loadUserData() {
       const pendingRole = readStorage(PENDING_LOGIN_ROLE_KEY, '');
+      const shouldNavigateAfterAuth = Boolean(pendingRole) || screen === 'login';
       const { data: profileRow } = await supabase
         .from('profiles')
         .select('nom,prenom,email,phone,city,role,title')
@@ -392,7 +395,7 @@ export default function App() {
         if (profileRow) {
           localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
           setProfile((current) => ({ ...current, ...profileRow, email: profileRow.email || authUser.email || current.email }));
-          if (screen === 'login') {
+          if (shouldNavigateAfterAuth) {
             setScreen(profileRow.role === 'recruteur' ? 'recruiter' : 'profile');
           }
         } else {
@@ -413,7 +416,7 @@ export default function App() {
           await supabase.from('profiles').upsert(nextProfile);
           localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
           setProfile((current) => ({ ...current, ...nextProfile }));
-          if (screen === 'login') {
+          if (shouldNavigateAfterAuth) {
             setScreen(nextProfile.role === 'recruteur' ? 'recruiter' : 'profile');
           }
         }
@@ -680,10 +683,40 @@ export default function App() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    if (!hasSupabaseConfig || !supabase) {
+      notify('La connexion avec Google est temporairement indisponible.');
+      return;
+    }
+    if (googleAuthLoading) return;
+
+    setGoogleAuthLoading(true);
+    localStorage.setItem(PENDING_LOGIN_ROLE_KEY, JSON.stringify(loginRole));
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: getAuthRedirectUrl(),
+        },
+      });
+      if (error) {
+        localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
+        setGoogleAuthLoading(false);
+        notify(friendlyAuthError(error.message));
+      }
+    } catch {
+      localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
+      setGoogleAuthLoading(false);
+      notify('La connexion avec Google est temporairement indisponible.');
+    }
+  };
+
   const handleLogout = async () => {
     if (hasSupabaseConfig && supabase) {
       await supabase.auth.signOut();
     }
+    localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
     setAuthUser(null);
     setProfile(initialProfile);
     setApplications([]);
@@ -1154,7 +1187,7 @@ export default function App() {
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'tracking') return <TrackingScreen applications={applications} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} authLoading={authLoading} />;
     if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} setScreen={setScreen} openLogin={openLogin} openRecruiterSpace={openRecruiterSpace} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} hasPublishedOffer={hasPublishedOffer} />;
-    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} serviceStatus={serviceStatus} setScreen={setScreen} notify={notify} />;
+    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleGoogleSignIn={handleGoogleSignIn} googleAuthLoading={googleAuthLoading} googleAuthEnabled={hasSupabaseConfig} serviceStatus={serviceStatus} setScreen={setScreen} notify={notify} />;
     if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} boostRequests={boostRequests} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} downloadApplicationCv={downloadApplicationCv} startEditJob={startEditJob} deleteJob={deleteJob} requestJobBoost={requestJobBoost} isLoggedIn={isLoggedIn} role={profile.role} />;
     if (screen === 'admin') return <AdminScreen boostRequests={boostRequests} reviewBoostRequest={reviewBoostRequest} role={profile.role} setScreen={setScreen} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} notify={notify} />;
@@ -1740,7 +1773,18 @@ function ProfileInfoCard({ icon: Icon, title, body }) {
   );
 }
 
-function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, serviceStatus, setScreen, notify }) {
+function GoogleMark() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 shrink-0">
+      <path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.8 3-4.3 3-7.4Z" />
+      <path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1a5.8 5.8 0 0 1-5.5-4H3.2v2.6A10 10 0 0 0 12 22Z" />
+      <path fill="#FBBC05" d="M6.5 14.1a6 6 0 0 1 0-4.2V7.3H3.2a10 10 0 0 0 0 9.4l3.3-2.6Z" />
+      <path fill="#EA4335" d="M12 5.9c1.6 0 3 .5 4.1 1.6l3.1-3A10 10 0 0 0 3.2 7.3l3.3 2.6A5.8 5.8 0 0 1 12 5.9Z" />
+    </svg>
+  );
+}
+
+function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleGoogleSignIn, googleAuthLoading, googleAuthEnabled, serviceStatus, setScreen, notify }) {
   const isSignup = authMode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
   const notifyInvalid = useInvalidNotice(notify, 'Renseignez votre email et votre mot de passe pour continuer.');
@@ -1778,6 +1822,21 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
         <button type="button" onClick={() => setAuthMode('signup')} className={classNames('min-h-11 border-b-2 text-sm font-semibold', isSignup ? 'border-blue-700 text-blue-700' : 'border-transparent text-slate-500')}>
           Inscription
         </button>
+      </div>
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        disabled={!googleAuthEnabled || googleAuthLoading}
+        aria-busy={googleAuthLoading}
+        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 transition-colors hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
+      >
+        <GoogleMark />
+        {googleAuthLoading ? 'Redirection vers Google…' : 'Continuer avec Google'}
+      </button>
+      <div className="flex items-center gap-3" aria-hidden="true">
+        <span className="h-px flex-1 bg-slate-200" />
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">ou</span>
+        <span className="h-px flex-1 bg-slate-200" />
       </div>
       <form onSubmit={handleAuth} onInvalidCapture={notifyInvalid} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
         <TextField label="Email" type="email" value={loginEmail} onChange={setLoginEmail} required />
