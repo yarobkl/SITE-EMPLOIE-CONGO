@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import UnifiedAccessUX from './UnifiedAccessUX.jsx'
 import MessagingCenterV2 from './MessagingCenterV2.jsx'
+import MessagingKeyboardShortcut from './MessagingKeyboardShortcut.jsx'
 import GlobalApplicationsCenterV2 from './GlobalApplicationsCenterV2.jsx'
 import PlatformPresenceTracker from './PlatformPresenceTracker.jsx'
 import AdminPlatformDashboard from './AdminPlatformDashboard.jsx'
@@ -15,6 +16,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
     <UnifiedAccessUX />
     <MessagingCenterV2 />
+    <MessagingKeyboardShortcut />
     <GlobalApplicationsCenterV2 />
     <PlatformPresenceTracker />
     <AdminPlatformDashboard />
