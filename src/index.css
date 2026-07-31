@@ -5,7 +5,9 @@
 html {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  min-height: 100%;
+  overflow-x: clip;
+  overflow-y: auto;
   scroll-behavior: smooth;
   text-rendering: optimizeLegibility;
 }
@@ -14,8 +16,10 @@ body {
   width: 100%;
   max-width: 100%;
   min-height: 100vh;
-  overflow-x: hidden;
-  overscroll-behavior-y: contain;
+  height: auto;
+  overflow-x: clip;
+  overflow-y: visible;
+  overscroll-behavior-y: auto;
   background: #ffffff;
   color: #0f172a;
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -28,7 +32,9 @@ body {
   width: 100%;
   max-width: 100%;
   min-height: 100vh;
-  overflow-x: hidden;
+  height: auto;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 ::selection {
