@@ -1,0 +1,130 @@
+html[data-nz-nav-direction='forward'] main.soft-enter {
+  animation: nz-route-forward 260ms var(--motion-ease-emphasized) both;
+}
+
+html[data-nz-nav-direction='back'] main.soft-enter {
+  animation: nz-route-back 240ms var(--motion-ease-emphasized) both;
+}
+
+body[data-nz-screen='job'] main,
+body[data-nz-screen='apply'] main {
+  transform-origin: 50% 12%;
+}
+
+.job-card[data-job-id] {
+  position: relative;
+  isolation: isolate;
+}
+
+.job-card[data-job-id]::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(29, 78, 216, 0.035), transparent 55%);
+  content: '';
+  opacity: 0;
+  transition: opacity var(--motion-base) var(--motion-ease-standard);
+}
+
+.job-card[data-job-id]:hover::after,
+.job-card[data-job-id]:focus-within::after {
+  opacity: 1;
+}
+
+nav[aria-label='Navigation mobile'] button {
+  position: relative;
+  overflow: hidden;
+}
+
+nav[aria-label='Navigation mobile'] button::before {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 28px;
+  height: 3px;
+  border-radius: 999px;
+  background: #1d4ed8;
+  content: '';
+  opacity: 0;
+  transform: translateX(-50%) scaleX(0.25);
+  transition:
+    opacity var(--motion-fast) var(--motion-ease-standard),
+    transform var(--motion-base) var(--motion-ease-emphasized);
+}
+
+nav[aria-label='Navigation mobile'] button.nz-mobile-active::before {
+  opacity: 1;
+  transform: translateX(-50%) scaleX(1);
+}
+
+.nz-confirmation-backdrop {
+  animation: nz-backdrop-enter 220ms var(--motion-ease-standard) both;
+}
+
+.nz-confirmation-sheet {
+  animation: nz-sheet-enter 340ms var(--motion-ease-emphasized) both;
+}
+
+@keyframes nz-route-forward {
+  from {
+    opacity: 0;
+    transform: translate3d(12px, 8px, 0) scale(0.994);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes nz-route-back {
+  from {
+    opacity: 0;
+    transform: translate3d(-10px, 5px, 0) scale(0.996);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes nz-backdrop-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes nz-sheet-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@media (min-width: 640px) {
+  @keyframes nz-sheet-enter {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 14px, 0) scale(0.96);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-nz-nav-direction] main.soft-enter,
+  .nz-confirmation-backdrop,
+  .nz-confirmation-sheet {
+    animation: none !important;
+  }
+}
