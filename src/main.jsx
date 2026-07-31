@@ -9,6 +9,7 @@ import PlatformPresenceTracker from './PlatformPresenceTracker.jsx'
 import AdminPlatformDashboard from './AdminPlatformDashboard.jsx'
 import OfferLifecycleCenter from './OfferLifecycleCenter.jsx'
 import OfferLifecycleMobileTrigger from './OfferLifecycleMobileTrigger.jsx'
+import MotionFoundation from './MotionFoundation.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -22,5 +23,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <AdminPlatformDashboard />
     <OfferLifecycleCenter />
     <OfferLifecycleMobileTrigger />
+    <MotionFoundation />
   </React.StrictMode>,
 )
