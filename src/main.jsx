@@ -11,7 +11,6 @@ import OfferLifecycleCenter from './OfferLifecycleCenter.jsx'
 import OfferLifecycleMobileTrigger from './OfferLifecycleMobileTrigger.jsx'
 import MotionFoundation from './MotionFoundation.jsx'
 import NavigationExperience from './NavigationExperience.jsx'
-import MobileGlassNavigation from './MobileGlassNavigation.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -27,6 +26,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <OfferLifecycleMobileTrigger />
     <MotionFoundation />
     <NavigationExperience />
-    <MobileGlassNavigation />
   </React.StrictMode>,
 )
