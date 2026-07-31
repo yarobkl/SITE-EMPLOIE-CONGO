@@ -5,6 +5,11 @@ function buttonText(button) {
   return button?.textContent?.replace(/\s+/g, ' ').trim() || '';
 }
 
+function isMessagingLoginAlert(message) {
+  const normalized = String(message || '').toLowerCase();
+  return normalized.includes('connectez-vous') && normalized.includes('messages');
+}
+
 export default function MessagingLoginBridge() {
   const [user, setUser] = useState(null);
 
@@ -46,7 +51,7 @@ export default function MessagingLoginBridge() {
           return;
         }
 
-        if (attempts >= 30) window.clearInterval(timer);
+        if (attempts >= 40) window.clearInterval(timer);
       }, 50);
     };
 
@@ -63,8 +68,22 @@ export default function MessagingLoginBridge() {
       openExistingLogin();
     };
 
+    const nativeAlert = window.alert.bind(window);
+    const patchedAlert = (message) => {
+      if (!user && isMessagingLoginAlert(message)) {
+        openExistingLogin();
+        return;
+      }
+      nativeAlert(message);
+    };
+
+    window.alert = patchedAlert;
     document.addEventListener('click', interceptUnauthenticatedMessaging, true);
-    return () => document.removeEventListener('click', interceptUnauthenticatedMessaging, true);
+
+    return () => {
+      document.removeEventListener('click', interceptUnauthenticatedMessaging, true);
+      if (window.alert === patchedAlert) window.alert = nativeAlert;
+    };
   }, [user]);
 
   return null;
