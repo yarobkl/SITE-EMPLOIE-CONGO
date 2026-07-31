@@ -1,0 +1,91 @@
+.nz-candidate-status {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #eff6ff;
+  padding: 16px;
+  color: #172554;
+}
+
+.nz-candidate-status > div,
+.nz-candidate-status:not(:has(> div)) {
+  min-width: 0;
+}
+
+.nz-candidate-status strong,
+.nz-candidate-status span {
+  display: block;
+}
+
+.nz-candidate-status strong {
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.nz-candidate-status span {
+  margin-top: 4px;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.nz-candidate-status--checking {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.nz-candidate-status--duplicate {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #7c2d12;
+}
+
+.nz-candidate-status--resume {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #14532d;
+}
+
+.nz-candidate-status__action {
+  min-height: 42px;
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: inherit;
+  transition: transform 140ms ease, background 160ms ease;
+}
+
+.nz-candidate-status__action:hover {
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.nz-candidate-status__action:active {
+  transform: scale(0.98);
+}
+
+form[data-nz-candidate-journey='ready'] button[data-nz-candidate-guard='true'] {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+@media (max-width: 639.98px) {
+  .nz-candidate-status {
+    flex-direction: column;
+  }
+
+  .nz-candidate-status__action {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nz-candidate-status__action {
+    transition: none;
+  }
+}
