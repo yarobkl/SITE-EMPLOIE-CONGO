@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --motion-instant: 90ms;
+  --motion-fast: 140ms;
+  --motion-base: 220ms;
+  --motion-slow: 320ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --surface-shadow-rest: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --surface-shadow-hover: 0 14px 34px rgba(15, 23, 42, 0.09);
+  --surface-shadow-dialog: 0 28px 90px rgba(15, 23, 42, 0.24);
+}
+
 html {
   width: 100%;
   max-width: 100%;
@@ -73,69 +86,113 @@ button {
   font: inherit;
 }
 
+button,
+a,
+[role='button'],
+input,
+select,
+textarea {
+  transition:
+    color var(--motion-fast) var(--motion-ease-standard),
+    background-color var(--motion-fast) var(--motion-ease-standard),
+    border-color var(--motion-fast) var(--motion-ease-standard),
+    box-shadow var(--motion-fast) var(--motion-ease-standard),
+    opacity var(--motion-fast) var(--motion-ease-standard),
+    transform var(--motion-instant) var(--motion-ease-standard);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  transition-duration: var(--motion-base);
+}
+
 @layer components {
   .app-surface {
     @apply rounded-xl border border-slate-200 bg-white;
+    box-shadow: var(--surface-shadow-rest);
+    transition:
+      border-color var(--motion-base) var(--motion-ease-standard),
+      box-shadow var(--motion-base) var(--motion-ease-standard),
+      transform var(--motion-base) var(--motion-ease-emphasized),
+      background-color var(--motion-base) var(--motion-ease-standard);
   }
 
   .smooth-card {
     @apply rounded-xl border border-slate-200 bg-white;
+    box-shadow: var(--surface-shadow-rest);
     transition:
-      border-color 150ms ease,
-      box-shadow 150ms ease,
-      background-color 150ms ease;
+      border-color var(--motion-base) var(--motion-ease-standard),
+      box-shadow var(--motion-base) var(--motion-ease-standard),
+      background-color var(--motion-base) var(--motion-ease-standard),
+      transform var(--motion-base) var(--motion-ease-emphasized);
   }
 
   .smooth-button {
     transition:
-      transform 90ms ease,
-      background-color 120ms ease,
-      border-color 120ms ease,
-      color 120ms ease,
-      box-shadow 120ms ease,
-      opacity 120ms ease;
+      transform var(--motion-instant) var(--motion-ease-standard),
+      background-color var(--motion-fast) var(--motion-ease-standard),
+      border-color var(--motion-fast) var(--motion-ease-standard),
+      color var(--motion-fast) var(--motion-ease-standard),
+      box-shadow var(--motion-fast) var(--motion-ease-standard),
+      opacity var(--motion-fast) var(--motion-ease-standard);
   }
 
   .soft-enter {
-    animation: soft-enter 180ms ease-out both;
+    animation: screen-enter var(--motion-base) var(--motion-ease-emphasized) both;
   }
 
   .header-link {
-    @apply min-h-11 rounded-lg px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600;
+    @apply min-h-11 rounded-lg px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600;
+    transition:
+      color var(--motion-fast) var(--motion-ease-standard),
+      background-color var(--motion-fast) var(--motion-ease-standard),
+      transform var(--motion-instant) var(--motion-ease-standard);
   }
 
   .primary-button {
     @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 text-[15px] font-bold text-white shadow-sm shadow-blue-900/10 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none;
     transition:
-      transform 90ms ease,
-      background-color 120ms ease,
-      box-shadow 120ms ease;
+      transform var(--motion-instant) var(--motion-ease-standard),
+      background-color var(--motion-fast) var(--motion-ease-standard),
+      box-shadow var(--motion-base) var(--motion-ease-standard),
+      opacity var(--motion-fast) var(--motion-ease-standard);
   }
 
   .secondary-button {
     @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 text-[15px] font-bold text-slate-800 hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2;
     transition:
-      transform 90ms ease,
-      border-color 120ms ease,
-      color 120ms ease,
-      background-color 120ms ease;
+      transform var(--motion-instant) var(--motion-ease-standard),
+      border-color var(--motion-fast) var(--motion-ease-standard),
+      color var(--motion-fast) var(--motion-ease-standard),
+      background-color var(--motion-fast) var(--motion-ease-standard),
+      box-shadow var(--motion-base) var(--motion-ease-standard);
   }
 
   .secondary-icon-button {
     @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2;
     transition:
-      transform 90ms ease,
-      border-color 120ms ease,
-      color 120ms ease,
-      background-color 120ms ease;
+      transform var(--motion-instant) var(--motion-ease-standard),
+      border-color var(--motion-fast) var(--motion-ease-standard),
+      color var(--motion-fast) var(--motion-ease-standard),
+      background-color var(--motion-fast) var(--motion-ease-standard),
+      box-shadow var(--motion-base) var(--motion-ease-standard);
   }
 
   .search-field {
     @apply flex min-h-14 items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-600;
+    transition:
+      border-color var(--motion-base) var(--motion-ease-standard),
+      box-shadow var(--motion-base) var(--motion-ease-standard),
+      background-color var(--motion-base) var(--motion-ease-standard);
   }
 
   .filter-select {
     @apply flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-600;
+    transition:
+      border-color var(--motion-base) var(--motion-ease-standard),
+      box-shadow var(--motion-base) var(--motion-ease-standard),
+      background-color var(--motion-base) var(--motion-ease-standard);
   }
 
   .filter-select select {
@@ -146,18 +203,55 @@ button {
     @apply rounded-xl border border-slate-200 bg-white p-4;
     content-visibility: auto;
     contain-intrinsic-size: 180px;
+    box-shadow: var(--surface-shadow-rest);
     transition:
-      border-color 150ms ease,
-      box-shadow 150ms ease;
+      border-color var(--motion-base) var(--motion-ease-standard),
+      box-shadow var(--motion-base) var(--motion-ease-standard),
+      transform var(--motion-base) var(--motion-ease-emphasized),
+      background-color var(--motion-base) var(--motion-ease-standard);
   }
 
   .company-mark {
     @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-700 text-white;
+    transition:
+      transform var(--motion-base) var(--motion-ease-emphasized),
+      box-shadow var(--motion-base) var(--motion-ease-standard);
   }
 
   .neutral-chip {
     @apply inline-flex min-h-7 items-center rounded-md bg-slate-100 px-2.5 text-xs font-semibold text-slate-700;
+    transition:
+      color var(--motion-fast) var(--motion-ease-standard),
+      background-color var(--motion-fast) var(--motion-ease-standard),
+      transform var(--motion-fast) var(--motion-ease-emphasized);
   }
+}
+
+html[data-motion='ready'] .motion-dialog {
+  animation: dialog-backdrop-enter var(--motion-base) var(--motion-ease-standard) both;
+}
+
+html[data-motion='ready'] .motion-dialog-panel {
+  transform-origin: center bottom;
+  animation: dialog-panel-enter var(--motion-slow) var(--motion-ease-emphasized) both;
+  box-shadow: var(--surface-shadow-dialog);
+}
+
+html[data-motion='ready'] .motion-item-enter {
+  animation: list-item-enter var(--motion-base) var(--motion-ease-emphasized) both;
+  animation-delay: calc(min(var(--motion-index, 0), 8) * 18ms);
+}
+
+html[data-motion='ready'] .motion-toast {
+  animation: toast-enter var(--motion-base) var(--motion-ease-emphasized) both;
+}
+
+.motion-pressed {
+  transform: scale(0.975) !important;
+}
+
+button:disabled {
+  opacity: 0.72;
 }
 
 @media (min-width: 1024px) {
@@ -200,11 +294,32 @@ button {
   }
 }
 
+@media (max-width: 767px) {
+  html[data-motion='ready'] .motion-dialog-panel {
+    transform-origin: center bottom;
+    animation-name: bottom-sheet-enter;
+  }
+}
+
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .smooth-card:hover,
-  .job-card:hover {
+  .job-card:hover,
+  .app-surface:hover {
     border-color: #a7c0df;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    box-shadow: var(--surface-shadow-hover);
+    transform: translateY(-2px);
+  }
+
+  .smooth-card:hover .company-mark,
+  .job-card:hover .company-mark {
+    transform: scale(1.035);
+    box-shadow: 0 8px 18px rgba(29, 78, 216, 0.2);
+  }
+
+  .primary-button:hover,
+  .secondary-button:hover,
+  .secondary-icon-button:hover {
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.1);
   }
 }
 
@@ -217,7 +332,7 @@ button {
   .primary-button:not(:disabled):active,
   .secondary-button:not(:disabled):active,
   .secondary-icon-button:not(:disabled):active {
-    transform: scale(0.985);
+    transform: scale(0.975);
   }
 }
 
@@ -232,14 +347,73 @@ button {
   }
 }
 
-@keyframes soft-enter {
+@keyframes screen-enter {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(10px) scale(0.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes list-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
 
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes dialog-backdrop-enter {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes bottom-sheet-enter {
+  from {
+    opacity: 0;
+    transform: translateY(34px) scale(0.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
