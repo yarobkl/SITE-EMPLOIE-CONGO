@@ -94,9 +94,9 @@ export default function MessagingCenter() {
       setUser(session?.user || null);
       setAuthReady(true);
       if (!session?.user) {
-        setOpen(false);
         setThreads([]);
         setMessages([]);
+        setApplications([]);
         setSelectedId('');
       }
     });
@@ -185,19 +185,7 @@ export default function MessagingCenter() {
   }, [loadMessages, open, selectedId]);
 
   useEffect(() => {
-    const openMessages = (event) => {
-      event?.preventDefault?.();
-      event?.stopPropagation?.();
-
-      if (!authReady || !user) {
-        openUnifiedLogin();
-        return;
-      }
-
-      setOpen(true);
-    };
-
-    const install = () => {
+    const installButtons = () => {
       const nav = document.querySelector('header nav[aria-label="Navigation principale"]');
       if (nav && !nav.querySelector('[data-nzela-messages]')) {
         const button = document.createElement('button');
@@ -205,7 +193,6 @@ export default function MessagingCenter() {
         button.dataset.nzelaMessages = 'true';
         button.className = 'header-link relative';
         button.textContent = 'Messages';
-        button.addEventListener('click', openMessages);
         nav.appendChild(button);
       }
 
@@ -217,23 +204,32 @@ export default function MessagingCenter() {
         button.className = 'relative inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600';
         button.setAttribute('aria-label', 'Messages');
         button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>';
-        button.addEventListener('click', openMessages);
         actions.insertBefore(button, actions.firstChild);
       }
     };
 
-    install();
+    const handleMessagingClick = (event) => {
+      const trigger = event.target instanceof Element
+        ? event.target.closest('[data-nzela-messages], [data-nzela-messages-mobile]')
+        : null;
+
+      if (!trigger) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(true);
+    };
+
+    installButtons();
     const root = document.getElementById('root');
-    const observer = new MutationObserver(install);
+    const observer = new MutationObserver(installButtons);
     if (root) observer.observe(root, { childList: true, subtree: true });
+    document.addEventListener('click', handleMessagingClick, true);
 
     return () => {
       observer.disconnect();
-      document.querySelectorAll('[data-nzela-messages], [data-nzela-messages-mobile]').forEach((button) => {
-        button.removeEventListener('click', openMessages);
-      });
+      document.removeEventListener('click', handleMessagingClick, true);
     };
-  }, [authReady, user]);
+  }, []);
 
   useEffect(() => {
     document.querySelectorAll('[data-nzela-messages], [data-nzela-messages-mobile]').forEach((button) => {
@@ -303,6 +299,25 @@ export default function MessagingCenter() {
     ? (recruiterView ? selected.candidate_name : selected.company_name)
     : '';
 
+  const closeAndLogin = () => {
+    setOpen(false);
+    window.setTimeout(openUnifiedLogin, 0);
+  };
+
+  const emptyState = (
+    <div className="flex min-h-full items-center justify-center p-6 text-center">
+      <div className="max-w-sm">
+        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+          <MessageSquare size={30} />
+        </span>
+        <h3 className="mt-5 text-xl font-bold text-slate-950">Vous n’avez pas encore de messages</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Vos échanges avec les recruteurs ou les candidats apparaîtront ici dès qu’une conversation sera ouverte.
+        </p>
+      </div>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-[100] bg-slate-950/40 backdrop-blur-sm md:p-6" role="dialog" aria-modal="true" aria-label="Messagerie Nzela Jobs">
       <div className="mx-auto flex h-full max-w-[1380px] overflow-hidden bg-white shadow-2xl md:h-[calc(100vh-3rem)] md:rounded-2xl md:border md:border-slate-200">
@@ -318,20 +333,45 @@ export default function MessagingCenter() {
               </button>
             </div>
 
-            <label className="mt-4 flex min-h-11 items-center gap-3 rounded-lg border border-slate-300 px-3 focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-600">
-              <Search size={18} className="text-slate-500" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Rechercher"
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-              />
-            </label>
+            {user && (
+              <label className="mt-4 flex min-h-11 items-center gap-3 rounded-lg border border-slate-300 px-3 focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-600">
+                <Search size={18} className="text-slate-500" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Rechercher une conversation"
+                  className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+                />
+              </label>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {visibleThreads.map((thread) => {
-              const name = thread.recruiter_id === user?.id
+            {!authReady && (
+              <div className="flex min-h-full items-center justify-center p-6 text-sm font-semibold text-slate-500">
+                Chargement de la messagerie…
+              </div>
+            )}
+
+            {authReady && !user && (
+              <div className="flex min-h-full items-center justify-center p-6 text-center">
+                <div className="max-w-sm">
+                  <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                    <MessageSquare size={30} />
+                  </span>
+                  <h3 className="mt-5 text-xl font-bold text-slate-950">Connectez-vous pour voir vos messages</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Retrouvez au même endroit vos échanges avec les entreprises et les candidats.
+                  </p>
+                  <button type="button" onClick={closeAndLogin} className="primary-button mt-5 w-full">
+                    Se connecter
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {authReady && user && visibleThreads.map((thread) => {
+              const name = thread.recruiter_id === user.id
                 ? thread.candidate_name
                 : thread.company_name;
 
@@ -363,34 +403,60 @@ export default function MessagingCenter() {
               );
             })}
 
-            {threads.length === 0 && (
+            {authReady && user && threads.length === 0 && (
               <div className="p-5">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <MessageSquare className="text-blue-700" />
-                  <h3 className="mt-3 font-bold">Aucune conversation</h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">Ouvrez un échange depuis une candidature.</p>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-center">
+                  <MessageSquare className="mx-auto text-blue-700" size={28} />
+                  <h3 className="mt-4 text-lg font-bold text-slate-950">Vous n’avez pas encore de messages</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Vos futurs échanges de recrutement apparaîtront ici.
+                  </p>
                 </div>
 
-                <div className="mt-4 space-y-2">
-                  {applications.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => startConversation(item)}
-                      className="w-full rounded-xl border border-slate-200 p-4 text-left hover:border-blue-300 hover:bg-blue-50"
-                    >
-                      <strong className="block text-sm">{item.jobs?.title || 'Offre d’emploi'}</strong>
-                      <span className="mt-1 block text-sm text-slate-600">{item.jobs?.companies?.name || item.nom || 'Candidature'}</span>
-                      <span className="mt-3 block text-sm font-bold text-blue-700">Ouvrir la conversation</span>
-                    </button>
-                  ))}
-                </div>
+                {applications.length > 0 && (
+                  <div className="mt-5">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Démarrer une conversation</p>
+                    <div className="space-y-2">
+                      {applications.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => startConversation(item)}
+                          className="w-full rounded-xl border border-slate-200 p-4 text-left hover:border-blue-300 hover:bg-blue-50"
+                        >
+                          <strong className="block text-sm">{item.jobs?.title || 'Offre d’emploi'}</strong>
+                          <span className="mt-1 block text-sm text-slate-600">{item.jobs?.companies?.name || item.nom || 'Candidature'}</span>
+                          <span className="mt-3 block text-sm font-bold text-blue-700">Ouvrir la conversation</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+            )}
+
+            {authReady && user && threads.length > 0 && visibleThreads.length === 0 && (
+              <div className="p-6 text-center text-sm text-slate-500">Aucune conversation ne correspond à votre recherche.</div>
             )}
           </div>
         </aside>
 
         <section className={`${selected ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col bg-slate-50`}>
-          {selected ? (
+          {!authReady ? (
+            <div className="flex flex-1 items-center justify-center p-8 text-sm font-semibold text-slate-500">
+              Chargement de la messagerie…
+            </div>
+          ) : !user ? (
+            <div className="flex flex-1 items-center justify-center p-8 text-center">
+              <div className="max-w-sm">
+                <MessageSquare className="mx-auto text-blue-700" size={38} />
+                <h3 className="mt-5 text-xl font-bold text-slate-950">Votre messagerie Nzela Jobs</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">Connectez-vous pour retrouver vos conversations de recrutement.</p>
+                <button type="button" onClick={closeAndLogin} className="primary-button mt-5">
+                  Se connecter
+                </button>
+              </div>
+            </div>
+          ) : selected ? (
             <>
               <header className="flex min-h-[82px] items-center gap-3 border-b border-slate-200 bg-white px-4 md:px-6">
                 <button onClick={() => setSelectedId('')} className="secondary-icon-button md:hidden" aria-label="Retour">
@@ -415,7 +481,7 @@ export default function MessagingCenter() {
                   </div>
 
                   {messages.map((message) => {
-                    const mine = message.sender_id === user?.id;
+                    const mine = message.sender_id === user.id;
                     return (
                       <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[82%] rounded-2xl px-4 py-3 shadow-sm ${mine ? 'rounded-br-md bg-blue-700 text-white' : 'rounded-bl-md border border-slate-200 bg-white'}`}>
@@ -451,6 +517,8 @@ export default function MessagingCenter() {
                 {error && <p className="mx-auto mt-2 max-w-3xl text-sm font-semibold text-red-600">{error}</p>}
               </form>
             </>
+          ) : threads.length === 0 ? (
+            emptyState
           ) : (
             <div className="flex flex-1 items-center justify-center p-8 text-center">
               <div>
