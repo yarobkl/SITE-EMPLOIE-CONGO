@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import UnifiedAccessUX from './UnifiedAccessUX.jsx'
 import MessagingCenter from './MessagingCenter.jsx'
-import MessagingLoginBridge from './MessagingLoginBridge.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -11,6 +10,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
     <UnifiedAccessUX />
     <MessagingCenter />
-    <MessagingLoginBridge />
   </React.StrictMode>,
 )
