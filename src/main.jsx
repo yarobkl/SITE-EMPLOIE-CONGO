@@ -7,6 +7,7 @@ import GlobalApplicationsCenterV2 from './GlobalApplicationsCenterV2.jsx'
 import PlatformPresenceTracker from './PlatformPresenceTracker.jsx'
 import AdminPlatformDashboard from './AdminPlatformDashboard.jsx'
 import OfferLifecycleCenter from './OfferLifecycleCenter.jsx'
+import OfferLifecycleMobileTrigger from './OfferLifecycleMobileTrigger.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -18,5 +19,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <PlatformPresenceTracker />
     <AdminPlatformDashboard />
     <OfferLifecycleCenter />
+    <OfferLifecycleMobileTrigger />
   </React.StrictMode>,
 )
