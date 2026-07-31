@@ -4,6 +4,8 @@ import App from './App.jsx'
 import UnifiedAccessUX from './UnifiedAccessUX.jsx'
 import MessagingCenterV2 from './MessagingCenterV2.jsx'
 import GlobalApplicationsCenterV2 from './GlobalApplicationsCenterV2.jsx'
+import PlatformPresenceTracker from './PlatformPresenceTracker.jsx'
+import AdminPlatformDashboard from './AdminPlatformDashboard.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -12,5 +14,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <UnifiedAccessUX />
     <MessagingCenterV2 />
     <GlobalApplicationsCenterV2 />
+    <PlatformPresenceTracker />
+    <AdminPlatformDashboard />
   </React.StrictMode>,
 )
