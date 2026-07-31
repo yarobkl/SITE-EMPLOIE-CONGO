@@ -160,6 +160,46 @@ button {
   }
 }
 
+@media (min-width: 1024px) {
+  header > div {
+    width: 100%;
+    max-width: 1536px !important;
+    height: 82px !important;
+    padding-left: 32px !important;
+    padding-right: 32px !important;
+  }
+
+  header nav {
+    gap: 10px;
+  }
+
+  .header-link {
+    padding-left: 16px;
+    padding-right: 16px;
+    font-size: 15px;
+  }
+
+  main.soft-enter {
+    width: 100%;
+    max-width: 1440px !important;
+    padding-left: 32px !important;
+    padding-right: 32px !important;
+    padding-top: 40px !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  header > div {
+    padding-left: 48px !important;
+    padding-right: 48px !important;
+  }
+
+  main.soft-enter {
+    padding-left: 40px !important;
+    padding-right: 40px !important;
+  }
+}
+
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .smooth-card:hover,
   .job-card:hover {
