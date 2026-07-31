@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import UnifiedAccessUX from './UnifiedAccessUX.jsx'
 import MessagingCenterV2 from './MessagingCenterV2.jsx'
-import GlobalApplicationsCenter from './GlobalApplicationsCenter.jsx'
+import GlobalApplicationsCenterV2 from './GlobalApplicationsCenterV2.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -11,6 +11,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
     <UnifiedAccessUX />
     <MessagingCenterV2 />
-    <GlobalApplicationsCenter />
+    <GlobalApplicationsCenterV2 />
   </React.StrictMode>,
 )
