@@ -13,6 +13,7 @@ import MotionFoundation from './MotionFoundation.jsx'
 import NavigationExperience from './NavigationExperience.jsx'
 import CandidateJourneyExperience from './CandidateJourneyExperience.jsx'
 import PrivacyComplianceExperience from './PrivacyComplianceExperience.jsx'
+import RealEstatePrivacyExtension from './RealEstatePrivacyExtension.jsx'
 import RealEstateExperience from './RealEstateExperience.jsx'
 import JobViewCounterExperience from './JobViewCounterExperience.jsx'
 import './index.css'
@@ -32,6 +33,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <NavigationExperience />
     <CandidateJourneyExperience />
     <PrivacyComplianceExperience />
+    <RealEstatePrivacyExtension />
     <RealEstateExperience />
     <JobViewCounterExperience />
   </React.StrictMode>,
