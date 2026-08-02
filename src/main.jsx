@@ -17,6 +17,7 @@ import RealEstatePrivacyExtension from './RealEstatePrivacyExtension.jsx'
 import RealEstateExperience from './RealEstateExperience.jsx'
 import JobViewCounterExperience from './JobViewCounterExperience.jsx'
 import './index.css'
+import './nzela-mobile-shell-fixes.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
