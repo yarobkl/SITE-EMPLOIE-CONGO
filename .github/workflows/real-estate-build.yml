@@ -33,9 +33,9 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Start local preview
         run: |
-          npm run dev -- --host 127.0.0.1 > /tmp/nzela-vite.log 2>&1 &
+          npm run dev -- --host 127.0.0.1 --port 3000 > /tmp/nzela-vite.log 2>&1 &
           for attempt in {1..40}; do
-            if curl --fail --silent http://127.0.0.1:5173/ > /dev/null; then exit 0; fi
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
             sleep 1
           done
           cat /tmp/nzela-vite.log
