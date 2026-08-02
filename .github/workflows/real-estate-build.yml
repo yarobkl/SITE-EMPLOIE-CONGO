@@ -14,14 +14,14 @@ permissions:
 jobs:
   build-and-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - name: Install dependencies
         run: npm ci
@@ -40,12 +40,12 @@ jobs:
           done
           cat /tmp/nzela-vite.log
           exit 1
-      - name: Run immobilier smoke test
+      - name: Run immobilier stability tests
         run: node scripts/smoke-immo.mjs
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nzela-immo-smoke
+          name: nzela-immo-stability
           path: artifacts/immo-smoke
           if-no-files-found: ignore
