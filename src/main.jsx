@@ -16,6 +16,7 @@ import PrivacyComplianceExperience from './PrivacyComplianceExperience.jsx'
 import RealEstatePrivacyExtension from './RealEstatePrivacyExtension.jsx'
 import RealEstateEntry from './RealEstateEntry.jsx'
 import JobViewCounterExperience from './JobViewCounterExperience.jsx'
+import './realEstateNavigationBridge.js'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
