@@ -1,0 +1,5 @@
+@media (max-width: 767px) {
+  div[aria-label="Informations légales Nzela Jobs"] {
+    bottom: calc(78px + env(safe-area-inset-bottom)) !important;
+  }
+}
