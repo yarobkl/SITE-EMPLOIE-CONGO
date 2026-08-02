@@ -1,3 +1,13 @@
+.nz-immo-job-stats {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px !important;
+  margin-top: 8px !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+}
+
 @media (max-width: 767px) {
   div[aria-label="Informations légales Nzela Jobs"] {
     bottom: calc(78px + env(safe-area-inset-bottom)) !important;
