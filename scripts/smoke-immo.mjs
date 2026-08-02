@@ -2,6 +2,8 @@ import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 
+const APP_URL = 'http://127.0.0.1:3000/';
+
 await fs.mkdir('artifacts/immo-smoke', { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const pageErrors = [];
@@ -9,7 +11,7 @@ const pageErrors = [];
 async function testMobile() {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
   page.on('pageerror', (error) => pageErrors.push(`mobile: ${error.message}`));
-  await page.goto('http://127.0.0.1:5173/', { waitUntil: 'networkidle' });
+  await page.goto(APP_URL, { waitUntil: 'networkidle' });
   const button = page.getByRole('button', { name: 'Navigation Immobilier' });
   await button.waitFor({ state: 'visible' });
   await button.click();
@@ -26,7 +28,7 @@ async function testMobile() {
 async function testDesktop() {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
   page.on('pageerror', (error) => pageErrors.push(`desktop: ${error.message}`));
-  await page.goto('http://127.0.0.1:5173/', { waitUntil: 'networkidle' });
+  await page.goto(APP_URL, { waitUntil: 'networkidle' });
   const button = page.getByRole('button', { name: 'Immobilier', exact: true }).first();
   await button.waitFor({ state: 'visible' });
   await button.click();
