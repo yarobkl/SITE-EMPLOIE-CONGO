@@ -13,8 +13,13 @@ function setImmobilierLabel(button) {
   button.classList.add('nzela-immo-nav-button');
   button.dataset.nzImmoNav = 'true';
   button.setAttribute('aria-label', 'Navigation Immobilier');
-  const node = Array.from(button.childNodes || []).find((item) => item.nodeType === Node.TEXT_NODE && item.nodeValue?.trim());
-  if (node && node.nodeValue.trim() !== 'Immobilier') node.nodeValue = 'Immobilier';
+
+  const textNode = Array.from(button.childNodes || []).find((item) => item.nodeType === Node.TEXT_NODE && item.nodeValue?.trim());
+  if (textNode) textNode.nodeValue = 'Immobilier';
+  else {
+    const label = Array.from(button.querySelectorAll('span')).find((item) => /^(Suivi|Immobilier)$/i.test(item.textContent?.trim() || ''));
+    if (label && label.textContent !== 'Immobilier') label.textContent = 'Immobilier';
+  }
 }
 
 function LoadingScreen() {
@@ -42,10 +47,11 @@ export default function RealEstateEntry() {
 
   useEffect(() => {
     let frame = 0;
+    const timers = [];
     const sync = () => {
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
-        const mobileNav = document.querySelector('nav[aria-label="Navigation mobile"]');
+        const mobileNav = document.querySelector('nav[aria-label="Navigation mobile"],nav[aria-label*="mobile" i]');
         const buttons = mobileNav?.querySelectorAll('button');
         if (buttons?.length >= 4) setImmobilierLabel(buttons[2]);
 
@@ -78,13 +84,16 @@ export default function RealEstateEntry() {
     const root = document.getElementById('root');
     const observer = new MutationObserver(sync);
     if (root) observer.observe(root, { childList: true, subtree: true });
+    const interval = window.setInterval(sync, 1200);
+    [0, 60, 220, 700].forEach((delay) => timers.push(window.setTimeout(sync, delay)));
     document.addEventListener('click', open, true);
     window.addEventListener('hashchange', syncHistory);
     window.addEventListener('popstate', syncHistory);
-    sync();
 
     return () => {
       observer.disconnect();
+      window.clearInterval(interval);
+      timers.forEach((timer) => window.clearTimeout(timer));
       window.cancelAnimationFrame(frame);
       document.removeEventListener('click', open, true);
       window.removeEventListener('hashchange', syncHistory);
