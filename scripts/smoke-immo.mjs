@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 
 const APP_URL = 'http://127.0.0.1:3000/';
+const settle = (page) => page.waitForTimeout(650);
 
 await fs.mkdir('artifacts/immo-smoke', { recursive: true });
 const browser = await chromium.launch({ headless: true });
@@ -18,8 +19,9 @@ async function testMobile() {
   const dialog = page.getByRole('dialog', { name: 'Nzela Immobilier' });
   await dialog.waitFor({ state: 'visible' });
   await page.getByText('Trouvez ou publiez un logement simplement').waitFor();
+  await settle(page);
   assert.equal(await page.getByRole('navigation', { name: 'Navigation principale Nzela' }).isVisible(), true);
-  await page.screenshot({ path: 'artifacts/immo-smoke/mobile-immobilier.png', fullPage: true });
+  await page.screenshot({ path: 'artifacts/immo-smoke/mobile-immobilier.png', fullPage: false });
   await page.getByRole('button', { name: 'Fermer l’immobilier' }).click();
   await dialog.waitFor({ state: 'hidden' });
   await page.close();
@@ -34,7 +36,8 @@ async function testDesktop() {
   await button.click();
   await page.getByRole('dialog', { name: 'Nzela Immobilier' }).waitFor({ state: 'visible' });
   await page.getByRole('button', { name: /Publier une annonce/i }).first().waitFor();
-  await page.screenshot({ path: 'artifacts/immo-smoke/desktop-immobilier.png', fullPage: true });
+  await settle(page);
+  await page.screenshot({ path: 'artifacts/immo-smoke/desktop-immobilier.png', fullPage: false });
   await page.close();
 }
 
