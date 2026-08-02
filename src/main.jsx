@@ -14,10 +14,9 @@ import NavigationExperience from './NavigationExperience.jsx'
 import CandidateJourneyExperience from './CandidateJourneyExperience.jsx'
 import PrivacyComplianceExperience from './PrivacyComplianceExperience.jsx'
 import RealEstatePrivacyExtension from './RealEstatePrivacyExtension.jsx'
-import RealEstateExperience from './RealEstateExperience.jsx'
+import RealEstateEntry from './RealEstateEntry.jsx'
 import JobViewCounterExperience from './JobViewCounterExperience.jsx'
 import './index.css'
-import './nzela-mobile-shell-fixes.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -35,7 +34,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <CandidateJourneyExperience />
     <PrivacyComplianceExperience />
     <RealEstatePrivacyExtension />
-    <RealEstateExperience />
+    <RealEstateEntry />
     <JobViewCounterExperience />
   </React.StrictMode>,
 )
