@@ -51,9 +51,14 @@ async function runCase(testCase) {
   });
 
   await page.goto(APP_URL, { waitUntil: 'networkidle' });
-  const navButton = testCase.desktop
-    ? page.getByRole('button', { name: 'Immobilier', exact: true }).first()
-    : page.getByRole('button', { name: 'Navigation Immobilier' });
+  let navButton;
+  if (testCase.desktop) {
+    navButton = page.getByRole('button', { name: 'Immobilier', exact: true }).first();
+  } else {
+    navButton = page.locator('nav[aria-label="Navigation mobile"] button').nth(2);
+    await navButton.waitFor({ state: 'visible' });
+    await page.waitForFunction(() => document.querySelectorAll('nav[aria-label="Navigation mobile"] button')[2]?.getAttribute('aria-label') === 'Navigation Immobilier');
+  }
   await navButton.waitFor({ state: 'visible' });
   await navButton.click();
 
