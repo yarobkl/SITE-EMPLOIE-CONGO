@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { hasSupabaseConfig, supabase } from './lib/supabase';
-import { getViewerKey } from './realEstateApi';
+import { getViewerKey } from './viewerIdentity';
 
 function routeJobId() {
   return window.location.pathname.match(/^\/offres\/([0-9a-f-]{36})(?:-[^/]+)?(?:\/postuler)?$/i)?.[1] || '';
