@@ -4,24 +4,6 @@ import { Building2, Loader2 } from 'lucide-react';
 
 const RealEstateExperience = lazy(() => import('./RealEstateExperienceStable.jsx'));
 
-function cleanLocation() {
-  return `${window.location.pathname}${window.location.search}`;
-}
-
-function setImmobilierLabel(button) {
-  if (!button) return;
-  button.classList.add('nzela-immo-nav-button');
-  button.dataset.nzImmoNav = 'true';
-  button.setAttribute('aria-label', 'Navigation Immobilier');
-
-  const textNode = Array.from(button.childNodes || []).find((item) => item.nodeType === Node.TEXT_NODE && item.nodeValue?.trim());
-  if (textNode) textNode.nodeValue = 'Immobilier';
-  else {
-    const label = Array.from(button.querySelectorAll('span')).find((item) => /^(Suivi|Immobilier)$/i.test(item.textContent?.trim() || ''));
-    if (label && label.textContent !== 'Immobilier') label.textContent = 'Immobilier';
-  }
-}
-
 function LoadingScreen() {
   return createPortal(
     <div
@@ -46,56 +28,13 @@ export default function RealEstateEntry() {
   const [active, setActive] = useState(() => window.location.hash === '#immobilier');
 
   useEffect(() => {
-    let frame = 0;
-    const timers = [];
-    const sync = () => {
-      window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(() => {
-        const mobileNav = document.querySelector('nav[aria-label="Navigation mobile"],nav[aria-label*="mobile" i]');
-        const buttons = mobileNav?.querySelectorAll('button');
-        if (buttons?.length >= 4) setImmobilierLabel(buttons[2]);
-
-        const desktopNav = document.querySelector('header nav[aria-label="Navigation principale"]');
-        if (desktopNav && !desktopNav.querySelector('[data-nz-immo-nav]')) {
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'header-link';
-          button.dataset.nzImmoNav = 'true';
-          button.setAttribute('aria-label', 'Immobilier');
-          button.textContent = 'Immobilier';
-          desktopNav.querySelector('button')?.insertAdjacentElement('afterend', button);
-        }
-      });
-    };
-
-    const open = (event) => {
-      const target = event.target instanceof Element ? event.target.closest('[data-nz-immo-nav],.nzela-immo-nav-button') : null;
-      if (!target) return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      if (window.location.hash !== '#immobilier') {
-        window.history.pushState({ ...(window.history.state || {}), nzelaImmo: true }, '', `${cleanLocation()}#immobilier`);
-      }
-      setActive(true);
-    };
-
+    const activate = () => setActive(true);
     const syncHistory = () => setActive(window.location.hash === '#immobilier');
-    const root = document.getElementById('root');
-    const observer = new MutationObserver(sync);
-    if (root) observer.observe(root, { childList: true, subtree: true });
-    const interval = window.setInterval(sync, 1200);
-    [0, 60, 220, 700].forEach((delay) => timers.push(window.setTimeout(sync, delay)));
-    document.addEventListener('click', open, true);
+    window.addEventListener('nzela:open-immobilier', activate);
     window.addEventListener('hashchange', syncHistory);
     window.addEventListener('popstate', syncHistory);
-
     return () => {
-      observer.disconnect();
-      window.clearInterval(interval);
-      timers.forEach((timer) => window.clearTimeout(timer));
-      window.cancelAnimationFrame(frame);
-      document.removeEventListener('click', open, true);
+      window.removeEventListener('nzela:open-immobilier', activate);
       window.removeEventListener('hashchange', syncHistory);
       window.removeEventListener('popstate', syncHistory);
     };
