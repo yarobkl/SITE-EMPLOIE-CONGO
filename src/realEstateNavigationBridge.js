@@ -1,9 +1,5 @@
 const BRIDGE_KEY = '__nzelaRealEstateNavigationBridge';
 
-function cleanLocation() {
-  return `${window.location.pathname}${window.location.search}`;
-}
-
 function replaceButtonLabel(button) {
   if (!button) return;
   button.classList.add('nzela-immo-nav-button');
@@ -50,13 +46,7 @@ function openImmobilier(event) {
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation();
-  if (window.location.hash !== '#immobilier') {
-    window.history.pushState(
-      { ...(window.history.state || {}), nzelaImmo: true },
-      '',
-      `${cleanLocation()}#immobilier`,
-    );
-  }
+  if (window.location.hash !== '#immobilier') window.location.hash = 'immobilier';
   window.dispatchEvent(new CustomEvent('nzela:open-immobilier'));
 }
 
