@@ -26,8 +26,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Audit production dependencies
-        continue-on-error: true
-        run: npm audit --omit=dev
+        run: npm audit --omit=dev --audit-level=high
+      - name: Validate Vercel build deduplication
+        run: |
+          VERCEL_PROJECT_ID=prj_tIEIS7stCAZtGG1mcvXk09vreNT0 node scripts/vercel-ignore-build.mjs
+          if VERCEL_PROJECT_ID=prj_4qu0pYW6yj73vIb0PPod5hr1j0YS node scripts/vercel-ignore-build.mjs; then
+            echo "Primary Vercel project was incorrectly ignored."
+            exit 1
+          fi
       - name: Build application
         run: npm run build
       - name: Install browser test dependency
