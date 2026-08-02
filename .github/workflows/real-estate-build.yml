@@ -12,9 +12,9 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  build-and-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 18
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,3 +27,25 @@ jobs:
         run: npm ci
       - name: Build application
         run: npm run build
+      - name: Install browser test dependency
+        run: |
+          npm install --no-save playwright@1.54.1
+          npx playwright install --with-deps chromium
+      - name: Start local preview
+        run: |
+          npm run dev -- --host 127.0.0.1 > /tmp/nzela-vite.log 2>&1 &
+          for attempt in {1..40}; do
+            if curl --fail --silent http://127.0.0.1:5173/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/nzela-vite.log
+          exit 1
+      - name: Run immobilier smoke test
+        run: node scripts/smoke-immo.mjs
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nzela-immo-smoke
+          path: artifacts/immo-smoke
+          if-no-files-found: ignore
