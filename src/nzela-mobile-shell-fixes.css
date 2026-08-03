@@ -1,0 +1,32 @@
+.nzela-immo-nav-button svg {
+  display: none !important;
+}
+
+.nzela-immo-nav-button::before {
+  content: "";
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 21h18'/%3E%3Cpath d='M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16'/%3E%3Cpath d='M9 7h.01M15 7h.01M9 11h.01M15 11h.01M9 15h.01M15 15h.01'/%3E%3C/svg%3E");
+}
+
+.nzela-immo-nav-button[aria-current='page']::before,
+.nzela-immo-nav-button.text-blue-700::before {
+  filter: invert(27%) sepia(95%) saturate(2143%) hue-rotate(211deg) brightness(88%) contrast(93%);
+}
+
+.nz-immo-job-stats {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px !important;
+  margin-top: 8px !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+}
+
+@media (max-width: 767px) {
+  div[aria-label="Informations légales Nzela Jobs"] {
+    bottom: calc(78px + env(safe-area-inset-bottom)) !important;
+  }
+}

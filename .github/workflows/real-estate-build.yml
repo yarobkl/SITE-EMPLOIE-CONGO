@@ -1,0 +1,60 @@
+name: Real estate build
+
+on:
+  push:
+    branches:
+      - feature/nzela-immo-actual-work-final2
+  pull_request:
+    branches:
+      - compliance/nzela-legal-v2-20260802
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Validate Vercel build deduplication
+        run: |
+          VERCEL_PROJECT_ID=prj_tIEIS7stCAZtGG1mcvXk09vreNT0 node scripts/vercel-ignore-build.mjs
+          if VERCEL_PROJECT_ID=prj_4qu0pYW6yj73vIb0PPod5hr1j0YS node scripts/vercel-ignore-build.mjs; then
+            echo "Primary Vercel project was incorrectly ignored."
+            exit 1
+          fi
+      - name: Build application
+        run: npm run build
+      - name: Install browser test dependency
+        run: |
+          npm install --no-save playwright@1.54.1
+          npx playwright install --with-deps chromium
+      - name: Start local preview
+        run: |
+          npm run dev -- --host 127.0.0.1 --port 3000 > /tmp/nzela-vite.log 2>&1 &
+          for attempt in {1..40}; do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/nzela-vite.log
+          exit 1
+      - name: Run immobilier stability tests
+        run: node scripts/smoke-immo.mjs
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nzela-immo-stability
+          path: artifacts/immo-smoke
+          if-no-files-found: ignore
