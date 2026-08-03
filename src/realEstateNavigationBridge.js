@@ -2,7 +2,7 @@ const BRIDGE_KEY = '__nzelaRealEstateNavigationBridge';
 const STYLE_ID = 'nzela-real-estate-navigation-overrides';
 
 const BUILDING_ICON = `
-  <svg data-nz-building-icon="true" aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+  <svg data-nz-building-icon="true" aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
     <path d="M3 21h18" />
     <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
     <path d="M9 7h.01M15 7h.01M9 11h.01M15 11h.01M9 15h.01M15 15h.01" />
@@ -14,10 +14,45 @@ function installNavigationStyles() {
   const style = document.createElement('style');
   style.id = STYLE_ID;
   style.textContent = `
-    .nzela-immo-nav-button::before { display: none !important; content: none !important; }
-    .nzela-immo-nav-button svg[data-nz-building-icon="true"] { display: block !important; width: 22px !important; height: 22px !important; }
-    .nz2-bottom-nav button.is-active span { display: none !important; }
-    .nz2-bottom-nav button.is-active { gap: 0 !important; }
+    .nzela-immo-nav-button {
+      position: relative !important;
+      font-size: 0 !important;
+      line-height: 0 !important;
+    }
+
+    .nzela-immo-nav-button > svg,
+    .nzela-immo-nav-button > span {
+      display: none !important;
+    }
+
+    .nzela-immo-nav-button::before {
+      display: none !important;
+      content: none !important;
+    }
+
+    .nzela-immo-nav-button::after {
+      content: '' !important;
+      display: block !important;
+      width: 25px !important;
+      height: 25px !important;
+      margin: 0 auto !important;
+      background-color: currentColor !important;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 21h18'/%3E%3Cpath d='M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16'/%3E%3Cpath d='M9 7h.01M15 7h.01M9 11h.01M15 11h.01M9 15h.01M15 15h.01'/%3E%3C/svg%3E") center / contain no-repeat !important;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 21h18'/%3E%3Cpath d='M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16'/%3E%3Cpath d='M9 7h.01M15 7h.01M9 11h.01M15 11h.01M9 15h.01M15 15h.01'/%3E%3C/svg%3E") center / contain no-repeat !important;
+    }
+
+    .nz2-bottom-nav button.is-active {
+      gap: 0 !important;
+      font-size: 0 !important;
+      line-height: 0 !important;
+    }
+
+    .nz2-bottom-nav button.is-active svg {
+      display: block !important;
+      width: 26px !important;
+      height: 26px !important;
+      margin: 0 auto !important;
+    }
   `;
   document.head.appendChild(style);
 }
