@@ -1,10 +1,19 @@
 const BRIDGE_KEY = '__nzelaRealEstateNavigationBridge';
 
+const BUILDING_ICON = `
+  <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 21h18" />
+    <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
+    <path d="M9 7h.01M15 7h.01M9 11h.01M15 11h.01M9 15h.01M15 15h.01" />
+  </svg>
+`;
+
 function replaceButtonLabel(button) {
   if (!button) return;
   button.classList.add('nzela-immo-nav-button');
   button.dataset.nzImmoNav = 'true';
   button.setAttribute('aria-label', 'Navigation Immobilier');
+  button.setAttribute('title', 'Immobilier');
 
   const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
@@ -13,12 +22,12 @@ function replaceButtonLabel(button) {
     const value = node.nodeValue?.trim() || '';
     if (value) fallback = node;
     if (/^(Suivi|Immobilier)$/i.test(value)) {
-      node.nodeValue = 'Immobilier';
+      node.nodeValue = '';
       return;
     }
     node = walker.nextNode();
   }
-  if (fallback) fallback.nodeValue = 'Immobilier';
+  if (fallback) fallback.nodeValue = '';
 }
 
 function patchNavigation() {
@@ -33,7 +42,8 @@ function patchNavigation() {
     button.className = 'header-link';
     button.dataset.nzImmoNav = 'true';
     button.setAttribute('aria-label', 'Immobilier');
-    button.textContent = 'Immobilier';
+    button.setAttribute('title', 'Immobilier');
+    button.innerHTML = BUILDING_ICON;
     desktopNav.querySelector('button')?.insertAdjacentElement('afterend', button);
   }
 }
