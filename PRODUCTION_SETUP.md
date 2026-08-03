@@ -11,7 +11,8 @@ VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=<anon-public-key>
 ```
 
-Sans ces deux valeurs, la connexion, les candidatures, les CV et les donnees restent en mode local.
+Sans ces deux valeurs, la connexion, les candidatures, les CV et les offres de
+production sont indisponibles. L'application ne simule pas ces donnees en local.
 
 ## 2. Supabase Auth
 
@@ -51,19 +52,14 @@ Le redirect URI doit pointer vers Supabase, pas directement vers Vercel.
 
 ## 4. Base de donnees et CV
 
-Dans Supabase SQL Editor, verifier que les scripts suivants ont bien ete appliques :
-
-```txt
-supabase/schema.sql
-supabase/final-hardening.sql
-supabase/recruiter-cv-access.sql
-supabase/recruiter-offer-management.sql
-supabase/nzela-v1-stability.sql
-```
+Verifier que les migrations de `supabase/migrations/` sont appliquees dans
+l'ordre. Ne pas rejouer les anciens scripts SQL situes directement dans
+`supabase/` sur une base de production existante.
 
 Le bucket Storage `cvs` doit exister. Les CV doivent etre des PDF et respecter la limite affichee dans l'application.
 
-`supabase/nzela-v1-stability.sql` ajoute les champs de suivi candidat, les dates d'ouverture de demande/CV, la table `boost_requests`, les index utiles et durcit les regles Storage du bucket `cvs`.
+Dans Authentication > Attack Protection, activer la protection contre les mots
+de passe compromis quand elle est disponible sur le forfait du projet.
 
 ## 5. Test de recette
 
@@ -72,6 +68,7 @@ Le bucket Storage `cvs` doit exister. Les CV doivent etre des PDF et respecter l
 3. Creation d'une offre recruteur.
 4. Candidature avec CV PDF.
 5. Ouverture et telechargement du CV cote recruteur.
-6. Verification du suivi cote candidat.
+6. Decision recruteur: en etude, retenue et refusee.
+7. Verification du suivi et des notifications cote candidat.
 
 Si l'un de ces points echoue, verifier d'abord les variables Vercel puis les URLs Supabase/Google.

@@ -26,14 +26,14 @@ Plateforme mobile-first de recrutement pour le Congo: recherche d'offres, candid
 ## Installation
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
 ## Build
 
 ```bash
-npm run build
+npm run check
 ```
 
 ## Variables d'environnement
@@ -47,21 +47,17 @@ VITE_SUPABASE_ANON_KEY=...
 
 ## Base de donnees
 
-Pour une nouvelle base Supabase, executer:
+Les fichiers SQL situes directement dans `supabase/` documentent l'historique du
+projet. Ils ne doivent pas etre rejoues individuellement sur une base existante.
 
-```sql
--- supabase/schema.sql
-```
+Les changements de production sont versionnes dans `supabase/migrations/` et
+doivent etre appliques dans l'ordre. Les migrations maintiennent notamment:
 
-Pour durcir une base deja creee pendant le developpement, executer ensuite:
+- les droits d'ecriture limites par les politiques RLS;
+- la confidentialite des CV du bucket prive `cvs`;
+- l'immutabilite des informations d'une candidature apres son envoi;
+- les limites de taille des contenus publics;
+- les index necessaires aux parcours candidat et recruteur.
 
-```sql
--- supabase/final-hardening.sql
-```
-
-Le fichier `final-hardening.sql` retire les anciennes permissions de demonstration et active les regles finales:
-
-- seules les entreprises du recruteur connecte peuvent publier ses offres;
-- seules les candidatures recues sur ses offres sont visibles au recruteur;
-- seuls le candidat et les recruteurs autorises peuvent ouvrir les CV selon le flux;
-- les candidatures rapides restent possibles sans suivi temps reel.
+Avant toute migration, executer `npm run check` et valider le SQL dans une
+transaction annulee ou sur une branche Supabase.
