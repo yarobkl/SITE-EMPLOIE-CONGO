@@ -12,6 +12,7 @@ import OfferLifecycleMobileTrigger from './OfferLifecycleMobileTrigger.jsx'
 import MotionFoundation from './MotionFoundation.jsx'
 import NavigationExperience from './NavigationExperience.jsx'
 import CandidateJourneyExperience from './CandidateJourneyExperience.jsx'
+import PrivacyComplianceExperience from './PrivacyComplianceExperience.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -28,5 +29,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <MotionFoundation />
     <NavigationExperience />
     <CandidateJourneyExperience />
+    <PrivacyComplianceExperience />
   </React.StrictMode>,
 )
