@@ -16,6 +16,8 @@ import PrivacyComplianceExperience from './PrivacyComplianceExperience.jsx'
 import RealEstatePrivacyExtension from './RealEstatePrivacyExtension.jsx'
 import RealEstateEntry from './RealEstateEntry.jsx'
 import JobViewCounterExperience from './JobViewCounterExperience.jsx'
+import TalentMarketplaceExperience from './TalentMarketplaceExperience.jsx'
+import RecruiterVerificationAdmin from './RecruiterVerificationAdmin.jsx'
 import './realEstateNavigationBridge.js'
 import './nzela-mobile-shell-fixes.css'
 import './index.css'
@@ -38,5 +40,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <RealEstatePrivacyExtension />
     <RealEstateEntry />
     <JobViewCounterExperience />
+    <TalentMarketplaceExperience />
+    <RecruiterVerificationAdmin />
   </React.StrictMode>,
 )
