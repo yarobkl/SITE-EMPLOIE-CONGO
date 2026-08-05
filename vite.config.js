@@ -10,6 +10,8 @@ function talentMarketplaceCompatibility() {
       return code
         .replaceAll('BriefcaseBusiness', 'Briefcase')
         .replaceAll('UserRoundSearch', 'User')
+        .replaceAll("profile?.role === 'recruteur'", "(profile?.role === 'recruteur' && profile?.email?.toLowerCase() !== 'eliebakala@gmail.com')")
+        .replaceAll("profile.role === 'recruteur'", "(profile.role === 'recruteur' && profile.email?.toLowerCase() !== 'eliebakala@gmail.com')")
         .replaceAll("profile?.role === 'admin'", "(profile?.role === 'admin' || profile?.email?.toLowerCase() === 'eliebakala@gmail.com')")
         .replaceAll("profile.role === 'admin'", "(profile.role === 'admin' || profile.email?.toLowerCase() === 'eliebakala@gmail.com')")
     },
