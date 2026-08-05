@@ -38,4 +38,10 @@ export const tables = {
   applications: 'applications',
   savedJobs: 'saved_jobs',
   notifications: 'notifications',
+  locations: 'locations',
+  candidateProfiles: 'candidate_profiles',
+  jobSeekerPosts: 'job_seeker_posts',
+  recruiterVerifications: 'recruiter_verifications',
+  jobMatches: 'job_matches',
+  talentInvitations: 'talent_invitations',
 };
