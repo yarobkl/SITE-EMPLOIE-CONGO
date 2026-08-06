@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Bell,
@@ -329,6 +329,7 @@ export default function App() {
   const [notificationsUpdating, setNotificationsUpdating] = useState(false);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
   const mobileScrollPositionsRef = useRef({ home: 0, jobs: 0, profile: 0 });
+  const mobileScrollRestoreRef = useRef(null);
 
   const [jobs, setJobs] = useStoredState('nzelajobs.v3.jobs', initialJobs);
   const [profile, setProfile] = useStoredState('congoemploi.v2.profile', initialProfile);
@@ -1360,12 +1361,17 @@ export default function App() {
       : 'profile';
   const showMobileChrome = !['job', 'apply', 'login', 'post-job'].includes(screen);
 
-  const restoreMobileScroll = useCallback((section) => {
-    const top = Number(mobileScrollPositionsRef.current[section] || 0);
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => window.scrollTo({ top, behavior: 'auto' }));
-    });
-  }, []);
+  useLayoutEffect(() => {
+    const pending = mobileScrollRestoreRef.current;
+    if (!pending || pending.section !== mobileActiveSection) return;
+    mobileScrollRestoreRef.current = null;
+
+    const root = document.documentElement;
+    const previousScrollBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = 'auto';
+    window.scrollTo(0, pending.top);
+    root.style.scrollBehavior = previousScrollBehavior;
+  }, [mobileActiveSection, screen]);
 
   const navigatePlatformSection = useCallback((target) => {
     if (!['home', 'jobs', 'immobilier', 'profile'].includes(target)) return;
@@ -1383,9 +1389,12 @@ export default function App() {
         targetPath,
       );
     }
+    mobileScrollRestoreRef.current = {
+      section: target,
+      top: Number(mobileScrollPositionsRef.current[target] || 0),
+    };
     setScreen(target);
-    restoreMobileScroll(target);
-  }, [mobileActiveSection, restoreMobileScroll]);
+  }, [mobileActiveSection]);
 
   useEffect(() => {
     const prepareNativeSection = (event) => {
