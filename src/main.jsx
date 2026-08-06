@@ -18,7 +18,6 @@ import RealEstateEntry from './RealEstateEntry.jsx'
 import JobViewCounterExperience from './JobViewCounterExperience.jsx'
 import TalentMarketplaceExperience from './TalentMarketplaceExperience.jsx'
 import RecruiterVerificationAdmin from './RecruiterVerificationAdmin.jsx'
-import './realEstateNavigationBridge.js'
 import './nzela-mobile-shell-fixes.css'
 import './index.css'
 
