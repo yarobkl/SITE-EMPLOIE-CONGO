@@ -6,7 +6,6 @@ import {
   Bath,
   BedDouble,
   Bookmark,
-  Briefcase,
   Building2,
   CalendarDays,
   Camera,
@@ -18,7 +17,6 @@ import {
   Eye,
   Flag,
   Heart,
-  Home,
   Loader2,
   MapPin,
   MessageCircle,
@@ -32,12 +30,12 @@ import {
   SlidersHorizontal,
   Trash2,
   Upload,
-  User,
   WifiOff,
   X,
   Zap,
 } from 'lucide-react';
 import { hasSupabaseConfig, supabase } from './lib/supabase';
+import MobilePlatformShell from './MobilePlatformShell.jsx';
 import {
   CONGO_CITIES,
   PROPERTY_TYPES,
@@ -72,20 +70,12 @@ function cleanLocation() { return `${window.location.pathname}${window.location.
 function openHistory() { if (window.location.hash !== '#immobilier') window.history.pushState({ ...(window.history.state || {}), nzelaImmo: true }, '', `${cleanLocation()}#immobilier`); }
 function closeHistory() { if (window.location.hash === '#immobilier') window.history.replaceState({ ...(window.history.state || {}), nzelaImmo: false }, '', cleanLocation()); }
 
-function findNativeButton(label) {
-  return Array.from(document.querySelectorAll('button')).find((button) => {
-    const aria = button.getAttribute('aria-label') || '';
-    const text = button.textContent?.replace(/\s+/g, ' ').trim() || '';
-    if (label === 'Accueil') return aria === 'Navigation Accueil' || aria === "Retour à l'accueil" || text === 'Accueil';
-    if (label === 'Offres') return aria === 'Navigation Offres' || text === 'Trouver un emploi';
-    if (label === 'Profil') return aria === 'Navigation Profil' || aria === 'Profil';
-    return false;
-  });
-}
-
-function updateMobileLabel(button) {
-  const node = Array.from(button?.childNodes || []).find((item) => item.nodeType === Node.TEXT_NODE && item.nodeValue?.trim());
-  if (node && node.nodeValue.trim() !== 'Immobilier') node.nodeValue = 'Immobilier';
+function normalizePlatformSection(value) {
+  const normalized = String(value || '').toLocaleLowerCase('fr-FR');
+  if (normalized === 'accueil') return 'home';
+  if (normalized === 'offres') return 'jobs';
+  if (normalized === 'profil') return 'profile';
+  return ['home', 'jobs', 'profile'].includes(normalized) ? normalized : '';
 }
 
 function EmptyState({ icon: Icon = Building2, title, body, action, onAction, retry }) {
@@ -181,8 +171,14 @@ export default function RealEstateExperienceStable() {
   const requestClose = useCallback(() => { if (formDirty) askConfirm({ title: 'Quitter la publication ?', body: 'Les informations non enregistrées seront perdues.', confirmLabel: 'Quitter', danger: true, action: performClose }); else performClose(); }, [askConfirm, formDirty, performClose]);
   useEffect(() => { requestCloseRef.current = requestClose; }, [requestClose]);
 
-  const exitTo = useCallback((label) => {
-    const action = () => { performClose(); window.setTimeout(() => findNativeButton(label)?.click(), 80); };
+  const exitTo = useCallback((destination) => {
+    const section = normalizePlatformSection(destination);
+    if (!section) return;
+    const label = section === 'home' ? 'Accueil' : section === 'jobs' ? 'Offres' : 'Profil';
+    const action = () => {
+      window.dispatchEvent(new CustomEvent('nzela:prepare-platform-section', { detail: { section } }));
+      performClose();
+    };
     if (formDirty) askConfirm({ title: `Aller vers ${label} ?`, body: 'La publication en cours ne sera pas enregistrée.', confirmLabel: 'Continuer', danger: true, action }); else action();
   }, [askConfirm, formDirty, performClose]);
 
@@ -212,17 +208,23 @@ export default function RealEstateExperienceStable() {
   }, []);
 
   useEffect(() => {
-    let frame = 0;
-    const sync = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => {
-      const mobile = document.querySelector('nav[aria-label="Navigation mobile"]'); const buttons = mobile?.querySelectorAll('button');
-      if (buttons?.length >= 4) { const target = buttons[2]; target.classList.add('nzela-immo-nav-button'); target.dataset.nzImmoNav = 'true'; target.setAttribute('aria-label', 'Navigation Immobilier'); if (open) target.setAttribute('aria-current', 'page'); else target.removeAttribute('aria-current'); updateMobileLabel(target); }
-      const desktop = document.querySelector('header nav[aria-label="Navigation principale"]');
-      if (desktop && !desktop.querySelector('[data-nz-immo-nav]')) { const button = document.createElement('button'); button.type = 'button'; button.className = 'header-link'; button.dataset.nzImmoNav = 'true'; button.setAttribute('aria-label', 'Immobilier'); button.textContent = 'Immobilier'; desktop.querySelector('button')?.insertAdjacentElement('afterend', button); }
-    }); };
-    const capture = (event) => { const target = event.target instanceof Element ? event.target.closest('[data-nz-immo-nav],.nzela-immo-nav-button') : null; if (!target) return; event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation(); openerRef.current = target; setOpen(true); setView('browse'); openHistory(); };
-    const root = document.getElementById('root'); const observer = new MutationObserver(sync); if (root) observer.observe(root, { childList: true, subtree: true }); document.addEventListener('click', capture, true); sync();
-    return () => { observer.disconnect(); cancelAnimationFrame(frame); document.removeEventListener('click', capture, true); };
+    if (!open) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent('nzela:immobilier-ready'));
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [open]);
+
+  useEffect(() => {
+    const activate = (event) => {
+      openerRef.current = event.detail?.opener || document.activeElement;
+      setOpen(true);
+      setView('browse');
+      openHistory();
+    };
+    window.addEventListener('nzela:open-immobilier', activate);
+    return () => window.removeEventListener('nzela:open-immobilier', activate);
+  }, []);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -231,7 +233,23 @@ export default function RealEstateExperienceStable() {
     document.documentElement.dataset.nzImmoOpen = 'true'; document.body.style.position = 'fixed'; document.body.style.top = `-${savedScroll}px`; document.body.style.width = '100%'; document.body.style.overflow = 'hidden';
     if (appRoot) { appRoot.inert = true; appRoot.setAttribute('aria-hidden', 'true'); }
     requestAnimationFrame(() => closeRef.current?.focus({ preventScroll: true }));
-    return () => { delete document.documentElement.dataset.nzImmoOpen; document.body.style.position = previous.position; document.body.style.top = previous.top; document.body.style.width = previous.width; document.body.style.overflow = previous.overflow; if (appRoot) { appRoot.inert = Boolean(previous.inert); if (previous.hidden == null) appRoot.removeAttribute('aria-hidden'); else appRoot.setAttribute('aria-hidden', previous.hidden); } window.scrollTo(0, savedScroll); openerRef.current?.focus?.({ preventScroll: true }); };
+    return () => {
+      delete document.documentElement.dataset.nzImmoOpen;
+      document.body.style.position = previous.position;
+      document.body.style.top = previous.top;
+      document.body.style.width = previous.width;
+      document.body.style.overflow = previous.overflow;
+      if (appRoot) {
+        appRoot.inert = Boolean(previous.inert);
+        if (previous.hidden == null) appRoot.removeAttribute('aria-hidden');
+        else appRoot.setAttribute('aria-hidden', previous.hidden);
+      }
+      const requestedScroll = document.documentElement.dataset.nzPlatformRestoreScroll;
+      delete document.documentElement.dataset.nzPlatformRestoreScroll;
+      const nextScroll = requestedScroll == null ? savedScroll : Number(requestedScroll);
+      window.scrollTo(0, Number.isFinite(nextScroll) ? nextScroll : savedScroll);
+      openerRef.current?.focus?.({ preventScroll: true });
+    };
   }, [open]);
 
   useEffect(() => {
@@ -346,5 +364,48 @@ export default function RealEstateExperienceStable() {
   const mine = <><div className="nz2-section-head"><div><h2>Mes annonces immobilières</h2><p>Vues, favoris, contacts et disponibilité.</p></div><button type="button" className="nz2-primary nz2-compact" onClick={startPublish}><Plus size={18} /> Publier</button></div>{!session?.user ? <EmptyState title="Connectez-vous" body="Votre compte Nzela permet de publier et gérer vos logements." action="Ouvrir mon profil" onAction={() => exitTo('Profil')} /> : ownedProperties.length ? <div className="nz2-dashboard-grid">{ownedProperties.map((property) => <PropertyCard key={property.id} property={property} stats={stats[property.id]} ownerMode onOpen={openProperty} onEdit={startEdit} onClose={closeProperty} onRenew={renewProperty} onDelete={deleteProperty} />)}</div> : <EmptyState title="Aucune annonce publiée" body="Une chambre, un studio ou une maison peut être mis en ligne en quelques minutes." action="Publier un logement" onAction={startPublish} />}{session?.user && <><div className="nz2-section-head"><div><h2>Demandes reçues</h2><p>{inquiries.length} {plural(inquiries.length, 'contact')} reçu{inquiries.length > 1 ? 's' : ''}</p></div><MessageCircle size={21} /></div>{inquiries.length ? <div className="nz2-inquiry-grid">{inquiries.map((item) => <article key={item.id} className="nz2-inquiry"><span className="nz2-badge">{item.status === 'new' ? 'Nouvelle demande' : item.status}</span><h3>{item.full_name}</h3><p className="nz2-inquiry-property">{item.properties?.title}</p><p>{item.message}</p><div className="nz2-detail-meta">{item.phone && <span><Phone size={15} /> {item.phone}</span>}{item.email && <span>{item.email}</span>}{item.request_visit && <span><CalendarDays size={15} /> Visite demandée</span>}</div><div className="nz2-inline-actions"><button type="button" className="nz2-secondary" onClick={() => updateInquiry(item, 'contacted')}>Marquer contactée</button><button type="button" className="nz2-secondary" onClick={() => updateInquiry(item, 'closed')}>Clôturer</button></div></article>)}</div> : <EmptyState title="Aucune demande reçue" body="Les messages envoyés depuis vos annonces apparaîtront ici." />}</>}</>;
   const saved = !session?.user ? <EmptyState title="Connectez-vous" body="La sauvegarde des logements est liée à votre compte Nzela." action="Ouvrir mon profil" onAction={() => exitTo('Profil')} /> : savedProperties.length ? <div className="nz2-grid">{savedProperties.map((property) => <PropertyCard key={property.id} property={property} stats={stats[property.id]} saved favoriteBusy={pendingFavorites.includes(property.id)} onOpen={openProperty} onSave={toggleSave} />)}</div> : <EmptyState title="Aucun logement sauvegardé" body="Appuyez sur le cœur d’une annonce pour la retrouver ici." action="Voir les annonces" onAction={() => requestView('browse', true)} />;
 
-  return createPortal(<div className="nz2-root" role="dialog" aria-modal="true" aria-label="Nzela Immobilier" ref={dialogRef} tabIndex={-1}><header className="nz2-header"><div className="nz2-header-inner"><button type="button" className="nz2-brand" onClick={() => requestView('browse', true)}><span><Building2 size={22} /></span><div><strong>Nzela Immobilier</strong><small>Publiez. Cherchez. Contactez.</small></div></button><div className="nz2-header-actions"><button type="button" className="nz2-secondary nz2-desktop-publish" onClick={startPublish}><Plus size={18} /> Publier une annonce</button><button type="button" className="nz2-close" onClick={requestClose} ref={closeRef} aria-label="Fermer l’immobilier"><X size={21} /></button></div></div></header>{!online && <div className="nz2-network-banner"><WifiOff size={17} /> Vous êtes hors ligne. Les annonces déjà chargées restent consultables.</div>}<div className="nz2-scroll" ref={scrollRef}><main className="nz2-main"><nav className="nz2-tabs" aria-label="Navigation immobilier"><button type="button" className={view === 'browse' || view === 'detail' ? 'is-active' : ''} onClick={() => requestView('browse', true)}><Search size={17} /><span>Rechercher</span></button><button type="button" className={view === 'publish' ? 'is-active' : ''} onClick={startPublish}><Plus size={17} /><span>Publier</span></button><button type="button" className={view === 'mine' ? 'is-active' : ''} onClick={() => requestView('mine')}><Building2 size={17} /><span>Mes annonces</span></button><button type="button" className={view === 'saved' ? 'is-active' : ''} onClick={() => requestView('saved')}><Heart size={17} /><span>Favoris</span></button></nav>{view === 'browse' && browse}{view === 'detail' && detail}{view === 'publish' && publish}{view === 'mine' && mine}{view === 'saved' && <><div className="nz2-section-head"><div><h2>Logements sauvegardés</h2><p>Retrouvez rapidement vos annonces préférées.</p></div><Bookmark size={21} /></div>{saved}</>}</main></div><nav className="nz2-bottom-nav" aria-label="Navigation principale Nzela"><button type="button" onClick={() => exitTo('Accueil')}><Home size={21} /><span>Accueil</span></button><button type="button" onClick={() => exitTo('Offres')}><Briefcase size={21} /><span>Offres</span></button><button type="button" className="is-active" onClick={() => requestView('browse', true)}><Building2 size={21} /><span>Immobilier</span></button><button type="button" onClick={() => exitTo('Profil')}><User size={21} /><span>Profil</span></button></nav>{report.open && <div className="nz2-modal-backdrop"><form className="nz2-report-modal nz2-form" onSubmit={submitReport}><div className="nz2-modal-head"><h2>Signaler l’annonce</h2><button type="button" className="nz2-close" onClick={() => setReport((current) => ({ ...current, open: false }))}><X size={20} /></button></div><label><span>Motif</span><select value={report.reason} onChange={(event) => setReport({ ...report, reason: event.target.value })}><option value="fraud">Suspicion d’arnaque</option><option value="already_unavailable">Logement déjà indisponible</option><option value="wrong_price">Prix trompeur</option><option value="stolen_photos">Photos volées</option><option value="prohibited">Contenu interdit</option><option value="other">Autre</option></select></label>{!session?.user && <label><span>Votre e-mail, facultatif</span><input type="email" value={report.email} onChange={(event) => setReport({ ...report, email: event.target.value })} /></label>}<label><span>Précisions</span><textarea value={report.details} onChange={(event) => setReport({ ...report, details: event.target.value })} /></label><button className="nz2-primary" type="submit" disabled={reportSubmitting}>{reportSubmitting ? <Loader2 size={18} className="nz2-spin" /> : <Flag size={18} />} Envoyer le signalement</button></form></div>}<ConfirmDialog value={confirm} busy={confirmBusy} onCancel={() => setConfirm(null)} onConfirm={runConfirm} />{toast && <div className="nz2-toast" role="status">{toast}</div>}</div>, document.body);
+  return createPortal(
+    <div className="nz2-root" role="dialog" aria-modal="true" aria-label="Nzela Immobilier" ref={dialogRef} tabIndex={-1}>
+      <header className="nz2-header">
+        <div className="nz2-header-inner">
+          <button type="button" className="nz2-brand" onClick={() => requestView('browse', true)}>
+            <span><Building2 size={22} /></span>
+            <div><strong>Nzela Immobilier</strong><small>Publiez. Cherchez. Contactez.</small></div>
+          </button>
+          <div className="nz2-header-actions">
+            <button type="button" className="nz2-secondary nz2-desktop-publish" onClick={startPublish}><Plus size={18} /> Publier une annonce</button>
+            <button type="button" className="nz2-close" onClick={requestClose} ref={closeRef} aria-label="Fermer l’immobilier"><X size={21} /></button>
+          </div>
+        </div>
+      </header>
+      {!online && <div className="nz2-network-banner"><WifiOff size={17} /> Vous êtes hors ligne. Les annonces déjà chargées restent consultables.</div>}
+      <MobilePlatformShell
+        activeId="immobilier"
+        contained
+        disabled={formDirty || Boolean(report.open) || Boolean(confirm)}
+        onNavigate={(target) => (target === 'immobilier' ? requestView('browse', true) : exitTo(target))}
+        viewportClassName="nz2-platform-viewport"
+      >
+        <div className="nz2-scroll" ref={scrollRef}>
+          <main className="nz2-main">
+            <nav className="nz2-tabs" aria-label="Navigation immobilier">
+              <button type="button" className={view === 'browse' || view === 'detail' ? 'is-active' : ''} onClick={() => requestView('browse', true)}><Search size={17} /><span>Rechercher</span></button>
+              <button type="button" className={view === 'publish' ? 'is-active' : ''} onClick={startPublish}><Plus size={17} /><span>Publier</span></button>
+              <button type="button" className={view === 'mine' ? 'is-active' : ''} onClick={() => requestView('mine')}><Building2 size={17} /><span>Mes annonces</span></button>
+              <button type="button" className={view === 'saved' ? 'is-active' : ''} onClick={() => requestView('saved')}><Heart size={17} /><span>Favoris</span></button>
+            </nav>
+            {view === 'browse' && browse}
+            {view === 'detail' && detail}
+            {view === 'publish' && publish}
+            {view === 'mine' && mine}
+            {view === 'saved' && <><div className="nz2-section-head"><div><h2>Logements sauvegardés</h2><p>Retrouvez rapidement vos annonces préférées.</p></div><Bookmark size={21} /></div>{saved}</>}
+          </main>
+        </div>
+      </MobilePlatformShell>
+      {report.open && <div className="nz2-modal-backdrop"><form className="nz2-report-modal nz2-form" onSubmit={submitReport}><div className="nz2-modal-head"><h2>Signaler l’annonce</h2><button type="button" className="nz2-close" onClick={() => setReport((current) => ({ ...current, open: false }))}><X size={20} /></button></div><label><span>Motif</span><select value={report.reason} onChange={(event) => setReport({ ...report, reason: event.target.value })}><option value="fraud">Suspicion d’arnaque</option><option value="already_unavailable">Logement déjà indisponible</option><option value="wrong_price">Prix trompeur</option><option value="stolen_photos">Photos volées</option><option value="prohibited">Contenu interdit</option><option value="other">Autre</option></select></label>{!session?.user && <label><span>Votre e-mail, facultatif</span><input type="email" value={report.email} onChange={(event) => setReport({ ...report, email: event.target.value })} /></label>}<label><span>Précisions</span><textarea value={report.details} onChange={(event) => setReport({ ...report, details: event.target.value })} /></label><button className="nz2-primary" type="submit" disabled={reportSubmitting}>{reportSubmitting ? <Loader2 size={18} className="nz2-spin" /> : <Flag size={18} />} Envoyer le signalement</button></form></div>}
+      <ConfirmDialog value={confirm} busy={confirmBusy} onCancel={() => setConfirm(null)} onConfirm={runConfirm} />
+      {toast && <div className="nz2-toast" role="status">{toast}</div>}
+    </div>,
+    document.body,
+  );
 }

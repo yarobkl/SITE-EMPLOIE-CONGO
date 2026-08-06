@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Bell,
@@ -32,6 +32,7 @@ import {
   X,
 } from 'lucide-react';
 import { hasSupabaseConfig, supabase } from './lib/supabase';
+import MobilePlatformShell from './MobilePlatformShell.jsx';
 
 const initialJobs = [];
 
@@ -78,6 +79,7 @@ function useInvalidNotice(notify, message) {
 const MAX_CV_BYTES = 2 * 1024 * 1024;
 const MAX_CV_LABEL = '2 Mo';
 const PENDING_LOGIN_ROLE_KEY = 'congoemploi.pendingLoginRole';
+const PLATFORM_PATHS = { home: '/', jobs: '/offres', profile: '/profil' };
 
 const emptyApplication = {
   nom: '',
@@ -137,6 +139,26 @@ function cleanAuthParamsFromUrl() {
   url.searchParams.delete('code');
   url.hash = '';
   window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
+}
+
+function openRealEstateModule(opener = document.activeElement) {
+  return new Promise((resolve) => {
+    let timeoutId = 0;
+    const ready = () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener('nzela:immobilier-ready', ready);
+      resolve();
+    };
+    window.addEventListener('nzela:immobilier-ready', ready, { once: true });
+    timeoutId = window.setTimeout(ready, 900);
+
+    const url = new URL(window.location.href);
+    if (url.hash !== '#immobilier') {
+      url.hash = 'immobilier';
+      window.history.pushState({ ...(window.history.state || {}), nzelaImmo: true }, '', url);
+    }
+    window.dispatchEvent(new CustomEvent('nzela:open-immobilier', { detail: { opener } }));
+  });
 }
 
 function friendlyAuthError(message) {
@@ -306,6 +328,7 @@ export default function App() {
   const [jobAction, setJobAction] = useState('');
   const [notificationsUpdating, setNotificationsUpdating] = useState(false);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const mobileScrollPositionsRef = useRef({ home: 0, jobs: 0, profile: 0 });
 
   const [jobs, setJobs] = useStoredState('nzelajobs.v3.jobs', initialJobs);
   const [profile, setProfile] = useStoredState('congoemploi.v2.profile', initialProfile);
@@ -1330,18 +1353,57 @@ export default function App() {
     setScreen('recruiter');
   };
 
-  const middleNavItem = profile.role === 'admin'
-    ? { id: 'admin', label: 'Admin', icon: ShieldCheck }
-    : profile.role === 'recruteur'
-      ? { id: 'recruiter', label: 'Recruteur', icon: LayoutDashboard }
-      : { id: 'tracking', label: 'Suivi', icon: ClipboardList };
-  const visibleNavItems = [
-    { id: 'home', label: 'Accueil', icon: Home },
-    { id: 'jobs', label: 'Offres', icon: Briefcase },
-    middleNavItem,
-    { id: 'profile', label: 'Profil', icon: User },
-  ];
+  const mobileActiveSection = screen === 'home'
+    ? 'home'
+    : ['jobs', 'job', 'apply', 'saved'].includes(screen)
+      ? 'jobs'
+      : 'profile';
   const showMobileChrome = !['job', 'apply', 'login', 'post-job'].includes(screen);
+
+  const restoreMobileScroll = useCallback((section) => {
+    const top = Number(mobileScrollPositionsRef.current[section] || 0);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => window.scrollTo({ top, behavior: 'auto' }));
+    });
+  }, []);
+
+  const navigatePlatformSection = useCallback((target) => {
+    if (!['home', 'jobs', 'immobilier', 'profile'].includes(target)) return;
+    mobileScrollPositionsRef.current[mobileActiveSection] = window.scrollY;
+
+    if (target === 'immobilier') {
+      return openRealEstateModule();
+    }
+
+    const targetPath = PLATFORM_PATHS[target];
+    if (targetPath && window.location.pathname !== targetPath) {
+      window.history.pushState(
+        { ...(window.history.state || {}), nzelaNavigation: true, screen: target },
+        '',
+        targetPath,
+      );
+    }
+    setScreen(target);
+    restoreMobileScroll(target);
+  }, [mobileActiveSection, restoreMobileScroll]);
+
+  useEffect(() => {
+    const prepareNativeSection = (event) => {
+      const target = event.detail?.section;
+      if (!PLATFORM_PATHS[target]) return;
+      const restoreTop = Number(mobileScrollPositionsRef.current[target] || 0);
+      document.documentElement.dataset.nzPlatformRestoreScroll = String(restoreTop);
+
+      const url = new URL(window.location.href);
+      url.pathname = PLATFORM_PATHS[target];
+      url.hash = 'immobilier';
+      window.history.replaceState({ ...(window.history.state || {}), nzelaNavigation: true, screen: target }, '', url);
+      setScreen(target);
+    };
+
+    window.addEventListener('nzela:prepare-platform-section', prepareNativeSection);
+    return () => window.removeEventListener('nzela:prepare-platform-section', prepareNativeSection);
+  }, []);
 
   const renderScreen = () => {
     if (screen === 'jobs') return <JobsScreen jobs={filteredJobs} query={query} setQuery={setQuery} city={city} setCity={setCity} contract={contract} setContract={setContract} sortOrder={sortOrder} setSortOrder={setSortOrder} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} savedIds={savedIds} toggleSave={toggleSave} />;
@@ -1360,8 +1422,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
-      <header className={classNames('sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur', showMobileChrome ? 'block' : 'hidden md:block')}>
+    <div className="nz-platform-shell min-h-screen bg-white text-slate-950">
+      <header className={classNames('nz-platform-header sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur', showMobileChrome ? 'block' : 'hidden md:block')}>
         <div className="mx-auto flex h-[68px] max-w-6xl items-center justify-between px-4 md:px-6">
           <button onClick={() => setScreen('home')} aria-label="Retour à l'accueil" className="smooth-button flex min-h-11 items-center rounded-md px-1 text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
             <BrandLogo />
@@ -1369,6 +1431,7 @@ export default function App() {
 
           <nav className="hidden items-center gap-1 md:flex" aria-label="Navigation principale">
             <button onClick={() => setScreen('jobs')} className="header-link">Trouver un emploi</button>
+            <button onClick={() => openRealEstateModule()} className="header-link" aria-label="Immobilier">Immobilier</button>
             <button onClick={() => setScreen('saved')} className="header-link">Favoris</button>
             <button onClick={openRecruiterSpace} className="header-link">Espace recruteur</button>
           </nav>
@@ -1389,31 +1452,16 @@ export default function App() {
         </div>
       </header>
 
-      <main key={screen} className="soft-enter mx-auto max-w-6xl px-4 pb-28 pt-5 md:px-6 md:pb-12 md:pt-8">
-        {renderScreen()}
-      </main>
-
-      {showMobileChrome && (
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white pb-[max(env(safe-area-inset-bottom),0.45rem)] pt-1.5 md:hidden" aria-label="Navigation mobile">
-        <div className="mx-auto grid max-w-md grid-cols-4 px-2">
-          {visibleNavItems.map((item) => {
-            const Icon = item.icon;
-            const active = screen === item.id || (item.id === 'jobs' && ['job', 'apply'].includes(screen));
-            return (
-              <button
-                key={item.id}
-                aria-label={`Navigation ${item.label}`}
-                onClick={() => (item.id === 'recruiter' ? openRecruiterSpace() : setScreen(item.id))}
-                className={classNames('smooth-button flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600', active ? 'text-blue-700' : 'text-slate-500 hover:text-slate-800')}
-              >
-                <Icon size={21} strokeWidth={active ? 2.4 : 1.8} />
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
-      )}
+      <MobilePlatformShell
+        activeId={mobileActiveSection}
+        disabled={!showMobileChrome}
+        onNavigate={navigatePlatformSection}
+        showNavigation={showMobileChrome}
+      >
+        <main className="nz-platform-main soft-enter mx-auto max-w-6xl px-4 pb-28 pt-5 md:px-6 md:pb-12 md:pt-8">
+          {renderScreen()}
+        </main>
+      </MobilePlatformShell>
 
       {toast && (
         <div role="status" aria-live="polite" className="soft-enter fixed bottom-24 left-4 right-4 z-[60] mx-auto max-w-sm rounded-lg border border-slate-200 bg-slate-950 px-4 py-3 text-center text-sm font-semibold text-white shadow-xl md:bottom-6">
