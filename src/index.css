@@ -19,9 +19,11 @@ html {
   width: 100%;
   max-width: 100%;
   min-height: 100%;
+  overflow-x: hidden;
   overflow-x: clip;
   overflow-y: auto;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
+  scrollbar-gutter: stable;
   text-rendering: optimizeLegibility;
 }
 
@@ -30,6 +32,7 @@ body {
   max-width: 100%;
   min-height: 100vh;
   height: auto;
+  overflow-x: hidden;
   overflow-x: clip;
   overflow-y: visible;
   overscroll-behavior-y: auto;
@@ -46,6 +49,7 @@ body {
   max-width: 100%;
   min-height: 100vh;
   height: auto;
+  overflow-x: hidden;
   overflow-x: clip;
   overflow-y: visible;
 }

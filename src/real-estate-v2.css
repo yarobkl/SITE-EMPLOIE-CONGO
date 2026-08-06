@@ -41,7 +41,7 @@ html[data-nz-immo-open='true'] div[aria-label="Informations légales Nzela Jobs"
 .nz2-close:active,.nz2-refresh:active{transform:scale(.96)}
 
 .nz2-network-banner{flex:0 0 auto;min-height:38px;padding:8px 16px;background:#fff7ed;color:#9a3412;border-bottom:1px solid #fed7aa;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:700;text-align:center}
-.nz2-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;scrollbar-gutter:stable}
+.nz2-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:auto;scrollbar-gutter:stable}
 .nz2-main{width:min(1180px,100%);margin:auto;padding:0 16px calc(96px + env(safe-area-inset-bottom))}
 
 .nz2-tabs{position:sticky;top:0;z-index:18;margin:0 -16px 14px;padding:9px 12px;background:rgba(245,247,251,.94);backdrop-filter:blur(14px);border-bottom:1px solid rgba(219,227,238,.8);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}

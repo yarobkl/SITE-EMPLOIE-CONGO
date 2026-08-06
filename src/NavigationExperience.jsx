@@ -406,6 +406,15 @@ export default function NavigationExperience() {
     const handleClick = (event) => {
       const target = event.target instanceof Element ? event.target.closest('button, a') : null;
       if (!(target instanceof HTMLElement)) return;
+
+      // MobilePlatformShell pilote lui-même le geste, l'animation et l'URL.
+      // L'ancien routeur s'exécute en capture avant React : s'il intervient ici,
+      // l'adresse change alors que la rubrique visible reste encore l'ancienne.
+      if (
+        target.closest('.nz-mobile-platform-nav')
+        || document.documentElement.dataset.nzPlatformSuppressClick === 'true'
+      ) return;
+
       const current = detectScreen();
       const text = normalizeText(target.textContent);
       const aria = target.getAttribute('aria-label') || '';

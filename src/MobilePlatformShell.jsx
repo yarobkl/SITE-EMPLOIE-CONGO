@@ -12,6 +12,7 @@ export const PLATFORM_SECTIONS = [
 const SECTION_INDEX = new Map(PLATFORM_SECTIONS.map((item, index) => [item.id, index]));
 const SWIPE_START_DISTANCE = 10;
 const SWIPE_DURATION = 280;
+const CLICK_SUPPRESSION_DURATION = 420;
 
 function clamp(value, minimum, maximum) {
   return Math.min(maximum, Math.max(minimum, value));
@@ -102,6 +103,21 @@ export default function MobilePlatformShell({
     transitionTimerRef.current = 0;
   };
 
+  const clearClickSuppression = () => {
+    window.clearTimeout(clickSuppressionTimerRef.current);
+    clickSuppressionTimerRef.current = 0;
+    gestureRef.current.suppressClick = false;
+    delete document.documentElement.dataset.nzPlatformSuppressClick;
+  };
+
+  const scheduleClickSuppressionClear = () => {
+    window.clearTimeout(clickSuppressionTimerRef.current);
+    clickSuppressionTimerRef.current = window.setTimeout(
+      clearClickSuppression,
+      CLICK_SUPPRESSION_DURATION,
+    );
+  };
+
   const setIndicator = (position, immediate = false) => {
     const rail = railRef.current;
     if (!rail) return;
@@ -114,14 +130,15 @@ export default function MobilePlatformShell({
     const viewport = viewportRef.current;
     if (!viewport) return;
     const width = Math.max(viewport.getBoundingClientRect().width, 1);
+    const safeDeltaX = clamp(deltaX, -width, width);
     const targetIndex = targetId ? SECTION_INDEX.get(targetId) : null;
     const direction = targetIndex == null ? 0 : Math.sign(targetIndex - activeIndex);
-    const progress = clamp(Math.abs(deltaX) / width, 0, 1);
+    const progress = clamp(Math.abs(safeDeltaX) / width, 0, 1);
 
-    viewport.style.setProperty('--nz-platform-page-x', `${deltaX}px`);
+    viewport.style.setProperty('--nz-platform-page-x', `${safeDeltaX}px`);
     viewport.style.setProperty('--nz-platform-preview-origin', `${direction * width}px`);
     viewport.style.setProperty('--nz-platform-preview-opacity', String(clamp(progress * 1.35, 0, 1)));
-    setIndicator(activeIndex + (-deltaX / width), true);
+    setIndicator(activeIndex + (-safeDeltaX / width), true);
   };
 
   const resetVisuals = (animate = false) => {
@@ -206,10 +223,16 @@ export default function MobilePlatformShell({
 
   const releasePointer = (pointerId) => {
     const captureElement = gestureRef.current.captureElement;
-    if (captureElement?.hasPointerCapture?.(pointerId)) captureElement.releasePointerCapture(pointerId);
+    // Invalider le geste avant de libérer la capture : Safari peut émettre
+    // `lostpointercapture` pendant cette opération.
     gestureRef.current.pointerId = null;
     gestureRef.current.captureElement = null;
     delete document.documentElement.dataset.nzPlatformSwiping;
+    try {
+      if (captureElement?.hasPointerCapture?.(pointerId)) captureElement.releasePointerCapture(pointerId);
+    } catch {
+      // Safari peut perdre la capture lors d'un geste système. Le nettoyage reste identique.
+    }
   };
 
   const onPointerDown = (event) => {
@@ -219,6 +242,7 @@ export default function MobilePlatformShell({
       || !isMobileViewport()
       || !event.isPrimary
       || event.button > 0
+      || gestureRef.current.pointerId != null
       || viewportRef.current?.classList.contains('is-settling')
       || shouldIgnoreSwipe(event.target)
     ) return;
@@ -237,7 +261,6 @@ export default function MobilePlatformShell({
     gesture.targetId = null;
     gesture.suppressClick = false;
     gesture.captureElement = event.currentTarget;
-    event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
   const onPointerMove = (event) => {
@@ -256,8 +279,14 @@ export default function MobilePlatformShell({
       gesture.axis = 'horizontal';
       gesture.dragging = true;
       gesture.suppressClick = true;
+      document.documentElement.dataset.nzPlatformSuppressClick = 'true';
       document.documentElement.dataset.nzPlatformSwiping = 'true';
       viewportRef.current?.classList.add('is-dragging');
+      try {
+        gesture.captureElement?.setPointerCapture?.(event.pointerId);
+      } catch {
+        // Le déplacement continue sans capture si le navigateur la refuse.
+      }
     }
 
     if (gesture.axis !== 'horizontal') return;
@@ -298,11 +327,19 @@ export default function MobilePlatformShell({
     gesture.dragging = false;
     gesture.axis = '';
 
+    // Un appui simple doit rester un clic normal. L'ancienne logique ajoutait ici
+    // `is-settling`, puis le clic de la rubrique était rejeté juste après.
+    if (!wasDragging) {
+      gesture.targetId = null;
+      gesture.deltaX = 0;
+      gesture.velocity = 0;
+      clearClickSuppression();
+      resetVisuals(false);
+      return;
+    }
+
     if (shouldCommit) {
-      window.clearTimeout(clickSuppressionTimerRef.current);
-      clickSuppressionTimerRef.current = window.setTimeout(() => {
-        gesture.suppressClick = false;
-      }, 420);
+      scheduleClickSuppressionClear();
       settleTo(targetId);
       return;
     }
@@ -318,13 +355,7 @@ export default function MobilePlatformShell({
       gesture.targetId = null;
     }, SWIPE_DURATION + 10);
 
-    if (!wasDragging) gesture.suppressClick = false;
-    else {
-      window.clearTimeout(clickSuppressionTimerRef.current);
-      clickSuppressionTimerRef.current = window.setTimeout(() => {
-        gesture.suppressClick = false;
-      }, 420);
-    }
+    scheduleClickSuppressionClear();
   };
 
   const onClickCapture = (event) => {
@@ -332,7 +363,7 @@ export default function MobilePlatformShell({
     if (!gesture.suppressClick) return;
     event.preventDefault();
     event.stopPropagation();
-    gesture.suppressClick = false;
+    clearClickSuppression();
   };
 
   useEffect(() => {
@@ -341,7 +372,7 @@ export default function MobilePlatformShell({
 
   useEffect(() => () => {
     clearTransitionTimer();
-    window.clearTimeout(clickSuppressionTimerRef.current);
+    clearClickSuppression();
     window.cancelAnimationFrame(frameRef.current);
     delete document.documentElement.dataset.nzPlatformSwiping;
   }, []);
@@ -355,6 +386,7 @@ export default function MobilePlatformShell({
         onPointerMove={onPointerMove}
         onPointerUp={(event) => finishGesture(event)}
         onPointerCancel={(event) => finishGesture(event, true)}
+        onLostPointerCapture={(event) => finishGesture(event, true)}
         onClickCapture={onClickCapture}
       >
         {previewId && previewIndex != null && (
@@ -373,6 +405,7 @@ export default function MobilePlatformShell({
           onPointerMove={onPointerMove}
           onPointerUp={(event) => finishGesture(event)}
           onPointerCancel={(event) => finishGesture(event, true)}
+          onLostPointerCapture={(event) => finishGesture(event, true)}
           onClickCapture={onClickCapture}
         >
           <div
