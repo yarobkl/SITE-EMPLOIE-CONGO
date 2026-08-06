@@ -223,14 +223,16 @@ export default function MobilePlatformShell({
 
   const releasePointer = (pointerId) => {
     const captureElement = gestureRef.current.captureElement;
+    // Invalider le geste avant de libérer la capture : Safari peut émettre
+    // `lostpointercapture` pendant cette opération.
+    gestureRef.current.pointerId = null;
+    gestureRef.current.captureElement = null;
+    delete document.documentElement.dataset.nzPlatformSwiping;
     try {
       if (captureElement?.hasPointerCapture?.(pointerId)) captureElement.releasePointerCapture(pointerId);
     } catch {
       // Safari peut perdre la capture lors d'un geste système. Le nettoyage reste identique.
     }
-    gestureRef.current.pointerId = null;
-    gestureRef.current.captureElement = null;
-    delete document.documentElement.dataset.nzPlatformSwiping;
   };
 
   const onPointerDown = (event) => {
