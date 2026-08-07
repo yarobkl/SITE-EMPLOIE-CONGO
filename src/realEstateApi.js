@@ -59,7 +59,7 @@ export function propertyTypeLabel(value) {
 export function formatPrice(value, listingType = 'rent') {
   const numericValue = Number(value || 0);
   const amount = Number.isFinite(numericValue) ? numericValue.toLocaleString('fr-FR') : '0';
-  return `${amount} FCFA${listingType === 'rent' ? ' / mois' : ''}`;
+  return `${amount} FCFA${listingType === 'rent' ? '/mois' : ''}`;
 }
 
 export function formatRelativeDate(value) {

@@ -11,7 +11,7 @@ export function formatCount(count, singular, plural = `${singular}s`) {
 
 export function formatSalary(value) {
   const rawValue = String(value || '').trim();
-  if (!rawValue) return 'Salaire à discuter';
+  if (!rawValue) return 'Salaire à négocier';
   if (/^\d+$/.test(rawValue)) return `${numberFormatter.format(Number(rawValue))} FCFA`;
   return rawValue;
 }

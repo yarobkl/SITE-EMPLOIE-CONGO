@@ -997,7 +997,7 @@ export default function App() {
       return;
     }
     if (!hasSupabaseConfig || !supabase || !authUser) {
-      notify("Publication indisponible pour l'instant.");
+      notify('Publication indisponible pour l’instant.');
       return;
     }
     setJobFormSubmitting(true);
@@ -1092,7 +1092,7 @@ export default function App() {
     event.preventDefault();
     if (!editingJob || jobFormSubmitting) return;
     if (!hasSupabaseConfig || !supabase || !isSupabaseId(editingJob.id)) {
-      notify("Modification indisponible pour l'instant.");
+      notify('Modification indisponible pour l’instant.');
       return;
     }
     setJobFormSubmitting(true);
@@ -1179,7 +1179,7 @@ export default function App() {
     const confirmed = window.confirm(`Supprimer définitivement l’offre « ${job.role} » ? Cette action est irréversible.`);
     if (!confirmed) return;
     if (!hasSupabaseConfig || !supabase || !isSupabaseId(job.id)) {
-      notify("Suppression indisponible pour l'instant.");
+      notify('Suppression indisponible pour l’instant.');
       return;
     }
     const actionKey = `delete:${job.id}`;
@@ -1426,7 +1426,7 @@ export default function App() {
     <div className="nz-platform-shell min-h-screen bg-white text-slate-950">
       <header className={classNames('nz-platform-header sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur', showMobileChrome ? 'block' : 'hidden md:block')}>
         <div className="mx-auto flex h-[68px] max-w-6xl items-center justify-between px-4 md:px-6">
-          <button onClick={() => commitPlatformSection('home')} aria-label="Retour à l'accueil" className="smooth-button flex min-h-11 items-center rounded-md px-1 text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <button onClick={() => commitPlatformSection('home')} aria-label="Retour à l’accueil" className="smooth-button flex min-h-11 items-center rounded-md px-1 text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
             <BrandLogo />
           </button>
 
@@ -1487,7 +1487,7 @@ function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, clearSear
     <div className="space-y-9 md:space-y-12">
       <section className="mx-auto max-w-4xl py-3 md:py-12">
         <div className="max-w-2xl">
-          <p className="mb-3 text-sm font-semibold text-blue-700">{totalJobs > 0 ? `${formatCount(totalJobs, 'offre disponible', 'offres disponibles')} au Congo` : 'La plateforme emploi du Congo'}</p>
+          <p className="mb-3 text-sm font-semibold text-blue-700">{totalJobs > 0 ? `${formatCount(totalJobs, 'offre disponible', 'offres disponibles')} au Congo` : 'La plateforme d’emploi du Congo'}</p>
           <h1 className="text-[2rem] font-bold leading-[1.15] tracking-[-0.035em] text-slate-950 sm:text-4xl md:text-5xl">
             Trouvez l’emploi qui vous correspond
           </h1>
@@ -1614,10 +1614,10 @@ function JobScreen({ job, saved, toggleSave, setScreen, notify }) {
         await navigator.share(shareData);
       } else {
         await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-        notify('Lien de l’offre copié');
+        notify('Lien de l’offre copié.');
       }
     } catch (error) {
-      if (error?.name !== 'AbortError') notify('Partage indisponible pour le moment');
+      if (error?.name !== 'AbortError') notify('Partage indisponible pour le moment.');
     }
   };
 
@@ -1699,7 +1699,7 @@ function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScr
       email: profile.email,
       phone: profile.phone,
     });
-    notify('Profil ajouté à la candidature');
+    notify('Profil ajouté à la candidature.');
   };
   const handleCvChange = (event) => {
     const file = event.target.files?.[0];
@@ -1717,7 +1717,7 @@ function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScr
       return;
     }
     setForm({ ...form, cvName: file.name, cvSize: file.size, cvType: file.type || 'application/pdf', cvFile: file });
-    notify('CV PDF ajouté');
+    notify('CV PDF ajouté.');
   };
 
   return (
@@ -1798,11 +1798,11 @@ function TrackingScreen({ applications, setScreen, openLogin, isLoggedIn, authLo
   if (!isLoggedIn && !authLoading) {
     return (
       <div className="mx-auto max-w-3xl space-y-5">
-        <PageHeader title="Mes candidatures" subtitle="Suivez chaque étape depuis votre espace candidat" />
+        <PageHeader title="Mes candidatures" subtitle="Suivez chaque étape depuis votre espace candidat." />
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="text-lg font-bold text-slate-950">Connectez-vous pour activer le suivi</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">Vous pourrez voir quand une candidature ou un CV est consulté par le recruteur.</p>
-          <button onClick={() => openLogin('candidat')} className="primary-button mt-5 w-full sm:w-auto">Connexion candidat</button>
+          <button onClick={() => openLogin('candidat')} className="primary-button mt-5 w-full sm:w-auto">Se connecter</button>
         </div>
       </div>
     );
@@ -1810,7 +1810,7 @@ function TrackingScreen({ applications, setScreen, openLogin, isLoggedIn, authLo
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Mes candidatures" subtitle="Retrouvez l’avancement de vos demandes" />
+      <PageHeader title="Mes candidatures" subtitle="Retrouvez l’avancement de vos demandes." />
 
       <section className="grid grid-cols-3 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white py-4">
         <Metric value={applications.length} label="Candidatures" />
@@ -1891,12 +1891,12 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, profi
   if (!isLoggedIn && !authLoading) {
     return (
       <div className="mx-auto max-w-3xl space-y-5">
-        <PageHeader title="Mon profil" subtitle="Connectez-vous pour retrouver votre espace personnel" />
+        <PageHeader title="Mon profil" subtitle="Connectez-vous pour retrouver votre espace personnel." />
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="text-lg font-bold text-slate-950">Votre recherche d’emploi au même endroit</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">Retrouvez votre profil, vos favoris, vos CV et le suivi de vos candidatures.</p>
           <button onClick={() => openLogin('candidat')} className="primary-button mt-5 w-full sm:w-auto">
-            Connexion candidat
+            Se connecter
           </button>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
@@ -2107,7 +2107,7 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
           <p className="text-sm font-bold leading-6 text-blue-950">Connectez-vous pour publier une offre et accéder à votre tableau de bord recruteur.</p>
           <button onClick={() => openLogin('recruteur')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
-            Connexion recruteur
+            Se connecter
           </button>
         </div>
       )}
@@ -2180,7 +2180,7 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="font-bold text-slate-950">{job.role}</h3>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">{job.company} - {job.loc}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">{job.company} · {job.loc}</p>
                   </div>
                   <span className="flex shrink-0 flex-col items-end gap-1">
                     <span className={classNames('rounded-full px-3 py-1 text-xs font-bold', isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700')}>
@@ -2316,7 +2316,7 @@ function AdminScreen({ boostRequests, reviewBoostRequest, role, setScreen }) {
                 <p className="text-xs font-bold uppercase text-blue-700">{request.company}</p>
                 <h3 className="mt-1 text-lg font-bold text-slate-950">{request.jobTitle}</h3>
                 <p className="mt-1 text-sm font-semibold text-slate-500">
-                  Plan {request.plan} - {request.createdAt ? new Date(request.createdAt).toLocaleDateString('fr-FR') : 'Date inconnue'}
+                  Plan {request.plan} · {request.createdAt ? new Date(request.createdAt).toLocaleDateString('fr-FR') : 'Date inconnue'}
                 </p>
               </div>
               <span className={classNames('w-fit rounded-full px-3 py-1 text-xs font-bold', request.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : request.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800')}>

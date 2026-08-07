@@ -66,6 +66,7 @@ function detectScreen() {
     'Mes offres favorites': 'saved',
     'Mes candidatures': 'tracking',
     'Recruteur': 'recruiter',
+    'Espace recruteur': 'recruiter',
     'Notifications': 'notifications',
     'Parametres': 'settings',
     'Paramètres': 'settings',
@@ -239,10 +240,10 @@ export default function NavigationExperience() {
     const title = screen === 'job' || screen === 'apply'
       ? `${job?.title || 'Offre d’emploi'} chez ${job?.company || 'une entreprise'} | Nzela Jobs`
       : screen === 'immobilier'
-        ? 'Immobilier au Congo | Nzela'
+        ? 'Immobilier au Congo | Nzela Immobilier'
       : screen === 'jobs'
         ? 'Offres d’emploi au Congo | Nzela Jobs'
-        : 'Nzela Jobs - Plateforme de recrutement au Congo';
+        : 'Nzela Jobs — Plateforme de recrutement au Congo';
     document.title = title;
     let canonical = document.querySelector('link[rel="canonical"]');
     if (!canonical) {
@@ -275,7 +276,8 @@ export default function NavigationExperience() {
     const button = findButton((element, text) =>
       text === 'Trouver un emploi'
       || element.getAttribute('aria-label') === 'Navigation Offres'
-      || text === 'Voir les offres',
+      || text === 'Voir les offres'
+      || text === 'Voir toutes les offres',
     );
     await clickWithoutHistory(button);
     await waitFor(() => detectScreen().screen === 'jobs');
@@ -312,7 +314,7 @@ export default function NavigationExperience() {
       }
 
       const selectors = {
-        home: (element, text) => element.getAttribute('aria-label') === "Retour à l'accueil" || element.getAttribute('aria-label') === 'Navigation Accueil' || text === 'Accueil',
+        home: (element, text) => element.getAttribute('aria-label') === "Retour à l'accueil" || element.getAttribute('aria-label') === 'Retour à l’accueil' || element.getAttribute('aria-label') === 'Navigation Accueil' || text === 'Accueil',
         jobs: (element, text) => text === 'Trouver un emploi' || element.getAttribute('aria-label') === 'Navigation Offres',
         immobilier: (element, text) => text === 'Immobilier' || element.getAttribute('aria-label') === 'Navigation Immobilier',
         saved: (_element, text) => text === 'Favoris',
@@ -479,8 +481,8 @@ export default function NavigationExperience() {
 
       if (suppressHistoryRef.current) return;
       const routeTarget = (() => {
-        if (aria === "Retour à l'accueil" || aria === 'Navigation Accueil') return { screen: 'home', path: '/' };
-        if (text === 'Trouver un emploi' || aria === 'Navigation Offres' || text === 'Rechercher' || text === 'Voir tout' || text === 'Voir les offres') return { screen: 'jobs', path: '/offres' };
+        if (aria === "Retour à l'accueil" || aria === 'Retour à l’accueil' || aria === 'Navigation Accueil') return { screen: 'home', path: '/' };
+        if (text === 'Trouver un emploi' || aria === 'Navigation Offres' || text === 'Rechercher' || text === 'Voir tout' || text === 'Voir les offres' || text === 'Voir toutes les offres') return { screen: 'jobs', path: '/offres' };
         if (text === 'Immobilier' || aria === 'Navigation Immobilier') return { screen: 'immobilier', path: '/immobilier' };
         if (text === 'Favoris' || aria === 'Voir mes offres favorites') return { screen: 'saved', path: '/favoris' };
         if (aria === 'Navigation Suivi') return { screen: 'tracking', path: '/candidatures' };
