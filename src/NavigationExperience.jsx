@@ -63,7 +63,7 @@ function detectScreen() {
     "Offres d’emploi": 'jobs',
     'Un logement à trouver ou à publier, simplement.': 'immobilier',
     'Postuler': 'apply',
-    'Offres sauvegardées': 'saved',
+    'Mes offres favorites': 'saved',
     'Mes candidatures': 'tracking',
     'Recruteur': 'recruiter',
     'Notifications': 'notifications',
@@ -356,7 +356,7 @@ export default function NavigationExperience() {
       }
     } catch (error) {
       if (error?.name !== 'AbortError') {
-        setConfirmation({ type: 'error', reference: '', title: 'Partage indisponible', body: 'Réessaie dans quelques instants.' });
+        setConfirmation({ type: 'error', reference: '', title: 'Partage indisponible', body: 'Réessayez dans quelques instants.' });
       }
     }
   }, []);
@@ -394,14 +394,14 @@ export default function NavigationExperience() {
 
       const status = document.querySelector('[role="status"]');
       const statusText = normalizeText(status?.textContent);
-      if (/^Candidature envoyee\. Reference /i.test(statusText) && statusText !== lastSuccessRef.current) {
+      if (/^Candidature envoy[eé]e\.\s*R[eé]f[eé]rence\s*:?\s*/i.test(statusText) && statusText !== lastSuccessRef.current) {
         lastSuccessRef.current = statusText;
-        const reference = statusText.replace(/^.*Reference\s+/i, '');
+        const reference = statusText.replace(/^.*R[eé]f[eé]rence\s*:?\s*/i, '');
         setConfirmation({
           type: 'application',
           reference,
           title: 'Candidature envoyée',
-          body: 'Le recruteur a reçu ton dossier. Tu peux maintenant suivre son évolution depuis ton espace.',
+          body: 'Le recruteur a reçu votre candidature. Vous pouvez maintenant suivre son évolution depuis votre espace.',
         });
       }
 
@@ -482,7 +482,7 @@ export default function NavigationExperience() {
         if (aria === "Retour à l'accueil" || aria === 'Navigation Accueil') return { screen: 'home', path: '/' };
         if (text === 'Trouver un emploi' || aria === 'Navigation Offres' || text === 'Rechercher' || text === 'Voir tout' || text === 'Voir les offres') return { screen: 'jobs', path: '/offres' };
         if (text === 'Immobilier' || aria === 'Navigation Immobilier') return { screen: 'immobilier', path: '/immobilier' };
-        if (text === 'Favoris' || aria === 'Voir mes offres sauvegardées') return { screen: 'saved', path: '/favoris' };
+        if (text === 'Favoris' || aria === 'Voir mes offres favorites') return { screen: 'saved', path: '/favoris' };
         if (aria === 'Navigation Suivi') return { screen: 'tracking', path: '/candidatures' };
         if (aria === 'Profil' || aria === 'Navigation Profil') return { screen: 'profile', path: '/profil' };
         if (aria === 'Navigation Recruteur') return { screen: 'recruiter', path: '/recruteur' };

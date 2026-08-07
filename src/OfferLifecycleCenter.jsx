@@ -246,7 +246,7 @@ export default function OfferLifecycleCenter() {
           <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
             <Briefcase className="mx-auto text-slate-400" size={34} />
             <h2 className="mt-3 font-bold text-slate-950">Aucune offre trouvée</h2>
-            <p className="mt-1 text-sm text-slate-500">Modifie le filtre ou la recherche.</p>
+            <p className="mt-1 text-sm text-slate-500">Modifiez le filtre ou la recherche.</p>
           </div>
         )}
       </main>

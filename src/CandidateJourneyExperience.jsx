@@ -72,8 +72,8 @@ function setControlledValue(element, value) {
 function getDraft(form) {
   return {
     nom: getFieldByLabel(form, 'Nom complet')?.value || '',
-    email: getFieldByLabel(form, 'Email')?.value || '',
-    phone: getFieldByLabel(form, 'Telephone')?.value || '',
+    email: getFieldByLabel(form, 'Adresse e-mail')?.value || '',
+    phone: getFieldByLabel(form, 'Téléphone')?.value || '',
     message: getFieldByLabel(form, 'Message au recruteur')?.value || '',
     updatedAt: Date.now(),
   };
@@ -83,8 +83,8 @@ function restoreDraft(form, jobId) {
   const draft = readJson(sessionStorage, `${DRAFT_PREFIX}${jobId}`, null);
   if (!draft) return;
   setControlledValue(getFieldByLabel(form, 'Nom complet'), draft.nom);
-  setControlledValue(getFieldByLabel(form, 'Email'), draft.email);
-  setControlledValue(getFieldByLabel(form, 'Telephone'), draft.phone);
+  setControlledValue(getFieldByLabel(form, 'Adresse e-mail'), draft.email);
+  setControlledValue(getFieldByLabel(form, 'Téléphone'), draft.phone);
   setControlledValue(getFieldByLabel(form, 'Message au recruteur'), draft.message);
 }
 
@@ -93,8 +93,8 @@ function prefillFromProfile(form) {
   if (!profile) return;
   const fullName = `${profile.prenom || ''} ${profile.nom || ''}`.trim();
   setControlledValue(getFieldByLabel(form, 'Nom complet'), fullName);
-  setControlledValue(getFieldByLabel(form, 'Email'), profile.email || '');
-  setControlledValue(getFieldByLabel(form, 'Telephone'), profile.phone || '');
+  setControlledValue(getFieldByLabel(form, 'Adresse e-mail'), profile.email || '');
+  setControlledValue(getFieldByLabel(form, 'Téléphone'), profile.phone || '');
 }
 
 function createStatusPanel(form) {
@@ -119,7 +119,7 @@ function renderChecking(form) {
   const title = document.createElement('strong');
   title.textContent = 'Vérification de votre candidature';
   const body = document.createElement('span');
-  body.textContent = 'Nous vérifions que cette offre n’a pas déjà reçu votre dossier.';
+  body.textContent = 'Nous vérifions que cette offre n’a pas déjà reçu votre candidature.';
   panel.append(title, body);
 }
 
@@ -165,7 +165,7 @@ function renderResumeNotice(form) {
   panel.className = 'nz-candidate-status nz-candidate-status--resume';
   panel.replaceChildren();
   const title = document.createElement('strong');
-  title.textContent = 'Connexion réussie, votre candidature est reprise';
+  title.textContent = 'Connexion réussie : reprenez votre candidature';
   const body = document.createElement('span');
   body.textContent = 'Vos informations ont été restaurées. Sélectionnez à nouveau votre CV avant l’envoi.';
   panel.append(title, body);
