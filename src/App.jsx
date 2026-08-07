@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Bell,
@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { hasSupabaseConfig, supabase } from './lib/supabase';
 import MobilePlatformShell from './MobilePlatformShell.jsx';
+import RealEstateExperienceStable from './RealEstateExperienceStable.jsx';
 
 const initialJobs = [];
 
@@ -79,7 +80,13 @@ function useInvalidNotice(notify, message) {
 const MAX_CV_BYTES = 2 * 1024 * 1024;
 const MAX_CV_LABEL = '2 Mo';
 const PENDING_LOGIN_ROLE_KEY = 'congoemploi.pendingLoginRole';
-const PLATFORM_PATHS = { home: '/', jobs: '/offres', profile: '/profil' };
+const PLATFORM_PATHS = { home: '/', jobs: '/offres', immobilier: '/immobilier', profile: '/profil' };
+
+function getInitialScreen() {
+  if (window.location.hash === '#immobilier') return 'immobilier';
+  return Object.entries(PLATFORM_PATHS)
+    .find(([, pathname]) => pathname === window.location.pathname)?.[0] || 'home';
+}
 
 const emptyApplication = {
   nom: '',
@@ -139,26 +146,6 @@ function cleanAuthParamsFromUrl() {
   url.searchParams.delete('code');
   url.hash = '';
   window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
-}
-
-function openRealEstateModule(opener = document.activeElement) {
-  return new Promise((resolve) => {
-    let timeoutId = 0;
-    const ready = () => {
-      window.clearTimeout(timeoutId);
-      window.removeEventListener('nzela:immobilier-ready', ready);
-      resolve();
-    };
-    window.addEventListener('nzela:immobilier-ready', ready, { once: true });
-    timeoutId = window.setTimeout(ready, 900);
-
-    const url = new URL(window.location.href);
-    if (url.hash !== '#immobilier') {
-      url.hash = 'immobilier';
-      window.history.pushState({ ...(window.history.state || {}), nzelaImmo: true }, '', url);
-    }
-    window.dispatchEvent(new CustomEvent('nzela:open-immobilier', { detail: { opener } }));
-  });
 }
 
 function friendlyAuthError(message) {
@@ -305,7 +292,7 @@ function normalizeBoostRequest(row) {
 }
 
 export default function App() {
-  const [screen, setScreen] = useState('home');
+  const [screen, setScreen] = useState(getInitialScreen);
   const [selectedJob, setSelectedJob] = useState(null);
   const [query, setQuery] = useState('');
   const [city, setCity] = useState('Toutes');
@@ -328,8 +315,7 @@ export default function App() {
   const [jobAction, setJobAction] = useState('');
   const [notificationsUpdating, setNotificationsUpdating] = useState(false);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
-  const mobileScrollPositionsRef = useRef({ home: 0, jobs: 0, profile: 0 });
-  const mobileScrollRestoreRef = useRef(null);
+  const realEstateNavigationGuardRef = useRef(null);
 
   const [jobs, setJobs] = useStoredState('nzelajobs.v3.jobs', initialJobs);
   const [profile, setProfile] = useStoredState('congoemploi.v2.profile', initialProfile);
@@ -1358,61 +1344,35 @@ export default function App() {
     ? 'home'
     : ['jobs', 'job', 'apply', 'saved'].includes(screen)
       ? 'jobs'
-      : 'profile';
+      : screen === 'immobilier'
+        ? 'immobilier'
+        : 'profile';
   const showMobileChrome = !['job', 'apply', 'login', 'post-job'].includes(screen);
 
-  useLayoutEffect(() => {
-    const pending = mobileScrollRestoreRef.current;
-    if (!pending || pending.section !== mobileActiveSection) return;
-    mobileScrollRestoreRef.current = null;
-
-    const root = document.documentElement;
-    const previousScrollBehavior = root.style.scrollBehavior;
-    root.style.scrollBehavior = 'auto';
-    window.scrollTo(0, pending.top);
-    root.style.scrollBehavior = previousScrollBehavior;
-  }, [mobileActiveSection, screen]);
-
-  const navigatePlatformSection = useCallback((target) => {
+  const commitPlatformSection = useCallback((target) => {
     if (!['home', 'jobs', 'immobilier', 'profile'].includes(target)) return;
-    mobileScrollPositionsRef.current[mobileActiveSection] = window.scrollY;
-
-    if (target === 'immobilier') {
-      return openRealEstateModule();
-    }
-
     const targetPath = PLATFORM_PATHS[target];
-    if (targetPath && window.location.pathname !== targetPath) {
+    if (targetPath && (window.location.pathname !== targetPath || window.location.hash)) {
+      const url = new URL(window.location.href);
+      url.pathname = targetPath;
+      url.hash = '';
       window.history.pushState(
         { ...(window.history.state || {}), nzelaNavigation: true, screen: target },
         '',
-        targetPath,
+        `${url.pathname}${url.search}`,
       );
     }
-    mobileScrollRestoreRef.current = {
-      section: target,
-      top: Number(mobileScrollPositionsRef.current[target] || 0),
-    };
     setScreen(target);
-  }, [mobileActiveSection]);
-
-  useEffect(() => {
-    const prepareNativeSection = (event) => {
-      const target = event.detail?.section;
-      if (!PLATFORM_PATHS[target]) return;
-      const restoreTop = Number(mobileScrollPositionsRef.current[target] || 0);
-      document.documentElement.dataset.nzPlatformRestoreScroll = String(restoreTop);
-
-      const url = new URL(window.location.href);
-      url.pathname = PLATFORM_PATHS[target];
-      url.hash = 'immobilier';
-      window.history.replaceState({ ...(window.history.state || {}), nzelaNavigation: true, screen: target }, '', url);
-      setScreen(target);
-    };
-
-    window.addEventListener('nzela:prepare-platform-section', prepareNativeSection);
-    return () => window.removeEventListener('nzela:prepare-platform-section', prepareNativeSection);
   }, []);
+
+  const setRealEstateNavigationGuard = useCallback((guard) => {
+    realEstateNavigationGuardRef.current = guard;
+  }, []);
+
+  const allowPlatformNavigation = useCallback((target) => {
+    if (mobileActiveSection !== 'immobilier' || target === 'immobilier') return true;
+    return realEstateNavigationGuardRef.current?.(target) !== false;
+  }, [mobileActiveSection]);
 
   const renderScreen = () => {
     if (screen === 'jobs') return <JobsScreen jobs={filteredJobs} query={query} setQuery={setQuery} city={city} setCity={setCity} contract={contract} setContract={setContract} sortOrder={sortOrder} setSortOrder={setSortOrder} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} savedIds={savedIds} toggleSave={toggleSave} />;
@@ -1430,17 +1390,48 @@ export default function App() {
     return <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} openLogin={openLogin} savedIds={savedIds} toggleSave={toggleSave} />;
   };
 
+  const wrapPlatformMain = (content) => (
+    <main className="nz-platform-pane-main nz-platform-main soft-enter mx-auto max-w-6xl px-4 pb-28 pt-5 md:px-6 md:pb-12 md:pt-8">
+      {content}
+    </main>
+  );
+
+  const platformSections = {
+    home: wrapPlatformMain(
+      mobileActiveSection === 'home'
+        ? renderScreen()
+        : <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} openLogin={openLogin} savedIds={savedIds} toggleSave={toggleSave} />,
+    ),
+    jobs: wrapPlatformMain(
+      mobileActiveSection === 'jobs'
+        ? renderScreen()
+        : <JobsScreen jobs={filteredJobs} query={query} setQuery={setQuery} city={city} setCity={setCity} contract={contract} setContract={setContract} sortOrder={sortOrder} setSortOrder={setSortOrder} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} savedIds={savedIds} toggleSave={toggleSave} />,
+    ),
+    immobilier: (
+      <RealEstateExperienceStable
+        active={mobileActiveSection === 'immobilier'}
+        onNavigate={commitPlatformSection}
+        setNavigationGuard={setRealEstateNavigationGuard}
+      />
+    ),
+    profile: wrapPlatformMain(
+      mobileActiveSection === 'profile'
+        ? renderScreen()
+        : <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} profileSubmitting={profileSubmitting} setScreen={setScreen} openLogin={openLogin} openRecruiterSpace={openRecruiterSpace} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} hasPublishedOffer={hasPublishedOffer} />,
+    ),
+  };
+
   return (
     <div className="nz-platform-shell min-h-screen bg-white text-slate-950">
       <header className={classNames('nz-platform-header sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur', showMobileChrome ? 'block' : 'hidden md:block')}>
         <div className="mx-auto flex h-[68px] max-w-6xl items-center justify-between px-4 md:px-6">
-          <button onClick={() => setScreen('home')} aria-label="Retour à l'accueil" className="smooth-button flex min-h-11 items-center rounded-md px-1 text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <button onClick={() => commitPlatformSection('home')} aria-label="Retour à l'accueil" className="smooth-button flex min-h-11 items-center rounded-md px-1 text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
             <BrandLogo />
           </button>
 
           <nav className="hidden items-center gap-1 md:flex" aria-label="Navigation principale">
-            <button onClick={() => setScreen('jobs')} className="header-link">Trouver un emploi</button>
-            <button onClick={() => openRealEstateModule()} className="header-link" aria-label="Immobilier">Immobilier</button>
+            <button onClick={() => commitPlatformSection('jobs')} className="header-link">Trouver un emploi</button>
+            <button onClick={() => commitPlatformSection('immobilier')} className="header-link" aria-label="Immobilier">Immobilier</button>
             <button onClick={() => setScreen('saved')} className="header-link">Favoris</button>
             <button onClick={openRecruiterSpace} className="header-link">Espace recruteur</button>
           </nav>
@@ -1449,7 +1440,7 @@ export default function App() {
             <IconButton label="Notifications" onClick={() => setScreen('notifications')} badge={unreadCount}>
               <Bell size={20} />
             </IconButton>
-            <IconButton label="Profil" onClick={() => setScreen('profile')}>
+            <IconButton label="Profil" onClick={() => commitPlatformSection('profile')}>
               <User size={20} />
             </IconButton>
             <span className="hidden md:block">
@@ -1464,13 +1455,11 @@ export default function App() {
       <MobilePlatformShell
         activeId={mobileActiveSection}
         disabled={!showMobileChrome}
-        onNavigate={navigatePlatformSection}
+        onBeforeNavigate={allowPlatformNavigation}
+        onNavigate={commitPlatformSection}
+        sections={platformSections}
         showNavigation={showMobileChrome}
-      >
-        <main className="nz-platform-main soft-enter mx-auto max-w-6xl px-4 pb-28 pt-5 md:px-6 md:pb-12 md:pt-8">
-          {renderScreen()}
-        </main>
-      </MobilePlatformShell>
+      />
 
       {toast && (
         <div role="status" aria-live="polite" className="soft-enter fixed bottom-24 left-4 right-4 z-[60] mx-auto max-w-sm rounded-lg border border-slate-200 bg-slate-950 px-4 py-3 text-center text-sm font-semibold text-white shadow-xl md:bottom-6">

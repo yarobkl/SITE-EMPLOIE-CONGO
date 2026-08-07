@@ -14,7 +14,6 @@ import NavigationExperience from './NavigationExperience.jsx'
 import CandidateJourneyExperience from './CandidateJourneyExperience.jsx'
 import PrivacyComplianceExperience from './PrivacyComplianceExperience.jsx'
 import RealEstatePrivacyExtension from './RealEstatePrivacyExtension.jsx'
-import RealEstateEntry from './RealEstateEntry.jsx'
 import JobViewCounterExperience from './JobViewCounterExperience.jsx'
 import TalentMarketplaceExperience from './TalentMarketplaceExperience.jsx'
 import RecruiterVerificationAdmin from './RecruiterVerificationAdmin.jsx'
@@ -37,7 +36,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <CandidateJourneyExperience />
     <PrivacyComplianceExperience />
     <RealEstatePrivacyExtension />
-    <RealEstateEntry />
     <JobViewCounterExperience />
     <TalentMarketplaceExperience />
     <RecruiterVerificationAdmin />

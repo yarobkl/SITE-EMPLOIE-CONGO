@@ -1,28 +1,28 @@
 .nz-platform-page-shell,
 .nz-platform-swipe-viewport,
-.nz-platform-swipe-current {
+.nz-platform-swipe-current,
+.nz-platform-panels,
+.nz-platform-pane {
   min-width: 0;
 }
 
-.nz-platform-page-shell.is-contained,
-.is-contained > .nz-platform-swipe-viewport,
-.is-contained .nz-platform-swipe-current {
-  display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
+.nz-platform-swipe-preview,
+.nz-mobile-platform-nav {
+  display: none;
+}
+
+.nz-platform-panels {
   width: 100%;
 }
 
-.is-contained .nz-platform-swipe-current {
-  flex-direction: column;
+.nz-platform-pane {
+  display: none;
+  width: 100%;
+  background: #fff;
 }
 
-.nz-platform-swipe-preview {
-  display: none;
-}
-
-.nz-mobile-platform-nav {
-  display: none;
+.nz-platform-pane.is-active {
+  display: block;
 }
 
 @media (max-width: 767.98px) {
@@ -31,194 +31,132 @@
     overscroll-behavior-x: none;
   }
 
-  .nz-platform-page-shell {
-    min-height: calc(100svh - 68px - env(safe-area-inset-top));
-    overflow-x: hidden;
-    overflow-x: clip;
+  .nz-platform-shell {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0 !important;
+    flex-direction: column;
+    overflow: hidden;
+    background: #fff;
   }
 
-  .nz-platform-page-shell.is-contained {
+  .nz-platform-header {
+    position: relative !important;
+    top: auto !important;
+    flex: 0 0 auto;
+  }
+
+  .nz-platform-page-shell.has-platform-panels {
+    position: relative;
     display: flex;
-    flex: 1 1 auto;
     min-height: 0;
+    flex: 1 1 auto;
     overflow: hidden;
+    background: #fff;
+    isolation: isolate;
   }
 
   .nz-platform-swipe-viewport {
-    --nz-platform-page-x: 0px;
-    --nz-platform-preview-origin: 100vw;
-    --nz-platform-preview-opacity: 0;
+    --nz-platform-swipe-duration: 300ms;
     position: relative;
     width: 100%;
-    min-height: calc(100svh - 68px - env(safe-area-inset-top));
-    overflow-x: hidden;
-    overflow-x: clip;
+    min-height: 0;
+    overflow: hidden;
+    background: #fff;
     touch-action: pan-y pinch-zoom;
   }
 
-  .is-contained > .nz-platform-swipe-viewport {
-    display: flex;
-    flex: 1 1 auto;
-    min-height: 0;
+  .has-platform-panels > .nz-platform-swipe-viewport {
     height: 100%;
+    flex: 1 1 auto;
   }
 
-  .nz-platform-swipe-current {
-    position: relative;
-    z-index: 2;
-    width: 100%;
-    min-height: inherit;
-    transform: translate3d(var(--nz-platform-page-x), 0, 0);
+  .nz-platform-panels {
+    display: flex;
+    width: 400%;
+    height: 100%;
+    min-height: 0;
+    align-items: stretch;
+    transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
   }
 
-  .is-contained .nz-platform-swipe-current {
-    display: flex;
-    flex: 1 1 auto;
-    min-height: 0;
-    width: 100%;
-  }
-
-  .nz-platform-swipe-viewport.is-dragging .nz-platform-swipe-current,
-  .nz-platform-swipe-viewport.is-settling .nz-platform-swipe-current {
+  .nz-platform-swipe-viewport.is-dragging .nz-platform-panels,
+  .nz-platform-swipe-viewport.is-settling .nz-platform-panels {
     will-change: transform;
   }
 
-  html[data-nz-platform-swiping='true'] .nz-platform-swipe-current {
+  .nz-platform-swipe-viewport.is-settling .nz-platform-panels {
+    transition: transform var(--nz-platform-swipe-duration) cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .nz-platform-swipe-viewport.is-dragging .nz-platform-panels {
+    transition: none;
+  }
+
+  html[data-nz-platform-swiping='true'] .nz-platform-panels {
     user-select: none;
     -webkit-user-select: none;
   }
 
-  .nz-platform-swipe-preview {
-    position: fixed;
-    z-index: 1;
-    top: calc(68px + env(safe-area-inset-top));
-    right: 0;
-    bottom: 0;
-    left: 0;
+  .nz-platform-pane {
+    position: relative;
     display: block;
-    overflow: hidden;
+    width: 25%;
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    flex: 0 0 25%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
     background: #fff;
-    opacity: var(--nz-platform-preview-opacity);
-    transform: translate3d(calc(var(--nz-platform-preview-origin) + var(--nz-platform-page-x)), 0, 0);
-    pointer-events: none;
-    backface-visibility: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
 
-  .is-contained .nz-platform-swipe-preview {
-    position: absolute;
-    inset: 0;
+  .nz-platform-pane::-webkit-scrollbar {
+    display: none;
   }
 
-  .nz-platform-swipe-viewport.is-settling .nz-platform-swipe-current,
-  .nz-platform-swipe-viewport.is-settling .nz-platform-swipe-preview {
-    transition:
-      transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
-      opacity 220ms ease;
-  }
-
-  .nz-platform-destination {
+  .nz-platform-pane > .nz-platform-pane-main,
+  .nz-platform-pane > .nz2-root {
+    width: 100%;
     min-height: 100%;
-    padding: 26px 20px 120px;
-    background:
-      radial-gradient(circle at 88% 0%, rgba(96, 165, 250, 0.13), transparent 34%),
-      #fff;
-    color: #0f172a;
   }
 
-  .nz-platform-destination.is-immobilier {
-    background:
-      radial-gradient(circle at 90% 0%, rgba(37, 99, 235, 0.16), transparent 38%),
-      #f5f7fb;
+  .nz-platform-pane-main {
+    padding-bottom: calc(126px + env(safe-area-inset-bottom)) !important;
   }
 
-  .nz-platform-destination-kicker {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    color: #2563eb;
-    font-size: 12px;
-    font-weight: 900;
-    letter-spacing: 0.055em;
-    text-transform: uppercase;
-  }
-
-  .nz-platform-destination-kicker > span {
-    display: grid;
-    width: 38px;
-    height: 38px;
-    place-items: center;
-    border-radius: 12px;
-    background: #2563eb;
-    color: #fff;
-    box-shadow: 0 9px 22px rgba(37, 99, 235, 0.2);
-  }
-
-  .nz-platform-destination h2 {
-    max-width: 620px;
-    margin: 22px 0 24px;
-    font-size: clamp(30px, 8vw, 46px);
-    font-weight: 900;
-    letter-spacing: -0.045em;
-    line-height: 1.05;
-  }
-
-  .nz-platform-destination-card {
-    display: grid;
-    gap: 12px;
-    padding: 18px;
-    border: 1px solid #dbe3ee;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.9);
-    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
-  }
-
-  .nz-platform-destination-card span,
-  .nz-platform-destination-row span {
-    display: block;
-    height: 54px;
-    border: 1px solid #dbe3ee;
-    border-radius: 13px;
-    background: linear-gradient(90deg, #f8fafc, #eff6ff, #f8fafc);
-  }
-
-  .nz-platform-destination-card span:last-child {
-    border-color: #2563eb;
-    background: #2563eb;
-  }
-
-  .nz-platform-destination-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 18px;
-  }
-
-  .nz-platform-destination-row span {
-    height: 140px;
+  .nz-platform-swipe-current {
+    width: 100%;
+    min-height: 100%;
   }
 
   .nz-mobile-platform-nav {
     position: fixed;
-    z-index: 50;
-    right: 12px;
-    bottom: max(10px, env(safe-area-inset-bottom));
-    left: 12px;
+    z-index: 70;
+    right: 14px;
+    bottom: max(6px, env(safe-area-inset-bottom));
+    left: 14px;
     display: block;
     width: auto;
-    padding: 6px 7px 7px;
+    padding: 3px 5px 4px;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.74);
-    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    border-radius: 20px;
     background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.74), rgba(239, 246, 255, 0.5));
+      linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(239, 246, 255, 0.58));
     box-shadow:
-      0 18px 48px rgba(15, 23, 42, 0.17),
-      0 2px 8px rgba(15, 23, 42, 0.07),
-      inset 0 1px 0 rgba(255, 255, 255, 0.96),
-      inset 0 -1px 0 rgba(148, 163, 184, 0.13);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    backdrop-filter: blur(24px) saturate(180%);
+      0 12px 34px rgba(15, 23, 42, 0.15),
+      0 2px 7px rgba(15, 23, 42, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.98),
+      inset 0 -1px 0 rgba(148, 163, 184, 0.12);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    backdrop-filter: blur(22px) saturate(180%);
     isolation: isolate;
   }
 
@@ -232,10 +170,10 @@
     inset: 0;
     border-radius: inherit;
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent 36%),
-      radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.9), transparent 34%);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.54), transparent 38%),
+      radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.92), transparent 34%);
     content: '';
-    opacity: 0.66;
+    opacity: 0.64;
     pointer-events: none;
   }
 
@@ -248,7 +186,7 @@
     max-width: 520px;
     margin: 0 auto;
     overflow: hidden;
-    border-radius: 18px;
+    border-radius: 16px;
     touch-action: pan-y pinch-zoom;
   }
 
@@ -259,29 +197,29 @@
   .nz-mobile-platform-rail::before {
     position: absolute;
     z-index: 0;
-    top: 3px;
-    bottom: 3px;
+    top: 2px;
+    bottom: 2px;
     left: var(--nz-platform-indicator-left);
     width: 25%;
-    border: 1px solid rgba(255, 255, 255, 0.9);
-    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
     background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(219, 234, 254, 0.58));
+      linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(219, 234, 254, 0.62));
     box-shadow:
-      0 8px 22px rgba(37, 99, 235, 0.14),
+      0 6px 18px rgba(37, 99, 235, 0.13),
       inset 0 1px 0 #fff,
-      inset 0 -1px 0 rgba(96, 165, 250, 0.16);
+      inset 0 -1px 0 rgba(96, 165, 250, 0.14);
     content: '';
-    transform: scaleX(0.9) scaleY(0.88);
+    transform: scaleX(0.91) scaleY(0.9);
     transition:
-      left 330ms cubic-bezier(0.16, 1, 0.3, 1),
-      transform 180ms ease;
+      left 300ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 160ms ease;
     pointer-events: none;
   }
 
   .nz-mobile-platform-rail.is-direct-manipulation::before {
     transition: none;
-    transform: scaleX(0.94) scaleY(0.92);
+    transform: scaleX(0.94) scaleY(0.93);
   }
 
   .nz-mobile-platform-rail button {
@@ -289,24 +227,24 @@
     z-index: 1;
     display: flex;
     min-width: 0;
-    min-height: 60px;
+    min-height: 48px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    padding: 0 2px;
+    gap: 1px;
+    padding: 1px 2px 0;
     overflow: visible;
     border: 0;
-    border-radius: 16px;
+    border-radius: 14px;
     background: transparent;
     color: #64748b;
-    font-size: 10.5px;
+    font-size: 9.5px;
     font-weight: 800;
-    line-height: 1.05;
+    line-height: 1;
     transition:
-      color 190ms ease,
-      transform 140ms ease,
-      opacity 180ms ease;
+      color 180ms ease,
+      transform 130ms ease,
+      opacity 170ms ease;
   }
 
   .nz-mobile-platform-rail button::before {
@@ -320,11 +258,11 @@
 
   .nz-mobile-platform-rail button svg {
     flex: 0 0 auto;
-    transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .nz-mobile-platform-rail button.is-active svg {
-    transform: translateY(-1px) scale(1.055);
+    transform: translateY(-0.5px) scale(1.045);
   }
 
   .nz-mobile-platform-rail button:active {
@@ -340,8 +278,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nz-platform-swipe-current,
-  .nz-platform-swipe-preview,
+  .nz-platform-panels,
   .nz-mobile-platform-rail::before,
   .nz-mobile-platform-rail button,
   .nz-mobile-platform-rail button svg {
