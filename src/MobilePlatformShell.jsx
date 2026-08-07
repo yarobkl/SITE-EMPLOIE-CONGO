@@ -415,7 +415,7 @@ export default function MobilePlatformShell({
       {showNavigation ? (
         <nav
           className="nz-mobile-platform-nav"
-          aria-label={contained ? 'Navigation principale Nzela' : 'Navigation mobile'}
+          aria-label={contained ? 'Navigation principale Nzela Jobs' : 'Navigation mobile'}
           {...gestureHandlers}
         >
           <div

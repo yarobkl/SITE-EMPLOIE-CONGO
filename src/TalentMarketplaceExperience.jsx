@@ -743,7 +743,7 @@ function AdminTalentAnalytics() {
   return (
     <div className="space-y-6">
       {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
-      <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Observatoire Nzela</p><h3 className="mt-1 text-xl font-black text-slate-950">Demandes d’emploi et répartition géographique</h3></div><button type="button" onClick={load} className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white"><RefreshCw size={18} /></button></div>
+      <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Observatoire Nzela Jobs</p><h3 className="mt-1 text-xl font-black text-slate-950">Demandes d’emploi et répartition géographique</h3></div><button type="button" onClick={load} className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white"><RefreshCw size={18} /></button></div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><MetricCard icon={Users} label="Demandeurs actifs" value={snapshot.active_job_seekers} note="Publications non expirées" /><MetricCard icon={CheckCircle2} label="Profils complets" value={snapshot.profiles_completed} /><MetricCard icon={ShieldCheck} label="Recruteurs vérifiés" value={snapshot.verified_recruiters} /><MetricCard icon={Send} label="Invitations envoyées" value={snapshot.invitations_sent} /></div>
       <div className="grid gap-5 lg:grid-cols-2">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h4 className="font-black text-slate-950">Demandeurs actifs par quartier</h4><p className="mt-1 text-sm text-slate-500">Données agrégées des utilisateurs Nzela Jobs.</p><div className="mt-5 space-y-3">{locations.length === 0 ? <p className="text-sm text-slate-500">Aucune donnée géographique disponible.</p> : locations.slice(0, 20).map((item) => <div key={item.location_id}><div className="mb-1 flex justify-between gap-3 text-xs"><span className="font-bold text-slate-700">{item.quartier} · {item.arrondissement}</span><span className="font-black text-slate-950">{item.active_job_seekers}</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.max(3, (Number(item.active_job_seekers || 0) / maxLocation) * 100)}%` }} /></div></div>)}</div></section>
@@ -790,7 +790,7 @@ export default function TalentMarketplaceExperience() {
           </header>
           <main className="mx-auto max-w-6xl px-4 py-5 md:px-6 md:py-7">
             {!user ? (
-              <EmptyState icon={AlertCircle} title="Connexion obligatoire" body="Connectez-vous depuis l’espace compte Nzela Jobs. Après la connexion, votre téléphone et votre quartier devront être complétés pour activer le profil." />
+              <EmptyState icon={AlertCircle} title="Connexion obligatoire" body="Connectez-vous depuis votre espace Nzela Jobs. Après la connexion, complétez votre téléphone et votre quartier pour activer votre profil." />
             ) : !profile?.profile_completed ? (
               <EmptyState icon={MapPin} title="Profil à compléter" body="Fermez cette fenêtre et terminez l’étape obligatoire d’activation affichée à l’écran." />
             ) : profile.role === 'recruteur' ? (
