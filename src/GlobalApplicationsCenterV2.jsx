@@ -225,7 +225,7 @@ export default function GlobalApplicationsCenterV2() {
       <div className="mx-auto flex h-full max-w-[1380px] flex-col overflow-hidden bg-white shadow-2xl md:h-[calc(100vh-3rem)] md:rounded-2xl md:border md:border-slate-200">
         <header className="border-b border-slate-200 p-4 md:p-6">
           <div className="flex items-start justify-between gap-4">
-            <div><p className="text-xs font-bold uppercase tracking-[0.14em] text-blue-700">Recruteur principal</p><h2 className="mt-1 text-2xl font-bold text-slate-950 md:text-3xl">Toutes les candidatures</h2><p className="mt-1 text-sm text-slate-500">Candidatures avec ou sans suivi, anciennes et récentes.</p></div>
+            <div><p className="text-xs font-bold uppercase tracking-[0.14em] text-blue-700">Administration</p><h2 className="mt-1 text-2xl font-bold text-slate-950 md:text-3xl">Toutes les candidatures</h2><p className="mt-1 text-sm text-slate-500">Candidatures avec ou sans suivi, anciennes et récentes.</p></div>
             <button type="button" onClick={() => setOpen(false)} className="secondary-icon-button" aria-label="Fermer"><X size={20} /></button>
           </div>
           <div className="mt-5 grid grid-cols-4 gap-2">
@@ -248,7 +248,7 @@ export default function GlobalApplicationsCenterV2() {
               <article key={item.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
                   <div className="min-w-0">
-                    <div className="flex flex-wrap gap-2"><span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_CLASS[item.status]}`}>{STATUSES.find(([value]) => value === item.status)?.[1] || item.status}</span>{today(item.createdAt) && <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">Aujourd’hui</span>}<span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{item.tracked ? 'Avec suivi' : 'Sans suivi'}</span></div>
+                    <div className="flex flex-wrap gap-2"><span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_CLASS[item.status] || 'bg-slate-100 text-slate-700'}`}>{STATUSES.find(([value]) => value === item.status)?.[1] || 'Statut inconnu'}</span>{today(item.createdAt) && <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">Aujourd’hui</span>}<span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{item.tracked ? 'Avec suivi' : 'Sans suivi'}</span></div>
                     <h3 className="mt-3 text-lg font-bold text-slate-950">{item.name}</h3><p className="mt-1 text-sm font-semibold text-blue-700">{item.jobTitle}</p><p className="mt-1 flex items-center gap-2 text-sm text-slate-600"><Building2 size={16} />{item.companyName}</p><div className="mt-3 grid gap-1 text-sm text-slate-600 sm:grid-cols-2"><span>{item.email || 'Adresse e-mail non renseignée'}</span><span>{item.phone || 'Téléphone non renseigné'}</span></div>
                   </div>
                   <div className="text-sm text-slate-500 lg:text-right"><p>{dateLabel(item.createdAt)}</p>{item.reference && <p className="mt-1 font-semibold text-slate-700">{item.reference}</p>}</div>

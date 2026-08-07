@@ -152,7 +152,7 @@ function StatusPill({ status }) {
     approved: ['Approuvée', 'bg-emerald-50 text-emerald-700'],
     rejected: ['Refusée', 'bg-red-50 text-red-700'],
   };
-  const [label, tone] = settings[status] || [status || 'Inconnu', 'bg-slate-100 text-slate-700'];
+  const [label, tone] = settings[status] || ['Statut inconnu', 'bg-slate-100 text-slate-700'];
   return <span className={classNames('inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold', tone)}>{label}</span>;
 }
 
@@ -477,7 +477,7 @@ function CandidateMarketplace({ user, profile, locations }) {
         <div className="flex gap-3">
           <Sparkles className="mt-0.5 shrink-0 text-blue-700" size={20} />
           <div>
-            <p className="font-black text-blue-950">Une publication mensuelle, des candidatures illimitées</p>
+            <p className="font-black text-blue-950">Une demande tous les 30 jours, des candidatures illimitées</p>
             <p className="mt-1 text-sm leading-6 text-blue-800">Votre propre demande d’emploi reste unique pendant 30 jours. Cela ne limite jamais le nombre d’offres auxquelles vous pouvez postuler sur Nzela Jobs.</p>
           </div>
         </div>
@@ -503,12 +503,12 @@ function CandidateMarketplace({ user, profile, locations }) {
         </div>
       ) : publicationLocked ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-          <div className="flex gap-3"><Clock3 className="shrink-0 text-amber-700" /><div><h3 className="font-black text-amber-950">Nouvelle publication disponible le {formatDate(nextPublicationDate)}</h3><p className="mt-1 text-sm leading-6 text-amber-800">La limite concerne uniquement votre propre demande d’emploi. Vous pouvez continuer à postuler sans limite aux offres publiées.</p></div></div>
+          <div className="flex gap-3"><Clock3 className="shrink-0 text-amber-700" /><div><h3 className="font-black text-amber-950">Nouvelle demande publiable à partir du {formatDate(nextPublicationDate)}</h3><p className="mt-1 text-sm leading-6 text-amber-800">La limite concerne uniquement votre propre demande d’emploi. Vous pouvez continuer à postuler sans limite aux offres publiées.</p></div></div>
         </div>
       ) : (
         <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
-            <div><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Demande d’emploi</p><h3 className="mt-1 text-xl font-black text-slate-950">{activePost ? 'Modifier ma publication' : 'Publier ma recherche'}</h3></div>
+            <div><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Demande d’emploi</p><h3 className="mt-1 text-xl font-black text-slate-950">{activePost ? 'Modifier ma demande' : 'Publier ma demande'}</h3></div>
             {activePost && <button type="button" onClick={() => setEditing(false)} className="text-sm font-bold text-slate-500">Annuler</button>}
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -549,7 +549,7 @@ function CandidateMarketplace({ user, profile, locations }) {
         )}
       </section>
 
-      {posts.length > 1 && <section><h3 className="mb-3 font-black text-slate-950">Historique mensuel</h3><div className="space-y-2">{posts.slice(1).map((post) => <div key={post.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-sm font-bold text-slate-900">{post.desired_job_title}</p><p className="text-xs text-slate-500">Publiée le {formatDate(post.published_at)}</p></div><StatusPill status={post.status} /></div>)}</div></section>}
+      {posts.length > 1 && <section><h3 className="mb-3 font-black text-slate-950">Historique des demandes</h3><div className="space-y-2">{posts.slice(1).map((post) => <div key={post.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-sm font-bold text-slate-900">{post.desired_job_title}</p><p className="text-xs text-slate-500">Publiée le {formatDate(post.published_at)}</p></div><StatusPill status={post.status} /></div>)}</div></section>}
     </div>
   );
 }
@@ -743,7 +743,7 @@ function AdminTalentAnalytics() {
   return (
     <div className="space-y-6">
       {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
-      <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Observatoire Nzela</p><h3 className="mt-1 text-xl font-black text-slate-950">Demande d’emploi et répartition géographique</h3></div><button type="button" onClick={load} className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white"><RefreshCw size={18} /></button></div>
+      <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Observatoire Nzela</p><h3 className="mt-1 text-xl font-black text-slate-950">Demandes d’emploi et répartition géographique</h3></div><button type="button" onClick={load} className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white"><RefreshCw size={18} /></button></div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><MetricCard icon={Users} label="Demandeurs actifs" value={snapshot.active_job_seekers} note="Publications non expirées" /><MetricCard icon={CheckCircle2} label="Profils complets" value={snapshot.profiles_completed} /><MetricCard icon={ShieldCheck} label="Recruteurs vérifiés" value={snapshot.verified_recruiters} /><MetricCard icon={Send} label="Invitations envoyées" value={snapshot.invitations_sent} /></div>
       <div className="grid gap-5 lg:grid-cols-2">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h4 className="font-black text-slate-950">Demandeurs actifs par quartier</h4><p className="mt-1 text-sm text-slate-500">Données agrégées des utilisateurs Nzela Jobs.</p><div className="mt-5 space-y-3">{locations.length === 0 ? <p className="text-sm text-slate-500">Aucune donnée géographique disponible.</p> : locations.slice(0, 20).map((item) => <div key={item.location_id}><div className="mb-1 flex justify-between gap-3 text-xs"><span className="font-bold text-slate-700">{item.quartier} · {item.arrondissement}</span><span className="font-black text-slate-950">{item.active_job_seekers}</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.max(3, (Number(item.active_job_seekers || 0) / maxLocation) * 100)}%` }} /></div></div>)}</div></section>
@@ -766,7 +766,7 @@ export default function TalentMarketplaceExperience() {
 
   if (!hasSupabaseConfig || loading || !schemaReady) return null;
 
-  const label = profile?.role === 'recruteur' ? 'Talents' : profile?.role === 'admin' ? 'Données emploi' : 'Ma recherche';
+  const label = profile?.role === 'recruteur' ? 'Talents' : profile?.role === 'admin' ? 'Données sur l’emploi' : 'Ma demande';
 
   return (
     <>

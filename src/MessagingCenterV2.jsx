@@ -374,7 +374,7 @@ export default function MessagingCenterV2() {
                     </span>
                     <span className="block truncate text-xs font-semibold text-slate-600">{thread.job_title}</span>
                     <span className="mt-1 flex items-center justify-between gap-2">
-                      <span className="truncate text-sm text-slate-500">{thread.last_message_preview || 'Conversation prête'}</span>
+                      <span className="truncate text-sm text-slate-500">{thread.last_message_preview || 'Aucun message pour le moment'}</span>
                       {thread.unreadCount > 0 && (
                         <span className="rounded-full bg-blue-700 px-2 py-0.5 text-[10px] font-bold text-white">
                           {thread.unreadCount}

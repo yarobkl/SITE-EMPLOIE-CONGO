@@ -21,7 +21,7 @@ function StatusPill({ status }) {
     rejected: ['Refusée', 'bg-red-50 text-red-700'],
     suspended: ['Suspendue', 'bg-slate-100 text-slate-700'],
   };
-  const [label, tone] = settings[status] || [status || 'Inconnu', 'bg-slate-100 text-slate-700'];
+  const [label, tone] = settings[status] || ['Statut inconnu', 'bg-slate-100 text-slate-700'];
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${tone}`}>{label}</span>;
 }
 
