@@ -167,6 +167,33 @@ export default function RealEstateExperienceStable() {
   const formDirty = useMemo(() => view === 'publish' && (JSON.stringify(form) !== baseline.current || files.length > 0), [files.length, form, view]);
 
   const performClose = useCallback(() => { setOpen(false); setView('browse'); setSelected(null); closeHistory(); }, []);
+  const closeAfterNativeSectionIsReady = useCallback((section) => new Promise((resolve) => {
+    let timeoutId = 0;
+    let closeFrame = 0;
+    let completed = false;
+
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      window.cancelAnimationFrame(closeFrame);
+      window.removeEventListener('nzela:platform-section-ready', onReady);
+    };
+    const finish = () => {
+      if (completed) return;
+      completed = true;
+      cleanup();
+      performClose();
+      closeFrame = window.requestAnimationFrame(resolve);
+    };
+    const onReady = (event) => {
+      if (event.detail?.section === section) finish();
+    };
+
+    window.addEventListener('nzela:platform-section-ready', onReady);
+    timeoutId = window.setTimeout(finish, 700);
+    window.dispatchEvent(new CustomEvent('nzela:prepare-platform-section', {
+      detail: { section },
+    }));
+  }), [performClose]);
   const askConfirm = useCallback((value) => setConfirm(value), []);
   const requestClose = useCallback(() => { if (formDirty) askConfirm({ title: 'Quitter la publication ?', body: 'Les informations non enregistrées seront perdues.', confirmLabel: 'Quitter', danger: true, action: performClose }); else performClose(); }, [askConfirm, formDirty, performClose]);
   useEffect(() => { requestCloseRef.current = requestClose; }, [requestClose]);
@@ -175,12 +202,13 @@ export default function RealEstateExperienceStable() {
     const section = normalizePlatformSection(destination);
     if (!section) return;
     const label = section === 'home' ? 'Accueil' : section === 'jobs' ? 'Offres' : 'Profil';
-    const action = () => {
-      window.dispatchEvent(new CustomEvent('nzela:prepare-platform-section', { detail: { section } }));
-      performClose();
-    };
-    if (formDirty) askConfirm({ title: `Aller vers ${label} ?`, body: 'La publication en cours ne sera pas enregistrée.', confirmLabel: 'Continuer', danger: true, action }); else action();
-  }, [askConfirm, formDirty, performClose]);
+    const action = () => closeAfterNativeSectionIsReady(section);
+    if (formDirty) {
+      askConfirm({ title: `Aller vers ${label} ?`, body: 'La publication en cours ne sera pas enregistrée.', confirmLabel: 'Continuer', danger: true, action });
+      return undefined;
+    }
+    return action();
+  }, [askConfirm, closeAfterNativeSectionIsReady, formDirty]);
 
   const runConfirm = useCallback(async () => { if (!confirm?.action || confirmBusy) return; setConfirmBusy(true); try { await confirm.action(); setConfirm(null); } finally { setConfirmBusy(false); } }, [confirm, confirmBusy]);
 

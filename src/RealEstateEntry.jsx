@@ -2,7 +2,14 @@ import { Suspense, lazy, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Building2, Loader2 } from 'lucide-react';
 
-const loadRealEstateExperience = () => import('./RealEstateExperienceStable.jsx');
+let realEstateExperiencePromise;
+
+const loadRealEstateExperience = () => {
+  if (!realEstateExperiencePromise) {
+    realEstateExperiencePromise = import('./RealEstateExperienceStable.jsx');
+  }
+  return realEstateExperiencePromise;
+};
 const RealEstateExperience = lazy(loadRealEstateExperience);
 
 function LoadingScreen() {
@@ -43,12 +50,11 @@ export default function RealEstateEntry() {
 
   useEffect(() => {
     const preload = () => loadRealEstateExperience().catch(() => {});
-    const idleId = 'requestIdleCallback' in window
-      ? window.requestIdleCallback(preload, { timeout: 1600 })
-      : window.setTimeout(preload, 700);
+    const frameId = window.requestAnimationFrame(preload);
+    window.addEventListener('nzela:prepare-immobilier', preload);
     return () => {
-      if ('cancelIdleCallback' in window) window.cancelIdleCallback(idleId);
-      else window.clearTimeout(idleId);
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener('nzela:prepare-immobilier', preload);
     };
   }, []);
 

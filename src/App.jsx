@@ -1397,6 +1397,9 @@ export default function App() {
   }, [mobileActiveSection]);
 
   useEffect(() => {
+    let firstReadyFrame = 0;
+    let secondReadyFrame = 0;
+
     const prepareNativeSection = (event) => {
       const target = event.detail?.section;
       if (!PLATFORM_PATHS[target]) return;
@@ -1408,10 +1411,27 @@ export default function App() {
       url.hash = 'immobilier';
       window.history.replaceState({ ...(window.history.state || {}), nzelaNavigation: true, screen: target }, '', url);
       setScreen(target);
+
+      // L'immobilier reste au-dessus pendant que la rubrique Jobs est préparée.
+      // Deux frames garantissent que sa largeur, sa hauteur et son scroll sont
+      // peints avant que le portail immobilier soit retiré.
+      window.cancelAnimationFrame(firstReadyFrame);
+      window.cancelAnimationFrame(secondReadyFrame);
+      firstReadyFrame = window.requestAnimationFrame(() => {
+        secondReadyFrame = window.requestAnimationFrame(() => {
+          window.dispatchEvent(new CustomEvent('nzela:platform-section-ready', {
+            detail: { section: target },
+          }));
+        });
+      });
     };
 
     window.addEventListener('nzela:prepare-platform-section', prepareNativeSection);
-    return () => window.removeEventListener('nzela:prepare-platform-section', prepareNativeSection);
+    return () => {
+      window.removeEventListener('nzela:prepare-platform-section', prepareNativeSection);
+      window.cancelAnimationFrame(firstReadyFrame);
+      window.cancelAnimationFrame(secondReadyFrame);
+    };
   }, []);
 
   const renderScreen = () => {
@@ -1465,6 +1485,11 @@ export default function App() {
         activeId={mobileActiveSection}
         disabled={!showMobileChrome}
         onNavigate={navigatePlatformSection}
+        onPrepareNavigate={(target) => {
+          if (target === 'immobilier') {
+            window.dispatchEvent(new CustomEvent('nzela:prepare-immobilier'));
+          }
+        }}
         showNavigation={showMobileChrome}
       >
         <main className="nz-platform-main soft-enter mx-auto max-w-6xl px-4 pb-28 pt-5 md:px-6 md:pb-12 md:pt-8">

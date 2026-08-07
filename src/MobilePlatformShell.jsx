@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { Briefcase, Building2, Home, User } from 'lucide-react';
 import './mobile-platform-shell.css';
 
@@ -73,9 +73,9 @@ export default function MobilePlatformShell({
   viewportClassName = '',
 }) {
   const activeIndex = SECTION_INDEX.get(activeId) ?? 0;
-  const [previewId, setPreviewId] = useState(null);
   const viewportRef = useRef(null);
   const railRef = useRef(null);
+  const previewNodesRef = useRef(new Map());
   const transitionTimerRef = useRef(0);
   const clickSuppressionTimerRef = useRef(0);
   const frameRef = useRef(0);
@@ -93,10 +93,6 @@ export default function MobilePlatformShell({
     suppressClick: false,
     captureElement: null,
   });
-
-  const previewIndex = useMemo(() => (
-    previewId ? SECTION_INDEX.get(previewId) : null
-  ), [previewId]);
 
   const clearTransitionTimer = () => {
     window.clearTimeout(transitionTimerRef.current);
@@ -126,18 +122,20 @@ export default function MobilePlatformShell({
     rail.classList.toggle('is-direct-manipulation', immediate);
   };
 
+  const setPreviewTarget = (targetId) => {
+    previewNodesRef.current.forEach((node, sectionId) => {
+      node.classList.toggle('is-target', sectionId === targetId);
+    });
+  };
+
   const setVisualPosition = (deltaX, targetId = gestureRef.current.targetId) => {
     const viewport = viewportRef.current;
     if (!viewport) return;
     const width = Math.max(viewport.getBoundingClientRect().width, 1);
     const safeDeltaX = clamp(deltaX, -width, width);
-    const targetIndex = targetId ? SECTION_INDEX.get(targetId) : null;
-    const direction = targetIndex == null ? 0 : Math.sign(targetIndex - activeIndex);
-    const progress = clamp(Math.abs(safeDeltaX) / width, 0, 1);
 
     viewport.style.setProperty('--nz-platform-page-x', `${safeDeltaX}px`);
-    viewport.style.setProperty('--nz-platform-preview-origin', `${direction * width}px`);
-    viewport.style.setProperty('--nz-platform-preview-opacity', String(clamp(progress * 1.35, 0, 1)));
+    setPreviewTarget(targetId);
     setIndicator(activeIndex + (-safeDeltaX / width), true);
   };
 
@@ -149,7 +147,7 @@ export default function MobilePlatformShell({
     setIndicator(activeIndex, !animate);
     if (!animate) {
       viewport.classList.remove('is-dragging', 'is-settling');
-      setPreviewId(null);
+      setPreviewTarget(null);
     }
   };
 
@@ -161,9 +159,8 @@ export default function MobilePlatformShell({
         viewport?.classList.remove('is-dragging', 'is-settling');
         if (viewport) {
           viewport.style.setProperty('--nz-platform-page-x', '0px');
-          viewport.style.setProperty('--nz-platform-preview-opacity', '0');
         }
-        setPreviewId(null);
+        setPreviewTarget(null);
         setIndicator(SECTION_INDEX.get(targetId) ?? activeIndex, true);
       });
     });
@@ -184,7 +181,6 @@ export default function MobilePlatformShell({
 
     viewport.classList.remove('is-dragging');
     viewport.classList.add('is-settling');
-    setPreviewId(targetId);
     gestureRef.current.targetId = targetId;
     window.cancelAnimationFrame(frameRef.current);
     frameRef.current = window.requestAnimationFrame(() => {
@@ -211,7 +207,6 @@ export default function MobilePlatformShell({
 
     clearTransitionTimer();
     resetVisuals(false);
-    setPreviewId(targetId);
     gestureRef.current.targetId = targetId;
     onPrepareNavigate?.(targetId);
     window.cancelAnimationFrame(frameRef.current);
@@ -305,7 +300,6 @@ export default function MobilePlatformShell({
 
     if (gesture.targetId !== nextTargetId) {
       gesture.targetId = nextTargetId;
-      setPreviewId(nextTargetId);
       if (nextTargetId) onPrepareNavigate?.(nextTargetId);
     }
     setVisualPosition(deltaX, nextTargetId);
@@ -351,7 +345,7 @@ export default function MobilePlatformShell({
     setIndicator(activeIndex);
     transitionTimerRef.current = window.setTimeout(() => {
       viewport?.classList.remove('is-settling');
-      setPreviewId(null);
+      setPreviewTarget(null);
       gesture.targetId = null;
     }, SWIPE_DURATION + 10);
 
@@ -366,7 +360,9 @@ export default function MobilePlatformShell({
     clearClickSuppression();
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // Une rubrique React remplace ses enfants alors que l'ancien rail est encore
+    // translateX(±100%). La remise à zéro avant la peinture évite une image vide.
     resetVisuals(false);
   }, [activeId]);
 
@@ -374,6 +370,7 @@ export default function MobilePlatformShell({
     clearTransitionTimer();
     clearClickSuppression();
     window.cancelAnimationFrame(frameRef.current);
+    setPreviewTarget(null);
     delete document.documentElement.dataset.nzPlatformSwiping;
   }, []);
 
@@ -389,11 +386,25 @@ export default function MobilePlatformShell({
         onLostPointerCapture={(event) => finishGesture(event, true)}
         onClickCapture={onClickCapture}
       >
-        {previewId && previewIndex != null && (
-          <div className="nz-platform-swipe-preview" aria-hidden="true" inert="">
-            <SectionPreview sectionId={previewId} />
-          </div>
-        )}
+        {PLATFORM_SECTIONS.map((section, index) => {
+          if (section.id === activeId) return null;
+          const direction = Math.sign(index - activeIndex) || 1;
+          return (
+            <div
+              key={section.id}
+              ref={(node) => {
+                if (node) previewNodesRef.current.set(section.id, node);
+                else previewNodesRef.current.delete(section.id);
+              }}
+              className="nz-platform-swipe-preview"
+              style={{ '--nz-platform-preview-origin': `${direction * 100}%` }}
+              aria-hidden="true"
+              inert=""
+            >
+              <SectionPreview sectionId={section.id} />
+            </div>
+          );
+        })}
         <div className="nz-platform-swipe-current">{children}</div>
       </div>
 
