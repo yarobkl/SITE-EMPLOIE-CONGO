@@ -225,6 +225,17 @@ function getApplicationStatus(application) {
   return { label: 'Candidature envoyée', tone: 'neutral' };
 }
 
+const LEGACY_REQUIREMENT_LABELS = {
+  'experience pertinente': 'Expérience pertinente',
+  disponibilite: 'Disponibilité',
+  motivation: 'Motivation',
+};
+
+function normalizeRequirement(value) {
+  const requirement = String(value || '').trim();
+  return LEGACY_REQUIREMENT_LABELS[requirement.toLocaleLowerCase('fr-FR')] || requirement;
+}
+
 function normalizeJob(row) {
   return {
     id: row.id,
@@ -236,7 +247,9 @@ function normalizeJob(row) {
     salary: row.salary_range || row.salary,
     sector: row.sector || 'Général',
     description: row.description,
-    requirements: row.requirements?.length ? row.requirements : ['Expérience pertinente', 'Disponibilité', 'Motivation'],
+    requirements: Array.isArray(row.requirements) && row.requirements.length
+      ? row.requirements.map(normalizeRequirement)
+      : ['Expérience pertinente', 'Disponibilité', 'Motivation'],
     status: row.status || 'published',
     createdAt: row.created_at,
   };
