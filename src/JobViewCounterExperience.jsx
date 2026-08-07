@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { hasSupabaseConfig, supabase } from './lib/supabase';
 import { getViewerKey } from './viewerIdentity';
+import { formatCount } from './editorial';
 
 function routeJobId() {
   return window.location.pathname.match(/^\/offres\/([0-9a-f-]{36})(?:-[^/]+)?(?:\/postuler)?$/i)?.[1] || '';
@@ -8,7 +9,7 @@ function routeJobId() {
 
 function statText(row) {
   const views = Number(row?.view_count || 0);
-  return `${views.toLocaleString('fr-FR')} consultation${views > 1 ? 's' : ''}`;
+  return formatCount(views, 'vue');
 }
 
 export default function JobViewCounterExperience() {

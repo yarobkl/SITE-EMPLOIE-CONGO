@@ -17,11 +17,11 @@ function formatDate(value) {
 function StatusPill({ status }) {
   const settings = {
     pending: ['En attente', 'bg-amber-50 text-amber-800'],
-    approved: ['Vérifié', 'bg-emerald-50 text-emerald-700'],
-    rejected: ['Refusé', 'bg-red-50 text-red-700'],
-    suspended: ['Suspendu', 'bg-slate-100 text-slate-700'],
+    approved: ['Approuvée', 'bg-emerald-50 text-emerald-700'],
+    rejected: ['Refusée', 'bg-red-50 text-red-700'],
+    suspended: ['Suspendue', 'bg-slate-100 text-slate-700'],
   };
-  const [label, tone] = settings[status] || [status || 'Inconnu', 'bg-slate-100 text-slate-700'];
+  const [label, tone] = settings[status] || ['Statut inconnu', 'bg-slate-100 text-slate-700'];
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${tone}`}>{label}</span>;
 }
 
@@ -43,7 +43,7 @@ export default function RecruiterVerificationAdmin() {
     setLoading(true);
     setError('');
     const { data, error: rpcError } = await supabase.rpc('admin_recruiter_verifications');
-    if (rpcError) setError('Les vérifications recruteurs ne peuvent pas être chargées.');
+    if (rpcError) setError('Les demandes de vérification des recruteurs ne peuvent pas être chargées.');
     else setItems(data || []);
     setLoading(false);
   }, [authorized]);
@@ -75,7 +75,7 @@ export default function RecruiterVerificationAdmin() {
     setError('');
     setSuccess('');
     const defaultNote = decision === 'approved'
-      ? 'Entreprise et identité recruteur vérifiées.'
+      ? 'Entreprise et identité du recruteur vérifiées.'
       : 'Merci de corriger ou compléter les informations de l’entreprise.';
     const note = window.prompt('Note adressée au recruteur :', defaultNote);
     if (note === null) return;
@@ -111,7 +111,7 @@ export default function RecruiterVerificationAdmin() {
           <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
             <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4 md:px-6">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Sécurité recruteurs</p>
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Sécurité des recruteurs</p>
                 <h1 className="mt-1 text-xl font-black text-slate-950 md:text-2xl">Vérifications des entreprises</h1>
               </div>
               <div className="flex gap-2">

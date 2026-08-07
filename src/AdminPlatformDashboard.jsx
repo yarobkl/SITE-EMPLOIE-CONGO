@@ -12,8 +12,47 @@ import {
   X,
 } from 'lucide-react';
 import { hasSupabaseConfig, supabase } from './lib/supabase';
+import { formatCount } from './editorial';
 
 const PRIMARY_EMAIL = 'eliebakala@gmail.com';
+
+const STATUS_LABELS = {
+  candidat: 'Candidat',
+  recruteur: 'Recruteur',
+  admin: 'Administrateur',
+  published: 'En ligne',
+  paused: 'En pause',
+  expired: 'Expirée',
+  closed: 'Fermée',
+  archived: 'Archivée',
+  draft: 'Brouillon',
+  suspended: 'Suspendue',
+  pending: 'Nouvelle',
+  reviewed: 'En cours',
+  accepted: 'Acceptée',
+  rejected: 'Refusée',
+  approved: 'Approuvée',
+};
+
+const ACTIVITY_LABELS = {
+  application_created: 'Candidature envoyée',
+  application_submitted: 'Candidature envoyée',
+  application_updated: 'Candidature mise à jour',
+  job_created: 'Offre créée',
+  job_published: 'Offre publiée',
+  job_updated: 'Offre mise à jour',
+  message_sent: 'Message envoyé',
+  profile_updated: 'Profil mis à jour',
+  user_signed_in: 'Connexion',
+};
+
+function statusLabel(status) {
+  return STATUS_LABELS[status] || 'Statut inconnu';
+}
+
+function activityLabel(eventType) {
+  return ACTIVITY_LABELS[eventType] || 'Activité de la plateforme';
+}
 
 const EMPTY_SNAPSHOT = {
   users_total: 0,
@@ -75,25 +114,26 @@ function MetricCard({ icon: Icon, label, value, note, live = false }) {
 }
 
 function StatusPill({ status }) {
-  const labels = {
-    candidat: 'Candidat',
-    recruteur: 'Recruteur',
-    admin: 'Administrateur',
-    published: 'En ligne',
-    closed: 'Fermée',
-    draft: 'Brouillon',
-  };
   const tone = {
     candidat: 'bg-blue-50 text-blue-700',
     recruteur: 'bg-violet-50 text-violet-700',
     admin: 'bg-slate-900 text-white',
     published: 'bg-emerald-50 text-emerald-700',
+    paused: 'bg-amber-50 text-amber-800',
+    expired: 'bg-orange-50 text-orange-700',
     closed: 'bg-slate-100 text-slate-700',
+    archived: 'bg-violet-50 text-violet-700',
     draft: 'bg-amber-50 text-amber-800',
+    suspended: 'bg-red-50 text-red-700',
+    pending: 'bg-blue-50 text-blue-700',
+    reviewed: 'bg-amber-50 text-amber-800',
+    accepted: 'bg-emerald-50 text-emerald-700',
+    rejected: 'bg-red-50 text-red-700',
+    approved: 'bg-emerald-50 text-emerald-700',
   };
   return (
     <span className={classNames('inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold', tone[status] || 'bg-slate-100 text-slate-700')}>
-      {labels[status] || status || 'Inconnu'}
+      {statusLabel(status)}
     </span>
   );
 }
@@ -260,17 +300,17 @@ export default function AdminPlatformDashboard() {
             )}
 
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <MetricCard icon={User} label="Utilisateurs inscrits" value={snapshot.users_total} note={`${snapshot.candidates_total} candidats · ${snapshot.recruiters_total} recruteurs`} />
-              <MetricCard icon={Eye} label="Connectés maintenant" value={snapshot.online_now} note={`${snapshot.active_today} actifs aujourd’hui`} live />
-              <MetricCard icon={ClipboardList} label="Candidatures totales" value={snapshot.applications_total} note={`${snapshot.applications_today} reçue(s) aujourd’hui`} live />
-              <MetricCard icon={Briefcase} label="Offres totales" value={snapshot.jobs_total} note={`${snapshot.jobs_published} en ligne · ${snapshot.jobs_closed} fermées`} />
+              <MetricCard icon={User} label="Utilisateurs inscrits" value={snapshot.users_total} note={`${formatCount(snapshot.candidates_total, 'candidat')} · ${formatCount(snapshot.recruiters_total, 'recruteur')}`} />
+              <MetricCard icon={Eye} label="Connectés maintenant" value={snapshot.online_now} note={`${formatCount(snapshot.active_today, 'utilisateur actif', 'utilisateurs actifs')} aujourd’hui`} live />
+              <MetricCard icon={ClipboardList} label="Candidatures totales" value={snapshot.applications_total} note={`${formatCount(snapshot.applications_today, 'candidature')} aujourd’hui`} live />
+              <MetricCard icon={Briefcase} label="Offres totales" value={snapshot.jobs_total} note={`${formatCount(snapshot.jobs_published, 'offre en ligne', 'offres en ligne')} · ${formatCount(snapshot.jobs_closed, 'offre fermée', 'offres fermées')}`} />
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <MetricCard icon={Building2} label="Entreprises" value={snapshot.companies_total} />
-              <MetricCard icon={Bell} label="Messages" value={snapshot.messages_total} note={`${snapshot.messages_unread} non lu(s)`} />
+              <MetricCard icon={Bell} label="Messages" value={snapshot.messages_total} note={`${formatCount(snapshot.messages_unread, 'message')} à lire`} />
               <MetricCard icon={Eye} label="Vues d’offres" value={snapshot.job_views_total} />
-              <MetricCard icon={Briefcase} label="Offres enregistrées" value={snapshot.favorites_total} />
+              <MetricCard icon={Briefcase} label="Offres favorites" value={snapshot.favorites_total} />
             </div>
 
             <div className="overflow-x-auto border-b border-slate-200">
@@ -351,7 +391,7 @@ export default function AdminPlatformDashboard() {
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     {activity.slice(0, 8).map((item, index) => (
                       <div key={`${item.entity_id}-${item.created_at}-${index}`} className="rounded-lg border border-slate-200 p-4">
-                        <p className="text-xs font-bold uppercase tracking-wide text-blue-700">{item.event_type}</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-blue-700">{activityLabel(item.event_type)}</p>
                         <p className="mt-1 font-bold text-slate-950">{item.actor}</p>
                         <p className="mt-1 text-sm leading-6 text-slate-600">{item.detail}</p>
                         <p className="mt-2 text-xs text-slate-400">{formatDate(item.created_at)}</p>
@@ -394,12 +434,12 @@ export default function AdminPlatformDashboard() {
 
                     {Array.isArray(item.applied_jobs) && item.applied_jobs.length > 0 && (
                       <div className="mt-4 rounded-lg bg-slate-50 p-4">
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Postes auxquels cette personne a candidaté</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Candidatures de cette personne</p>
                         <div className="mt-3 grid gap-2 md:grid-cols-2">
                           {item.applied_jobs.map((job) => (
                             <div key={job.application_id} className="rounded-lg border border-slate-200 bg-white p-3">
                               <p className="font-bold text-slate-950">{job.title}</p>
-                              <p className="mt-1 text-sm text-slate-500">{job.company || 'Entreprise'} · {job.status}</p>
+                              <p className="mt-1 text-sm text-slate-500">{job.company || 'Entreprise'} · {statusLabel(job.status)}</p>
                               <p className="mt-1 text-xs text-slate-400">{formatDate(job.applied_at)}</p>
                             </div>
                           ))}
@@ -408,7 +448,7 @@ export default function AdminPlatformDashboard() {
                     )}
                   </article>
                 ))}
-                {filteredUsers.length === 0 && <EmptyPanel title="Aucun utilisateur trouvé" body="Modifie la recherche pour afficher d’autres comptes." />}
+                {filteredUsers.length === 0 && <EmptyPanel title="Aucun utilisateur trouvé" body="Modifiez la recherche pour afficher d’autres comptes." />}
               </div>
             )}
 
@@ -432,7 +472,7 @@ export default function AdminPlatformDashboard() {
                     <p className="mt-4 text-xs text-slate-400">Créée le {formatDate(item.created_at)}</p>
                   </article>
                 ))}
-                {filteredJobs.length === 0 && <EmptyPanel title="Aucune offre trouvée" body="Modifie la recherche pour afficher d’autres offres." />}
+                {filteredJobs.length === 0 && <EmptyPanel title="Aucune offre trouvée" body="Modifiez la recherche pour afficher d’autres offres." />}
               </div>
             )}
 
@@ -442,7 +482,7 @@ export default function AdminPlatformDashboard() {
                   <article key={`${item.entity_id}-${item.created_at}-${index}`} className="rounded-xl border border-slate-200 bg-white p-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-blue-700">{item.event_type}</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-blue-700">{activityLabel(item.event_type)}</p>
                         <h2 className="mt-1 font-bold text-slate-950">{item.actor}</h2>
                         <p className="mt-1 text-sm leading-6 text-slate-600">{item.detail}</p>
                       </div>

@@ -28,7 +28,7 @@ function remainingLabel(item) {
 }
 
 function StatusPill({ status }) {
-  const meta = STATUS_META[status] || { label: status || 'Inconnu', className: 'bg-slate-100 text-slate-700' };
+  const meta = STATUS_META[status] || { label: 'Statut inconnu', className: 'bg-slate-100 text-slate-700' };
   return <span className={`rounded-full px-3 py-1 text-xs font-bold ${meta.className}`}>{meta.label}</span>;
 }
 
@@ -167,13 +167,13 @@ export default function OfferLifecycleCenter() {
 
         <section className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
           <p className="font-bold">Règle active sur Nzela Jobs</p>
-          <p>Une offre reste en ligne 30 jours. Une alerte est envoyée 5 jours avant son expiration. Elle est ensuite retirée du public, archivée après 6 mois et peut être republiée pour 30 jours sans perdre ses candidatures.</p>
+          <p>Une offre reste en ligne pendant 30 jours. Une alerte est envoyée 5 jours avant son expiration. Elle est ensuite retirée du public, archivée après 6 mois et peut être republiée pour 30 jours sans perdre ses candidatures.</p>
           <p className="mt-2">Les CV sont conservés 12 mois, puis supprimés automatiquement du stockage. L’historique de la candidature reste conservé.</p>
         </section>
 
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-3xl font-bold">{counts.published}</p><p className="mt-1 text-sm font-semibold text-slate-600">En ligne</p></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-3xl font-bold text-orange-700">{counts.expiring}</p><p className="mt-1 text-sm font-semibold text-slate-600">Expirent sous 5 jours</p></div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-3xl font-bold text-orange-700">{counts.expiring}</p><p className="mt-1 text-sm font-semibold text-slate-600">Expirent dans moins de 5 jours</p></div>
           <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-3xl font-bold">{counts.expired}</p><p className="mt-1 text-sm font-semibold text-slate-600">Expirées</p></div>
           <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-3xl font-bold">{counts.archived}</p><p className="mt-1 text-sm font-semibold text-slate-600">Archivées</p></div>
         </section>
@@ -246,7 +246,7 @@ export default function OfferLifecycleCenter() {
           <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
             <Briefcase className="mx-auto text-slate-400" size={34} />
             <h2 className="mt-3 font-bold text-slate-950">Aucune offre trouvée</h2>
-            <p className="mt-1 text-sm text-slate-500">Modifie le filtre ou la recherche.</p>
+            <p className="mt-1 text-sm text-slate-500">Modifiez le filtre ou la recherche.</p>
           </div>
         )}
       </main>

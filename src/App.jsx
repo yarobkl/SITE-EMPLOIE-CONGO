@@ -32,6 +32,7 @@ import {
   X,
 } from 'lucide-react';
 import { hasSupabaseConfig, supabase } from './lib/supabase';
+import { formatCount, formatSalary } from './editorial';
 import MobilePlatformShell from './MobilePlatformShell.jsx';
 import RealEstateExperienceStable from './RealEstateExperienceStable.jsx';
 
@@ -149,32 +150,32 @@ function cleanAuthParamsFromUrl() {
 }
 
 function friendlyAuthError(message) {
-  if (!message) return 'Connexion interrompue. Reessaie dans quelques instants.';
+  if (!message) return 'Connexion interrompue. Réessayez dans quelques instants.';
   const lower = message.toLowerCase();
   if (lower.includes('redirect') || lower.includes('callback')) {
-    return 'Connexion mal configuree. Verifie les URLs autorisees dans Supabase.';
+    return 'Connexion mal configurée. Vérifiez les adresses de redirection autorisées.';
   }
   if (lower.includes('provider') || lower.includes('disabled')) {
-    return 'Connexion externe non activee pour le moment.';
+    return 'La connexion externe n’est pas activée pour le moment.';
   }
-  return 'Connexion interrompue. Reessaie avec ton email.';
+  return 'Connexion interrompue. Réessayez avec votre adresse e-mail.';
 }
 
 function friendlyEmailAuthError(message) {
   const lower = (message || '').toLowerCase();
   if (lower.includes('invalid login') || lower.includes('invalid credentials')) {
-    return 'Email ou mot de passe incorrect.';
+    return 'Adresse e-mail ou mot de passe incorrect.';
   }
   if (lower.includes('email not confirmed')) {
-    return 'Confirme ton email avant de te connecter.';
+    return 'Confirmez votre adresse e-mail avant de vous connecter.';
   }
   if (lower.includes('already registered') || lower.includes('already been registered')) {
-    return 'Un compte existe deja avec cet email.';
+    return 'Un compte existe déjà avec cette adresse e-mail.';
   }
   if (lower.includes('password')) {
-    return 'Mot de passe invalide. Utilise au moins 6 caracteres.';
+    return 'Mot de passe invalide. Utilisez au moins 6 caractères.';
   }
-  return 'Connexion impossible pour le moment. Reessaie dans quelques instants.';
+  return 'Connexion impossible pour le moment. Réessayez dans quelques instants.';
 }
 
 function getInitials(profile) {
@@ -211,7 +212,7 @@ function formatRelativeDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Récemment publiée';
   const elapsedDays = Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
-  if (elapsedDays === 0) return "Publiée aujourd'hui";
+  if (elapsedDays === 0) return 'Publiée aujourd’hui';
   if (elapsedDays === 1) return 'Publiée il y a 1 jour';
   return `Publiée il y a ${elapsedDays} jours`;
 }
@@ -219,7 +220,7 @@ function formatRelativeDate(value) {
 function getApplicationStatus(application) {
   if (application.cvOpened) return { label: 'CV consulté', tone: 'success' };
   if (application.applicationOpened || application.status === 'reviewed') {
-    return { label: "En cours d'étude", tone: 'success' };
+    return { label: 'En cours d’étude', tone: 'success' };
   }
   return { label: 'Candidature envoyée', tone: 'neutral' };
 }
@@ -233,9 +234,9 @@ function normalizeJob(row) {
     loc: row.location || row.loc,
     type: row.contract_type || row.type,
     salary: row.salary_range || row.salary,
-    sector: row.sector || 'General',
+    sector: row.sector || 'Général',
     description: row.description,
-    requirements: row.requirements?.length ? row.requirements : ['Experience pertinente', 'Disponibilite', 'Motivation'],
+    requirements: row.requirements?.length ? row.requirements : ['Expérience pertinente', 'Disponibilité', 'Motivation'],
     status: row.status || 'published',
     createdAt: row.created_at,
   };
@@ -372,7 +373,7 @@ export default function App() {
       if (!active) return;
       cleanAuthParamsFromUrl();
       if (error) {
-        setToast('Session expiree. Reconnecte-toi pour continuer.');
+        setToast('Votre session a expiré. Reconnectez-vous pour continuer.');
         window.setTimeout(() => setToast(''), 3200);
       }
       setAuthUser(data.session?.user || null);
@@ -615,14 +616,14 @@ export default function App() {
           ));
       }
       if (error) {
-        notify('Favori non modifie. Reessaie dans quelques instants.');
+        notify('Le favori n’a pas été modifié. Réessayez dans quelques instants.');
         return;
       }
     }
     setSavedIds((current) => (
       exists ? current.filter((id) => id !== job.id) : [...current, job.id]
     ));
-    notify(exists ? 'Offre retiree des favoris' : 'Offre sauvegardee');
+    notify(exists ? 'Offre retirée des favoris.' : 'Offre ajoutée aux favoris.');
   };
 
   const handleAuth = async (event) => {
@@ -632,11 +633,11 @@ export default function App() {
       return;
     }
     if (serviceStatus !== 'online') {
-      notify(serviceStatus === 'checking' ? 'Verification du service en cours. Reessaie dans quelques secondes.' : 'Connexion temporairement indisponible. La production doit etre rebranchee.');
+      notify(serviceStatus === 'checking' ? 'Vérification du service en cours. Réessayez dans quelques secondes.' : 'Connexion temporairement indisponible. Réessayez un peu plus tard.');
       return;
     }
     if (loginPassword.length < 6) {
-      notify('Mot de passe: 6 caracteres minimum.');
+      notify('Mot de passe : 6 caractères minimum.');
       return;
     }
 
@@ -675,7 +676,7 @@ export default function App() {
         }
         setLoginPassword('');
         setScreen(loginRole === 'recruteur' ? 'recruiter' : 'profile');
-        notify(data.session ? 'Compte cree et connecte' : 'Compte cree. Verifie ton email pour te connecter.');
+        notify(data.session ? 'Compte créé et connecté.' : 'Compte créé. Vérifiez votre adresse e-mail pour vous connecter.');
         return;
       }
 
@@ -694,7 +695,7 @@ export default function App() {
         .maybeSingle();
       const signedRole = signedProfile?.role || data.user.user_metadata?.role || 'candidat';
       if (loginRole === 'recruteur' && signedRole !== 'recruteur') {
-        notify('Ce compte est candidat. Utilise un compte recruteur ou change le type dans ton profil.');
+        notify('Ce compte est un compte candidat. Utilisez un compte recruteur ou modifiez le type de compte dans votre profil.');
         setProfile((current) => ({ ...current, ...(signedProfile || {}), email: data.user.email || current.email }));
         setScreen('profile');
         return;
@@ -704,10 +705,10 @@ export default function App() {
       setLoginEmail('');
       setLoginPassword('');
       setScreen(loginRole === 'recruteur' ? 'recruiter' : 'profile');
-      notify('Connexion reussie');
+      notify('Connexion réussie.');
     } catch {
       setServiceStatus('degraded');
-      notify('Connexion temporairement indisponible. Reessaie apres verification du service.');
+      notify('Connexion temporairement indisponible. Réessayez après la vérification du service.');
     }
   };
 
@@ -751,32 +752,32 @@ export default function App() {
     setSavedIds([]);
     setNotifications([]);
     setScreen('home');
-    notify('Deconnexion reussie');
+    notify('Déconnexion réussie.');
   };
 
   const submitApplication = async (event) => {
     event.preventDefault();
     if (applicationSubmitting) return;
     if (!activeJob) {
-      notify('Selectionne une offre avant de postuler.');
+      notify('Sélectionnez une offre avant de postuler.');
       setScreen('jobs');
       return;
     }
     if (!applicationForm.cvName) {
-      notify(`Ajoute un CV PDF de ${MAX_CV_LABEL} maximum.`);
+      notify(`Ajoutez un CV au format PDF de ${MAX_CV_LABEL} maximum.`);
       return;
     }
     if (applicationForm.mode === 'tracked' && !isLoggedIn) {
-      notify('Connecte-toi pour suivre cette candidature.');
+      notify('Connectez-vous pour suivre cette candidature.');
       openLogin('candidat');
       return;
     }
     if (!hasSupabaseConfig || !supabase) {
-      notify('Candidature indisponible pour le moment. Reessaie dans quelques instants.');
+      notify('La candidature est indisponible pour le moment. Réessayez dans quelques instants.');
       return;
     }
     if (!isSupabaseId(activeJob.id)) {
-      notify("Cette offre n'est pas encore synchronisee. Recharge les offres puis reessaie.");
+      notify('Cette offre n’est pas encore synchronisée. Rechargez les offres, puis réessayez.');
       setScreen('jobs');
       return;
     }
@@ -784,7 +785,7 @@ export default function App() {
     const trackingNumber = createTrackingNumber();
     let cvPath = '';
     setApplicationSubmitting(true);
-    notify('Envoi de la candidature en cours...');
+    notify('Envoi de la candidature en cours…');
     try {
       if (applicationForm.cvFile) {
         const fileId = crypto?.randomUUID
@@ -801,7 +802,7 @@ export default function App() {
         if (!uploadError) {
           cvPath = filePath;
         } else {
-          notify("Le CV n'a pas pu etre envoye. Reessaie avant d'envoyer la candidature.");
+          notify('Le CV n’a pas pu être envoyé. Réessayez avant d’envoyer la candidature.');
           return;
         }
       }
@@ -849,7 +850,7 @@ export default function App() {
           .select('id,job_id,candidate_id,nom,email,phone,message,cv_url,cv_name,cv_size,tracking_enabled,tracking_number,application_opened,application_seen_at,cv_opened,cv_opened_at,status,created_at,jobs(title,companies(name))')
           .single();
         if (error || !data) {
-          notify(`Candidature non envoyee: ${error?.message || 'base indisponible'}`);
+          notify(`Candidature non envoyée : ${error?.message || 'service indisponible'}`);
           return;
         }
         application = normalizeApplication(data);
@@ -857,15 +858,15 @@ export default function App() {
       } else {
         const { error } = await supabase.from('applications').insert(applicationPayload);
         if (error) {
-          notify(`Candidature non envoyee: ${error.message || 'base indisponible'}`);
+          notify(`Candidature non envoyée : ${error.message || 'service indisponible'}`);
           return;
         }
       }
       setApplicationForm(emptyApplication);
       setScreen(trackingEnabled ? 'profile' : 'jobs');
-      notify(`Candidature envoyee. Reference ${trackingNumber}`);
+      notify(`Candidature envoyée. Référence : ${trackingNumber}`);
     } catch (error) {
-      notify(`Candidature non envoyee: ${error?.message || 'service indisponible'}`);
+      notify(`Candidature non envoyée : ${error?.message || 'service indisponible'}`);
     } finally {
       setApplicationSubmitting(false);
     }
@@ -900,7 +901,7 @@ export default function App() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      notify('Telechargement du CV lance.');
+      notify('Téléchargement du CV lancé.');
       return true;
     }
 
@@ -917,7 +918,7 @@ export default function App() {
     if (!currentApplication) return;
 
     if (shouldOpenCv) {
-      notify('Ouverture du CV en cours...');
+      notify('Ouverture du CV en cours…');
       const opened = await openCvFile(currentApplication, 'open');
       if (!opened) return;
     }
@@ -944,7 +945,7 @@ export default function App() {
         .select('id')
         .maybeSingle();
       if (error || !data) {
-        notify("L'action n'a pas ete enregistree. Reessaie.");
+        notify('L’action n’a pas été enregistrée. Réessayez.');
         return;
       }
       setApplications((current) => current.map(updateItem));
@@ -952,10 +953,10 @@ export default function App() {
     }
 
     if (currentApplication.trackingEnabled && !wasAlreadyOpened) {
-      const title = field === 'cvOpened' ? 'CV ouvert' : 'Demande consultee';
+      const title = field === 'cvOpened' ? 'CV consulté' : 'Candidature consultée';
       notify(title);
     } else if (!currentApplication.trackingEnabled) {
-      notify('Action recruteur enregistree, pas de notification pour candidature rapide.');
+      notify('Action enregistrée. Aucune notification n’est envoyée pour une candidature sans suivi.');
     }
 
   };
@@ -963,7 +964,7 @@ export default function App() {
   const downloadApplicationCv = async (applicationId) => {
     const currentApplication = [...recruiterApplications, ...applications].find((item) => item.id === applicationId);
     if (!currentApplication) return;
-    notify('Preparation du telechargement du CV...');
+    notify('Préparation du téléchargement du CV…');
     const downloaded = await openCvFile(currentApplication, 'download');
     if (downloaded) await markApplicationActivity(applicationId, 'cvOpened');
   };
@@ -986,24 +987,24 @@ export default function App() {
     event.preventDefault();
     if (jobFormSubmitting) return;
     if (!isLoggedIn) {
-      notify('Connecte-toi pour publier une offre.');
+      notify('Connectez-vous pour publier une offre.');
       openLogin('recruteur');
       return;
     }
     if (!['recruteur', 'admin'].includes(profile.role)) {
-      notify('Active le mode recruteur dans ton profil.');
+      notify('Activez le mode recruteur dans votre profil.');
       setScreen('profile');
       return;
     }
     if (!hasSupabaseConfig || !supabase || !authUser) {
-      notify("Publication indisponible pour l'instant.");
+      notify('Publication indisponible pour l’instant.');
       return;
     }
     setJobFormSubmitting(true);
-    notify("Publication de l'offre en cours...");
+    notify('Publication de l’offre en cours…');
     try {
       const nextJob = {
-        requirements: ['Experience pertinente', 'Disponibilite', 'Motivation'],
+        requirements: ['Expérience pertinente', 'Disponibilité', 'Motivation'],
         status: 'published',
         ...jobForm,
       };
@@ -1015,7 +1016,7 @@ export default function App() {
         .limit(1)
         .maybeSingle();
       if (companyError) {
-        notify(`Entreprise non verifiee: ${companyError.message || 'base indisponible'}`);
+        notify(`Entreprise non vérifiée : ${companyError.message || 'service indisponible'}`);
         return;
       }
       if (!company) {
@@ -1033,7 +1034,7 @@ export default function App() {
         companyError = companyResult.error;
       }
       if (companyError || !company?.id) {
-        notify(`Entreprise non creee: ${companyError?.message || 'base indisponible'}`);
+        notify(`Entreprise non créée : ${companyError?.message || 'service indisponible'}`);
         return;
       }
 
@@ -1053,20 +1054,20 @@ export default function App() {
         .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,created_at,companies(name)')
         .single();
       if (jobError || !savedJob) {
-        notify(`Offre non publiee: ${jobError?.message || 'base indisponible'}`);
+        notify(`Offre non publiée : ${jobError?.message || 'service indisponible'}`);
         return;
       }
       const publishedJob = normalizeJob(savedJob);
       syncJobCollections(publishedJob);
       setJobForm(emptyJob);
       setNotifications((current) => [
-        { id: Date.now(), title: 'Offre publiee', body: `${publishedJob.role} est maintenant visible`, read: false },
+        { id: Date.now(), title: 'Offre publiée', body: `${publishedJob.role} est maintenant visible.`, read: false },
         ...current,
       ]);
       setScreen('recruiter');
-      notify('Offre publiee');
+      notify('Offre publiée.');
     } catch (error) {
-      notify(`Offre non publiee: ${error?.message || 'service indisponible'}`);
+      notify(`Offre non publiée : ${error?.message || 'service indisponible'}`);
     } finally {
       setJobFormSubmitting(false);
     }
@@ -1091,11 +1092,11 @@ export default function App() {
     event.preventDefault();
     if (!editingJob || jobFormSubmitting) return;
     if (!hasSupabaseConfig || !supabase || !isSupabaseId(editingJob.id)) {
-      notify("Modification indisponible pour l'instant.");
+      notify('Modification indisponible pour l’instant.');
       return;
     }
     setJobFormSubmitting(true);
-    notify("Enregistrement de l'offre en cours...");
+    notify('Enregistrement de l’offre en cours…');
     try {
       if (editingJob.companyId) {
         const { data: savedCompany, error: companyError } = await supabase
@@ -1109,7 +1110,7 @@ export default function App() {
           .select('id')
           .maybeSingle();
         if (companyError || !savedCompany) {
-          notify(`Entreprise non modifiee: ${companyError?.message || 'acces refuse'}`);
+          notify(`Entreprise non modifiée : ${companyError?.message || 'accès refusé'}`);
           return;
         }
       }
@@ -1128,16 +1129,16 @@ export default function App() {
         .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,created_at,companies(name)')
         .maybeSingle();
       if (error || !savedJob) {
-        notify(`Modification impossible: ${error?.message || 'offre introuvable ou acces refuse'}`);
+        notify(`Modification impossible : ${error?.message || 'offre introuvable ou accès refusé'}`);
         return;
       }
       syncJobCollections(normalizeJob(savedJob));
       setEditingJob(null);
       setJobForm(emptyJob);
       setScreen('recruiter');
-      notify('Offre modifiee');
+      notify('Offre modifiée.');
     } catch (error) {
-      notify(`Modification impossible: ${error?.message || 'service indisponible'}`);
+      notify(`Modification impossible : ${error?.message || 'service indisponible'}`);
     } finally {
       setJobFormSubmitting(false);
     }
@@ -1147,7 +1148,7 @@ export default function App() {
     if (jobAction || !hasSupabaseConfig || !supabase || !isSupabaseId(job.id)) return;
     const actionKey = `status:${job.id}`;
     setJobAction(actionKey);
-    notify(nextStatus === 'published' ? "Remise en ligne de l'offre..." : "Fermeture de l'offre...");
+    notify(nextStatus === 'published' ? 'Remise en ligne de l’offre…' : 'Fermeture de l’offre…');
     try {
       const { data: savedJob, error } = await supabase
         .from('jobs')
@@ -1156,13 +1157,13 @@ export default function App() {
         .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,created_at,companies(name)')
         .maybeSingle();
       if (error || !savedJob) {
-        notify(`Statut non modifie: ${error?.message || 'offre introuvable ou acces refuse'}`);
+        notify(`Statut non modifié : ${error?.message || 'offre introuvable ou accès refusé'}`);
         return;
       }
       syncJobCollections(normalizeJob(savedJob));
-      notify(nextStatus === 'published' ? 'Offre remise en ligne' : 'Offre fermee');
+      notify(nextStatus === 'published' ? 'Offre remise en ligne.' : 'Offre fermée.');
     } catch (error) {
-      notify(`Statut non modifie: ${error?.message || 'service indisponible'}`);
+      notify(`Statut non modifié : ${error?.message || 'service indisponible'}`);
     } finally {
       setJobAction('');
     }
@@ -1172,18 +1173,18 @@ export default function App() {
     if (jobAction) return;
     const applicationCount = recruiterApplications.filter((item) => item.jobId === job.id).length;
     if (applicationCount > 0) {
-      notify("Cette offre a des candidatures. Ferme-la pour conserver les dossiers recus.");
+      notify('Cette offre contient des candidatures. Fermez-la pour conserver les candidatures reçues.');
       return;
     }
-    const confirmed = window.confirm(`Supprimer definitivement l'offre "${job.role}" ? Cette action est irreversible.`);
+    const confirmed = window.confirm(`Supprimer définitivement l’offre « ${job.role} » ? Cette action est irréversible.`);
     if (!confirmed) return;
     if (!hasSupabaseConfig || !supabase || !isSupabaseId(job.id)) {
-      notify("Suppression indisponible pour l'instant.");
+      notify('Suppression indisponible pour l’instant.');
       return;
     }
     const actionKey = `delete:${job.id}`;
     setJobAction(actionKey);
-    notify("Suppression de l'offre en cours...");
+    notify("Suppression de l’offre en cours…");
     try {
       const { data: deletedJob, error } = await supabase
         .from('jobs')
@@ -1192,7 +1193,7 @@ export default function App() {
         .select('id')
         .maybeSingle();
       if (error || !deletedJob) {
-        notify(`Suppression impossible: ${error?.message || 'offre introuvable, non autorisee ou liee a des candidatures'}`);
+        notify(`Suppression impossible : ${error?.message || 'offre introuvable, non autorisée ou liée à des candidatures'}`);
         return;
       }
       const removeJob = (item) => item.id !== job.id;
@@ -1205,9 +1206,9 @@ export default function App() {
         return next;
       });
       setSelectedJob((current) => (current?.id === job.id ? null : current));
-      notify('Offre supprimee');
+      notify('Offre supprimée.');
     } catch (error) {
-      notify(`Suppression impossible: ${error?.message || 'service indisponible'}`);
+      notify(`Suppression impossible : ${error?.message || 'service indisponible'}`);
     } finally {
       setJobAction('');
     }
@@ -1216,16 +1217,16 @@ export default function App() {
   const requestJobBoost = async (job) => {
     if (jobAction) return;
     if (!hasSupabaseConfig || !supabase || !authUser) {
-      notify('Connecte-toi comme recruteur pour demander un boost.');
+      notify('Connectez-vous comme recruteur pour promouvoir une offre.');
       return;
     }
     if (!isSupabaseId(job.id) || !job.companyId) {
-      notify("Cette offre doit etre synchronisee avant d'activer un boost.");
+      notify('Cette offre doit être synchronisée avant d’être promue.');
       return;
     }
     const actionKey = `boost:${job.id}`;
     setJobAction(actionKey);
-    notify('Demande de boost en cours...');
+    notify('Demande de mise en avant en cours…');
     try {
       const { data, error } = await supabase
         .from('boost_requests')
@@ -1234,17 +1235,17 @@ export default function App() {
           company_id: job.companyId,
           recruiter_id: authUser.id,
           plan: 'standard',
-          message: `Demande de boost pour ${job.role}`,
+          message: `Demande de mise en avant pour ${job.role}`,
           status: 'pending',
         })
         .select('id,job_id,company_id,recruiter_id,plan,message,status,created_at,jobs(title,companies(name)),companies(name)')
         .single();
       if (error || !data) {
-        notify(`Demande de boost non envoyee: ${error?.message || 'base indisponible'}`);
+        notify(`Demande de mise en avant non envoyée : ${error?.message || 'service indisponible'}`);
         return;
       }
       setBoostRequests((current) => [normalizeBoostRequest(data), ...current]);
-      notify('Demande de boost envoyee a l admin.');
+      notify('Demande de mise en avant envoyée à l’administrateur.');
     } finally {
       setJobAction('');
     }
@@ -1252,7 +1253,7 @@ export default function App() {
 
   const reviewBoostRequest = async (requestId, status) => {
     if (!hasSupabaseConfig || !supabase || profile.role !== 'admin') {
-      notify('Action reservee a l admin.');
+      notify('Cette action est réservée à l’administrateur.');
       return;
     }
     const { data: reviewedRequest, error } = await supabase
@@ -1262,18 +1263,18 @@ export default function App() {
       .select('id')
       .maybeSingle();
     if (error || !reviewedRequest) {
-      notify(`Demande non mise a jour: ${error?.message || 'demande introuvable ou acces refuse'}`);
+      notify(`Demande non mise à jour : ${error?.message || 'demande introuvable ou accès refusé'}`);
       return;
     }
     setBoostRequests((current) => current.map((item) => (item.id === requestId ? { ...item, status } : item)));
-    notify(status === 'approved' ? 'Boost valide' : 'Boost rejete');
+    notify(status === 'approved' ? 'Mise en avant validée.' : 'Mise en avant refusée.');
   };
 
   const updateProfile = async (event) => {
     event.preventDefault();
     if (profileSubmitting) return;
     if (!hasSupabaseConfig || !supabase || !authUser) {
-      notify('Connecte-toi pour enregistrer ton profil.');
+      notify('Connectez-vous pour enregistrer votre profil.');
       return;
     }
     setProfileSubmitting(true);
@@ -1291,13 +1292,13 @@ export default function App() {
         .select('nom,prenom,email,phone,city,role,title')
         .single();
       if (error || !savedProfile) {
-        notify(`Profil non enregistre: ${error?.message || 'base indisponible'}`);
+        notify(`Profil non enregistré : ${error?.message || 'service indisponible'}`);
         return;
       }
       setProfile((current) => ({ ...current, ...savedProfile }));
-      notify('Profil mis a jour');
+      notify('Profil mis à jour.');
     } catch (error) {
-      notify(`Profil non enregistre: ${error?.message || 'service indisponible'}`);
+      notify(`Profil non enregistré : ${error?.message || 'service indisponible'}`);
     } finally {
       setProfileSubmitting(false);
     }
@@ -1316,12 +1317,12 @@ export default function App() {
           .eq('user_id', authUser.id)
           .eq('read', false);
         if (error) {
-          notify(`Notifications non mises a jour: ${error.message || 'base indisponible'}`);
+          notify(`Notifications non mises à jour : ${error.message || 'service indisponible'}`);
           return;
         }
       }
       setNotifications((items) => items.map((item) => ({ ...item, read: true })));
-      notify('Notifications marquees comme lues');
+      notify('Notifications marquées comme lues.');
     } finally {
       setNotificationsUpdating(false);
     }
@@ -1333,7 +1334,7 @@ export default function App() {
       return;
     }
     if (profile.role !== 'recruteur' && !hasPublishedOffer) {
-      notify("Ton compte candidat n'a pas encore d'espace recruteur actif.");
+      notify('Votre compte candidat ne dispose pas encore d’un espace recruteur actif.');
       setScreen('profile');
       return;
     }
@@ -1425,7 +1426,7 @@ export default function App() {
     <div className="nz-platform-shell min-h-screen bg-white text-slate-950">
       <header className={classNames('nz-platform-header sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur', showMobileChrome ? 'block' : 'hidden md:block')}>
         <div className="mx-auto flex h-[68px] max-w-6xl items-center justify-between px-4 md:px-6">
-          <button onClick={() => commitPlatformSection('home')} aria-label="Retour à l'accueil" className="smooth-button flex min-h-11 items-center rounded-md px-1 text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <button onClick={() => commitPlatformSection('home')} aria-label="Retour à l’accueil" className="smooth-button flex min-h-11 items-center rounded-md px-1 text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
             <BrandLogo />
           </button>
 
@@ -1433,7 +1434,6 @@ export default function App() {
             <button onClick={() => commitPlatformSection('jobs')} className="header-link">Trouver un emploi</button>
             <button onClick={() => commitPlatformSection('immobilier')} className="header-link" aria-label="Immobilier">Immobilier</button>
             <button onClick={() => setScreen('saved')} className="header-link">Favoris</button>
-            <button onClick={openRecruiterSpace} className="header-link">Espace recruteur</button>
           </nav>
 
           <div className="flex items-center gap-0.5">
@@ -1471,8 +1471,11 @@ export default function App() {
 }
 
 function IconButton({ label, children, onClick, badge }) {
+  const accessibleLabel = label === 'Notifications' && badge > 0
+    ? formatCount(badge, 'notification non lue', 'notifications non lues')
+    : label;
   return (
-    <button onClick={onClick} aria-label={badge > 0 ? `${label}, ${badge} non lue${badge > 1 ? 's' : ''}` : label} className="smooth-button relative flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+    <button onClick={onClick} aria-label={accessibleLabel} className="smooth-button relative flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
       {children}
       {badge > 0 && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-blue-700 ring-2 ring-white" />}
     </button>
@@ -1484,7 +1487,7 @@ function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, clearSear
     <div className="space-y-9 md:space-y-12">
       <section className="mx-auto max-w-4xl py-3 md:py-12">
         <div className="max-w-2xl">
-          <p className="mb-3 text-sm font-semibold text-blue-700">{totalJobs > 0 ? `${totalJobs} offres disponibles au Congo` : 'La plateforme emploi du Congo'}</p>
+          <p className="mb-3 text-sm font-semibold text-blue-700">{totalJobs > 0 ? `${formatCount(totalJobs, 'offre disponible', 'offres disponibles')} au Congo` : 'La plateforme d’emploi du Congo'}</p>
           <h1 className="text-[2rem] font-bold leading-[1.15] tracking-[-0.035em] text-slate-950 sm:text-4xl md:text-5xl">
             Trouvez l’emploi qui vous correspond
           </h1>
@@ -1524,12 +1527,13 @@ function HomeScreen({ jobs, totalJobs, query, setQuery, city, setCity, clearSear
         )}
       </section>
 
-      <section className="flex flex-col gap-4 border-t border-slate-200 py-7 sm:flex-row sm:items-center sm:justify-between">
+      <section className="flex flex-col gap-4 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between" aria-label="Information pour les recruteurs">
         <div>
-          <h2 className="text-lg font-bold text-slate-950">Vous recrutez au Congo ?</h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600">Publiez une offre et gérez les candidatures depuis votre espace.</p>
+          <span className="mb-2 inline-flex rounded-full bg-white px-2.5 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-200">Espace entreprises</span>
+          <h2 className="text-lg font-bold text-slate-950">Vous êtes recruteur au Congo ?</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600">Publiez votre offre d’emploi et recevez directement les candidatures sur Nzela Jobs.</p>
         </div>
-        <button onClick={() => openLogin('recruteur')} className="secondary-button shrink-0">
+        <button onClick={() => openLogin('recruteur')} className="primary-button shrink-0">
           Publier une offre
         </button>
       </section>
@@ -1541,8 +1545,8 @@ function JobsScreen({ jobs, query, setQuery, city, setCity, contract, setContrac
   return (
     <div className="mx-auto max-w-4xl space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <PageHeader title="Offres d’emploi" subtitle="Trouvez votre prochaine opportunité" />
-        <button onClick={() => setScreen('saved')} className="secondary-icon-button" aria-label="Voir mes offres sauvegardées">
+        <PageHeader title="Offres d’emploi" subtitle="Trouvez votre prochaine opportunité." />
+        <button onClick={() => setScreen('saved')} className="secondary-icon-button" aria-label="Voir mes offres favorites">
           <Bookmark size={20} />
         </button>
       </div>
@@ -1581,7 +1585,7 @@ function JobsScreen({ jobs, query, setQuery, city, setCity, contract, setContrac
       </div>
 
       <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-        <p className="text-sm font-bold text-slate-950">{jobs.length} offre{jobs.length === 1 ? '' : 's'}</p>
+        <p className="text-sm font-bold text-slate-950">{formatCount(jobs.length, 'offre')}</p>
         {(query || city !== 'Toutes' || contract !== 'Tous') && (
           <button type="button" onClick={clearSearch} className="text-sm font-semibold text-blue-700">Réinitialiser</button>
         )}
@@ -1610,10 +1614,10 @@ function JobScreen({ job, saved, toggleSave, setScreen, notify }) {
         await navigator.share(shareData);
       } else {
         await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-        notify('Lien de l’offre copié');
+        notify('Lien de l’offre copié.');
       }
     } catch (error) {
-      if (error?.name !== 'AbortError') notify('Partage indisponible pour le moment');
+      if (error?.name !== 'AbortError') notify('Partage indisponible pour le moment.');
     }
   };
 
@@ -1622,7 +1626,7 @@ function JobScreen({ job, saved, toggleSave, setScreen, notify }) {
       <div className="mb-5 flex items-center justify-between">
         <BackButton onClick={() => setScreen('jobs')} label="Retour aux offres" />
         <div className="flex gap-1">
-          <button onClick={() => toggleSave(job)} aria-label={saved ? 'Retirer des favoris' : 'Sauvegarder cette offre'} className={classNames('secondary-icon-button', saved ? 'border-blue-200 bg-blue-50 text-blue-700' : '')}>
+          <button onClick={() => toggleSave(job)} aria-label={saved ? 'Retirer des favoris' : 'Ajouter aux favoris'} className={classNames('secondary-icon-button', saved ? 'border-blue-200 bg-blue-50 text-blue-700' : '')}>
             <Bookmark size={20} fill={saved ? 'currentColor' : 'none'} />
           </button>
           <button onClick={shareJob} aria-label="Partager cette offre" className="secondary-icon-button">
@@ -1641,7 +1645,7 @@ function JobScreen({ job, saved, toggleSave, setScreen, notify }) {
             <span className="neutral-chip">{job.sector || 'Tous secteurs'}</span>
           </div>
           <p className="mt-5 flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <Briefcase size={17} /> {job.salary || 'Salaire à discuter'}
+            <Briefcase size={17} /> {formatSalary(job.salary)}
           </p>
         </header>
 
@@ -1668,7 +1672,7 @@ function JobScreen({ job, saved, toggleSave, setScreen, notify }) {
           <button onClick={() => setScreen('apply')} className="primary-button flex-1">
             Postuler
           </button>
-          <button onClick={() => toggleSave(job)} aria-label={saved ? 'Retirer des favoris' : 'Sauvegarder'} className={classNames('secondary-icon-button h-12 w-14', saved ? 'border-blue-200 bg-blue-50 text-blue-700' : '')}>
+          <button onClick={() => toggleSave(job)} aria-label={saved ? 'Retirer des favoris' : 'Ajouter aux favoris'} className={classNames('secondary-icon-button h-12 w-14', saved ? 'border-blue-200 bg-blue-50 text-blue-700' : '')}>
             <Bookmark size={21} fill={saved ? 'currentColor' : 'none'} />
           </button>
         </div>
@@ -1686,7 +1690,7 @@ function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScr
       notifyInvalid();
       return;
     }
-    if (!form.cvName) notify(`Ajoute un CV PDF de ${MAX_CV_LABEL} maximum.`);
+    if (!form.cvName) notify(`Ajoutez un CV au format PDF de ${MAX_CV_LABEL} maximum.`);
   };
   const fillFromProfile = () => {
     setForm({
@@ -1695,7 +1699,7 @@ function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScr
       email: profile.email,
       phone: profile.phone,
     });
-    notify('Profil ajouté à la candidature');
+    notify('Profil ajouté à la candidature.');
   };
   const handleCvChange = (event) => {
     const file = event.target.files?.[0];
@@ -1713,7 +1717,7 @@ function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScr
       return;
     }
     setForm({ ...form, cvName: file.name, cvSize: file.size, cvType: file.type || 'application/pdf', cvFile: file });
-    notify('CV PDF ajouté');
+    notify('CV PDF ajouté.');
   };
 
   return (
@@ -1732,9 +1736,9 @@ function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScr
           className={classNames('rounded-xl border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-600', trackingEnabled ? 'border-blue-700 bg-blue-50' : 'border-slate-200 bg-white')}
         >
           <div className="flex items-center gap-2 font-bold text-slate-950">
-            <ShieldCheck size={19} className="text-blue-700" /> Candidature suivie
+            <ShieldCheck size={19} className="text-blue-700" /> Candidature avec suivi
           </div>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Connexion requise. Vous voyez si l’employeur ouvre votre demande ou votre CV.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Connexion requise. Vous pouvez vérifier si le recruteur consulte votre candidature ou votre CV.</p>
         </button>
         <button
           type="button"
@@ -1742,9 +1746,9 @@ function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScr
           className={classNames('rounded-xl border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-600', !trackingEnabled ? 'border-blue-700 bg-blue-50' : 'border-slate-200 bg-white')}
         >
           <div className="flex items-center gap-2 font-bold text-slate-950">
-            <Send size={19} className="text-blue-700" /> Candidature rapide
+            <Send size={19} className="text-blue-700" /> Candidature sans suivi
           </div>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Votre CV est reçu par le recruteur, sans suivi en temps réel du dossier.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Votre CV est reçu par le recruteur, sans suivi en temps réel de la candidature.</p>
         </button>
       </div>
       {trackingEnabled && !isLoggedIn && (
@@ -1761,13 +1765,13 @@ function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScr
             Utiliser mon profil
           </button>
         )}
-        <TextField label="Nom complet" value={form.nom} onChange={(nom) => setForm({ ...form, nom })} required placeholder="Ex: Grace Moungala" />
-        <TextField label="Email" type="email" value={form.email} onChange={(email) => setForm({ ...form, email })} required placeholder="nom@email.com" />
-        <TextField label="Telephone" type="tel" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} required placeholder="+242 06 ..." />
+        <TextField label="Nom complet" value={form.nom} onChange={(nom) => setForm({ ...form, nom })} required placeholder="Ex. Grace Moungala" />
+        <TextField label="Adresse e-mail" type="email" value={form.email} onChange={(email) => setForm({ ...form, email })} required placeholder="nom@exemple.com" />
+        <TextField label="Téléphone" type="tel" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} required placeholder="Ex. +242 06 000 00 00" />
         <TextArea label="Message au recruteur" value={form.message} onChange={(message) => setForm({ ...form, message })} placeholder="Disponibilité, expérience, motivation…" />
         <CvUpload cvName={form.cvName} cvSize={form.cvSize} onChange={handleCvChange} />
         <button type="submit" onClick={notifySubmitBlocker} disabled={submitting} className="primary-button sticky bottom-3 w-full md:static">
-          {submitting ? 'Envoi en cours...' : trackingEnabled ? 'Envoyer et suivre' : 'Envoyer rapidement'} <Send size={18} />
+          {submitting ? 'Envoi en cours…' : 'Envoyer la candidature'} <Send size={18} />
         </button>
       </form>
     </div>
@@ -1777,11 +1781,11 @@ function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScr
 function SavedScreen({ jobs, openJob }) {
   return (
     <div className="mx-auto max-w-4xl space-y-5">
-      <PageHeader title="Offres sauvegardées" subtitle={`${jobs.length} offre${jobs.length === 1 ? '' : 's'} enregistrée${jobs.length === 1 ? '' : 's'}`} />
+      <PageHeader title="Mes offres favorites" subtitle={formatCount(jobs.length, 'offre favorite', 'offres favorites')} />
       <div className="grid gap-3">
         {jobs.map((job) => <JobCard key={job.id} job={job} onClick={() => openJob(job)} />)}
       </div>
-      {jobs.length === 0 && <EmptyState title="Aucun favori" body="Sauvegardez les offres intéressantes pour les retrouver ici." />}
+      {jobs.length === 0 && <EmptyState title="Aucune offre favorite" body="Ajoutez des offres à vos favoris pour les retrouver ici." />}
     </div>
   );
 }
@@ -1794,11 +1798,11 @@ function TrackingScreen({ applications, setScreen, openLogin, isLoggedIn, authLo
   if (!isLoggedIn && !authLoading) {
     return (
       <div className="mx-auto max-w-3xl space-y-5">
-        <PageHeader title="Mes candidatures" subtitle="Suivez chaque étape depuis votre espace candidat" />
+        <PageHeader title="Mes candidatures" subtitle="Suivez chaque étape depuis votre espace candidat." />
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="text-lg font-bold text-slate-950">Connectez-vous pour activer le suivi</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">Vous pourrez voir quand une candidature ou un CV est consulté par le recruteur.</p>
-          <button onClick={() => openLogin('candidat')} className="primary-button mt-5 w-full sm:w-auto">Connexion candidat</button>
+          <button onClick={() => openLogin('candidat')} className="primary-button mt-5 w-full sm:w-auto">Se connecter</button>
         </div>
       </div>
     );
@@ -1806,12 +1810,12 @@ function TrackingScreen({ applications, setScreen, openLogin, isLoggedIn, authLo
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Mes candidatures" subtitle="Retrouvez l’avancement de vos demandes" />
+      <PageHeader title="Mes candidatures" subtitle="Retrouvez l’avancement de vos demandes." />
 
       <section className="grid grid-cols-3 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white py-4">
         <Metric value={applications.length} label="Candidatures" />
         <Metric value={ongoingCount} label="En cours" />
-        <Metric value={cvOpenedCount} label="CV ouverts" />
+        <Metric value={cvOpenedCount} label="CV consultés" />
       </section>
 
       <div>
@@ -1850,8 +1854,8 @@ function TrackingScreen({ applications, setScreen, openLogin, isLoggedIn, authLo
 
                 {expanded && (
                   <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-600">
-                    <p>{item.applicationOpened ? 'La candidature a été consultée.' : 'La candidature attend encore sa première consultation.'}</p>
-                    <p>{item.cvOpened ? 'Le CV a été ouvert par le recruteur.' : 'Le CV n’a pas encore été ouvert.'}</p>
+                    <p>{item.applicationOpened ? 'La candidature a été consultée.' : 'La candidature n’a pas encore été consultée.'}</p>
+                    <p>{item.cvOpened ? 'Le CV a été consulté par le recruteur.' : 'Le CV n’a pas encore été consulté.'}</p>
                   </div>
                 )}
 
@@ -1887,18 +1891,18 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, profi
   if (!isLoggedIn && !authLoading) {
     return (
       <div className="mx-auto max-w-3xl space-y-5">
-        <PageHeader title="Mon profil" subtitle="Connectez-vous pour retrouver votre espace personnel" />
+        <PageHeader title="Mon profil" subtitle="Connectez-vous pour retrouver votre espace personnel." />
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="text-lg font-bold text-slate-950">Votre recherche d’emploi au même endroit</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">Retrouvez votre profil, vos favoris, vos CV et le suivi de vos candidatures.</p>
           <button onClick={() => openLogin('candidat')} className="primary-button mt-5 w-full sm:w-auto">
-            Connexion candidat
+            Se connecter
           </button>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
-          <ProfileInfoCard icon={FileText} title="CV et profil" body="Garde tes informations pretes pour postuler plus vite." />
-          <ProfileInfoCard icon={Bell} title="Suivi de dossier" body="Retrouve les ouvertures de demande et de CV dans ton espace." />
-          <ProfileInfoCard icon={Briefcase} title="Offres sauvegardees" body="Conserve les offres importantes pour y revenir plus tard." />
+          <ProfileInfoCard icon={FileText} title="CV et profil" body="Gardez vos informations prêtes pour postuler plus rapidement." />
+          <ProfileInfoCard icon={Bell} title="Suivi des candidatures" body="Voyez quand vos candidatures et vos CV ont été consultés." />
+          <ProfileInfoCard icon={Briefcase} title="Offres favorites" body="Conservez les offres importantes pour les retrouver plus tard." />
         </div>
       </div>
     );
@@ -1957,13 +1961,13 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, profi
       <form onSubmit={updateProfile} className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 md:grid-cols-2">
         <TextField label="Nom" value={profile.nom} onChange={(nom) => setProfile({ ...profile, nom })} />
         <TextField label="Prénom" value={profile.prenom} onChange={(prenom) => setProfile({ ...profile, prenom })} />
-        <TextField label="Email" type="email" value={profile.email} onChange={(email) => setProfile({ ...profile, email })} disabled={isLoggedIn} />
+        <TextField label="Adresse e-mail" type="email" value={profile.email} onChange={(email) => setProfile({ ...profile, email })} disabled={isLoggedIn} />
         <TextField label="Téléphone" type="tel" value={profile.phone} onChange={(phone) => setProfile({ ...profile, phone })} />
         <SelectField label="Ville" value={profile.city} onChange={(city) => setProfile({ ...profile, city })} options={CONGO_CITIES} />
         <TextField label="Titre professionnel" value={profile.title} onChange={(title) => setProfile({ ...profile, title })} />
         <SelectField label="Type de compte" value={profile.role} onChange={(role) => setProfile({ ...profile, role })} options={['candidat', 'recruteur']} />
         <button type="submit" disabled={profileSubmitting} className="primary-button md:col-span-2 disabled:cursor-not-allowed disabled:bg-slate-300">
-          {profileSubmitting ? 'Enregistrement...' : 'Enregistrer'}
+          {profileSubmitting ? 'Enregistrement…' : 'Enregistrer'}
         </button>
       </form>
     </div>
@@ -1996,13 +2000,19 @@ function GoogleMark() {
 function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleGoogleSignIn, googleAuthLoading, googleAuthEnabled, serviceStatus, setScreen, notify }) {
   const isSignup = authMode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
-  const notifyInvalid = useInvalidNotice(notify, 'Renseignez votre email et votre mot de passe pour continuer.');
+  const notifyInvalid = useInvalidNotice(notify, 'Renseignez votre adresse e-mail et votre mot de passe pour continuer.');
   const notifySubmitBlocker = () => {
     if (!loginEmail.trim() || !loginPassword.trim()) notifyInvalid();
   };
   const isRecruiterLogin = loginRole === 'recruteur';
-  const loginTitle = `${isSignup ? 'Inscription' : 'Connexion'} ${isRecruiterLogin ? 'recruteur' : 'candidat'}`;
-  const loginSubtitle = isRecruiterLogin ? 'Publiez vos offres et gérez les candidatures reçues' : 'Postulez et suivez vos candidatures';
+  const loginTitle = isSignup ? 'Créer votre compte' : 'Connexion';
+  const loginSubtitle = isSignup
+    ? isRecruiterLogin
+      ? 'Créez un compte recruteur pour publier vos offres et gérer les candidatures.'
+      : 'Créez un compte candidat pour postuler et suivre vos candidatures.'
+    : isRecruiterLogin
+      ? 'Accédez à votre espace recruteur pour publier vos offres et gérer les candidatures.'
+      : 'Accédez à votre espace candidat pour postuler et suivre vos candidatures.';
   const authStatusText = serviceStatus === 'checking'
     ? 'Vérification du service en cours. Réessayez dans quelques secondes.'
     : 'Connexion temporairement indisponible. Réessayez un peu plus tard.';
@@ -2048,7 +2058,7 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
         <span className="h-px flex-1 bg-slate-200" />
       </div>
       <form onSubmit={handleAuth} onInvalidCapture={notifyInvalid} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
-        <TextField label="Email" type="email" value={loginEmail} onChange={setLoginEmail} required />
+        <TextField label="Adresse e-mail" type="email" value={loginEmail} onChange={setLoginEmail} required />
         <PasswordField
           label="Mot de passe"
           value={loginPassword}
@@ -2063,7 +2073,7 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
         </button>
         <p className="text-xs font-semibold leading-5 text-slate-500">
           {isSignup
-            ? `Ce compte sera créé comme ${isRecruiterLogin ? 'recruteur' : 'candidat'}. Si une validation email est demandée, confirmez le lien reçu avant de vous reconnecter.`
+            ? `Ce compte sera créé comme ${isRecruiterLogin ? 'recruteur' : 'candidat'}. Si une confirmation par e-mail est requise, utilisez le lien reçu avant de vous connecter.`
             : isRecruiterLogin
               ? 'Utilisez votre compte recruteur pour voir vos offres, vos candidats et leurs CV.'
               : 'Utilisez votre compte candidat pour postuler et suivre vos candidatures.'}
@@ -2092,18 +2102,18 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Recruteur" subtitle="Publier et suivre les candidatures" />
+      <PageHeader title="Espace recruteur" subtitle="Publiez vos offres et suivez les candidatures reçues." />
       {!isLoggedIn && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <p className="text-sm font-bold leading-6 text-blue-950">Connecte-toi pour publier une offre et garder un tableau de bord recruteur fiable.</p>
+          <p className="text-sm font-bold leading-6 text-blue-950">Connectez-vous pour publier une offre et accéder à votre tableau de bord recruteur.</p>
           <button onClick={() => openLogin('recruteur')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
-            Connexion recruteur
+            Se connecter
           </button>
         </div>
       )}
       {isLoggedIn && !canRecruit && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm font-bold leading-6 text-amber-900">Ton compte candidat reste dans son espace candidat. Passe en compte recruteur pour publier une offre et ouvrir un vrai espace recruteur.</p>
+          <p className="text-sm font-bold leading-6 text-amber-900">Votre compte candidat reste dans l’espace candidat. Passez en compte recruteur pour publier une offre.</p>
           <button onClick={() => setScreen('profile')} className="mt-3 min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
             Modifier mon profil
           </button>
@@ -2114,12 +2124,12 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-700 text-white">
             <PlusCircle size={24} />
           </div>
-          <h2 className="mt-4 text-xl font-bold text-slate-950">Publie ta premiere offre</h2>
+          <h2 className="mt-4 text-xl font-bold text-slate-950">Publiez votre première offre</h2>
           <p className="mt-2 text-sm font-bold leading-6 text-blue-950">
-            Ton tableau recruteur s'ouvrira avec les candidatures, les CV et les KPI apres la premiere offre publiee. Avant cela, aucun espace admin inutile n'est affiche.
+            Votre tableau de bord affichera les candidatures, les CV et les indicateurs dès la publication de votre première offre.
           </p>
           <button onClick={() => setScreen('post-job')} className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-bold text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
-            Publier ma premiere offre <PlusCircle size={18} />
+            Publier ma première offre <PlusCircle size={18} />
           </button>
         </div>
       )}
@@ -2132,8 +2142,8 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
         <>
       <div className="grid grid-cols-3 gap-2">
         <StatCard value={ownJobs.length} label="Mes offres" />
-        <StatCard value={applications.length} label="Candidats" />
-        <StatCard value={reviewedCount} label="Dossiers vus" />
+        <StatCard value={applications.length} label="Candidatures" />
+        <StatCard value={reviewedCount} label="Candidatures consultées" />
       </div>
       <button onClick={() => setScreen('post-job')} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-bold text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600">
         Publier une offre <PlusCircle size={18} />
@@ -2150,7 +2160,7 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
           )}
         >
           <span className="text-sm font-bold">Toutes les offres</span>
-          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">{applications.length} candidat(s)</span>
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">{formatCount(applications.length, 'candidature')}</span>
         </button>
         {ownJobs.map((job) => {
           const count = applicationsByJobId[job.id]?.length || 0;
@@ -2170,53 +2180,53 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="font-bold text-slate-950">{job.role}</h3>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">{job.company} - {job.loc}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">{job.company} · {job.loc}</p>
                   </div>
                   <span className="flex shrink-0 flex-col items-end gap-1">
                     <span className={classNames('rounded-full px-3 py-1 text-xs font-bold', isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700')}>
-                      {isPublished ? 'En ligne' : job.status === 'closed' ? 'Fermee' : 'Brouillon'}
+                      {isPublished ? 'En ligne' : job.status === 'closed' ? 'Fermée' : 'Brouillon'}
                     </span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{count} candidat(s)</span>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{formatCount(count, 'candidature')}</span>
                   </span>
                 </div>
               </button>
               <div className="mt-4 grid grid-cols-3 gap-2">
                 <StatCard value={jobStats.views} label="Vues" />
-                <StatCard value={jobStats.saves} label="Signets" />
-                <StatCard value={count} label="Postules" />
+                <StatCard value={jobStats.saves} label="Favoris" />
+                <StatCard value={count} label="Candidatures" />
               </div>
               {boostRequest && (
                 <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800">
-                  Boost {boostRequest.status === 'approved' ? 'valide' : boostRequest.status === 'rejected' ? 'rejete' : 'en attente'}
+                  Mise en avant : {boostRequest.status === 'approved' ? 'validée' : boostRequest.status === 'rejected' ? 'refusée' : 'en attente'}
                 </p>
               )}
               {count > 0 && (
                 <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
-                  Cette offre a recu des candidatures : ferme-la au lieu de la supprimer afin de conserver les dossiers.
+                  Cette offre a reçu des candidatures : fermez-la au lieu de la supprimer afin de les conserver.
                 </p>
               )}
               <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
                 <button type="button" onClick={() => requestJobBoost(job)} disabled={Boolean(boostRequest) || jobBusy} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-bold text-blue-800 transition hover:border-blue-700 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500">
-                  {jobAction === `boost:${job.id}` ? 'Envoi...' : 'Booster'}
+                  {jobAction === `boost:${job.id}` ? 'Envoi…' : 'Mettre en avant'}
                 </button>
                 <button type="button" onClick={() => setJobStatus(job, isPublished ? 'closed' : 'published')} disabled={jobBusy} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400">
                   {isPublished ? <EyeOff size={16} /> : <Eye size={16} />}
-                  {jobAction === `status:${job.id}` ? 'Patiente...' : isPublished ? 'Fermer' : 'Reactiver'}
+                  {jobAction === `status:${job.id}` ? 'Mise à jour…' : isPublished ? 'Fermer' : 'Réactiver'}
                 </button>
                 <button type="button" onClick={() => startEditJob(job)} disabled={jobBusy} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400">
                   <Edit3 size={16} /> Modifier
                 </button>
-                <button type="button" onClick={() => deleteJob(job)} disabled={jobBusy || count > 0} title={count > 0 ? 'Fermez cette offre pour conserver les candidatures recues.' : 'Supprimer definitivement cette offre'} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 text-sm font-bold text-red-700 transition hover:border-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400">
-                  <Trash2 size={16} /> {jobAction === `delete:${job.id}` ? 'Suppression...' : 'Supprimer'}
+                <button type="button" onClick={() => deleteJob(job)} disabled={jobBusy || count > 0} title={count > 0 ? 'Fermez cette offre pour conserver les candidatures reçues.' : 'Supprimer définitivement cette offre'} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 text-sm font-bold text-red-700 transition hover:border-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400">
+                  <Trash2 size={16} /> {jobAction === `delete:${job.id}` ? 'Suppression…' : 'Supprimer'}
                 </button>
               </div>
             </article>
           );
         })}
-        {ownJobs.length === 0 && <EmptyState title="Aucune offre publiee" body="Publie une offre pour recevoir des candidatures." />}
+        {ownJobs.length === 0 && <EmptyState title="Aucune offre publiée" body="Publiez une offre pour recevoir des candidatures." />}
       </div>
 
-      <SectionTitle title={selectedJob ? `Candidats - ${selectedJob.role}` : 'Toutes les candidatures'} />
+      <SectionTitle title={selectedJob ? `Candidats — ${selectedJob.role}` : 'Toutes les candidatures'} />
       <div className="grid gap-3">
         {visibleApplications.map((item) => (
           <article key={item.id} className="rounded-lg border border-slate-200 bg-white p-4">
@@ -2226,11 +2236,11 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
                 <h3 className="mt-1 text-lg font-bold text-slate-950">{item.nom}</h3>
                 <div className="mt-2 grid gap-1 text-sm font-semibold text-slate-600">
                   <span>{item.email}</span>
-                  <span>{item.phone || 'Telephone non renseigne'}</span>
+                  <span>{item.phone || 'Téléphone non renseigné'}</span>
                 </div>
               </div>
               <span className={classNames('w-fit rounded-full px-3 py-1 text-xs font-bold', item.status === 'reviewed' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-50 text-blue-700')}>
-                {item.status === 'reviewed' ? 'Vu' : 'Nouveau'}
+                {item.status === 'reviewed' ? 'Consultée' : 'Nouvelle'}
               </span>
             </div>
             {item.message && (
@@ -2240,14 +2250,14 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
               </div>
             )}
             <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-600">
-              <span className="rounded-full bg-slate-100 px-3 py-1">{item.cvName ? `CV: ${item.cvName}` : 'Aucun CV'}</span>
-              <span className="rounded-full bg-slate-100 px-3 py-1">{item.trackingEnabled ? 'Candidature suivie' : 'Candidature rapide'}</span>
+              <span className="rounded-full bg-slate-100 px-3 py-1">{item.cvName ? `CV : ${item.cvName}` : 'Aucun CV'}</span>
+              <span className="rounded-full bg-slate-100 px-3 py-1">{item.trackingEnabled ? 'Avec suivi' : 'Sans suivi'}</span>
               {item.trackingNumber && <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">{item.trackingNumber}</span>}
-              <span className="rounded-full bg-slate-100 px-3 py-1">{item.createdAt ? new Date(item.createdAt).toLocaleDateString('fr-FR') : 'Date locale'}</span>
+              <span className="rounded-full bg-slate-100 px-3 py-1">{item.createdAt ? new Date(item.createdAt).toLocaleDateString('fr-FR') : 'Date non disponible'}</span>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_1fr]">
               <button onClick={() => markApplicationActivity(item.id, 'applicationOpened')} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 transition hover:border-blue-700 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
-                Marquer la demande vue
+                Marquer comme consultée
               </button>
               <button
                 onClick={() => markApplicationActivity(item.id, 'cvOpened', true)}
@@ -2261,12 +2271,12 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
                 disabled={!item.cvPath}
                 className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-4 text-sm font-bold text-blue-800 transition hover:border-blue-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
               >
-                Telecharger le CV <Download size={16} />
+                Télécharger le CV <Download size={16} />
               </button>
             </div>
           </article>
         ))}
-        {visibleApplications.length === 0 && <EmptyState title="Aucune candidature recue" body="Les candidats apparaitront ici avec leurs messages et leurs CV PDF." />}
+        {visibleApplications.length === 0 && <EmptyState title="Aucune candidature reçue" body="Les candidatures apparaîtront ici avec les messages et les CV au format PDF." />}
       </div>
         </>
       )}
@@ -2278,8 +2288,8 @@ function AdminScreen({ boostRequests, reviewBoostRequest, role, setScreen }) {
   if (role !== 'admin') {
     return (
       <div className="space-y-5">
-        <PageHeader title="Admin" subtitle="Acces reserve" />
-        <EmptyState title="Espace reserve" body="Ton compte n'a pas les droits admin." />
+        <PageHeader title="Administration" subtitle="Accès réservé." />
+        <EmptyState title="Espace réservé" body="Votre compte ne dispose pas des droits d’administration." />
         <button onClick={() => setScreen('profile')} className="min-h-11 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-blue-600">
           Retour au profil
         </button>
@@ -2291,13 +2301,13 @@ function AdminScreen({ boostRequests, reviewBoostRequest, role, setScreen }) {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Admin" subtitle="Demandes de boost et controles plateforme" />
+      <PageHeader title="Administration" subtitle="Demandes de mise en avant et contrôles de la plateforme." />
       <div className="grid grid-cols-3 gap-2">
-        <StatCard value={boostRequests.length} label="Boosts" />
+        <StatCard value={boostRequests.length} label="Mises en avant" />
         <StatCard value={pendingCount} label="En attente" />
-        <StatCard value={boostRequests.filter((request) => request.status === 'approved').length} label="Valides" />
+        <StatCard value={boostRequests.filter((request) => request.status === 'approved').length} label="Validées" />
       </div>
-      <SectionTitle title="Demandes de boost" />
+      <SectionTitle title="Demandes de mise en avant" />
       <div className="grid gap-3">
         {boostRequests.map((request) => (
           <article key={request.id} className="rounded-lg border border-slate-200 bg-white p-4">
@@ -2306,11 +2316,11 @@ function AdminScreen({ boostRequests, reviewBoostRequest, role, setScreen }) {
                 <p className="text-xs font-bold uppercase text-blue-700">{request.company}</p>
                 <h3 className="mt-1 text-lg font-bold text-slate-950">{request.jobTitle}</h3>
                 <p className="mt-1 text-sm font-semibold text-slate-500">
-                  Plan {request.plan} - {request.createdAt ? new Date(request.createdAt).toLocaleDateString('fr-FR') : 'Date inconnue'}
+                  Plan {request.plan} · {request.createdAt ? new Date(request.createdAt).toLocaleDateString('fr-FR') : 'Date inconnue'}
                 </p>
               </div>
               <span className={classNames('w-fit rounded-full px-3 py-1 text-xs font-bold', request.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : request.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800')}>
-                {request.status === 'approved' ? 'Valide' : request.status === 'rejected' ? 'Rejete' : 'En attente'}
+                {request.status === 'approved' ? 'Validée' : request.status === 'rejected' ? 'Refusée' : 'En attente'}
               </span>
             </div>
             {request.message && <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm font-semibold leading-6 text-slate-700">{request.message}</p>}
@@ -2324,27 +2334,27 @@ function AdminScreen({ boostRequests, reviewBoostRequest, role, setScreen }) {
             </div>
           </article>
         ))}
-        {boostRequests.length === 0 && <EmptyState title="Aucune demande" body="Les demandes de boost apparaitront ici quand un recruteur enverra une demande." />}
+        {boostRequests.length === 0 && <EmptyState title="Aucune demande" body="Les demandes de mise en avant apparaîtront ici lorsqu’un recruteur en enverra une." />}
       </div>
     </div>
   );
 }
 
 function PostJobScreen({ form, setForm, onSubmit, setScreen, editing, submitting, cancelEdit, notify }) {
-  const notifyInvalid = useInvalidNotice(notify, 'Complete le titre, l entreprise et la description avant d envoyer.');
+  const notifyInvalid = useInvalidNotice(notify, 'Complétez le titre, l’entreprise et la description avant d’envoyer le formulaire.');
   const notifySubmitBlocker = () => {
     if (!form.role.trim() || !form.company.trim() || !form.description.trim()) notifyInvalid();
   };
   return (
     <div className="space-y-4">
       <BackButton onClick={editing ? cancelEdit : () => setScreen('recruiter')} label="Recruteur" />
-      <PageHeader title={editing ? 'Modifier' : 'Publier'} subtitle={editing ? "Modifier l'offre d'emploi" : "Nouvelle offre d'emploi"} />
+      <PageHeader title={editing ? 'Modifier' : 'Publier'} subtitle={editing ? "Modifier l’offre d’emploi" : "Nouvelle offre d’emploi"} />
       <form onSubmit={onSubmit} onInvalidCapture={notifyInvalid} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
         <TextField label="Titre du poste" value={form.role} onChange={(role) => setForm({ ...form, role })} required />
         <TextField label="Entreprise" value={form.company} onChange={(company) => setForm({ ...form, company })} required />
         <SelectField label="Ville" value={form.loc} onChange={(loc) => setForm({ ...form, loc })} options={CONGO_CITIES} />
         <SelectField label="Contrat" value={form.type} onChange={(type) => setForm({ ...form, type })} options={CONTRACT_TYPES} />
-        <TextField label="Salaire" value={form.salary} onChange={(salary) => setForm({ ...form, salary })} placeholder="Attractif, 500k XAF, Negociable..." />
+        <TextField label="Salaire" value={form.salary} onChange={(salary) => setForm({ ...form, salary })} placeholder="Ex. 500 000 FCFA, négociable" />
         <TextField label="Secteur" value={form.sector} onChange={(sector) => setForm({ ...form, sector })} />
         <TextArea label="Description" value={form.description} onChange={(description) => setForm({ ...form, description })} required />
         <div className="grid gap-2 sm:grid-cols-2">
@@ -2354,7 +2364,7 @@ function PostJobScreen({ form, setForm, onSubmit, setScreen, editing, submitting
             </button>
           )}
           <button type="submit" onClick={notifySubmitBlocker} disabled={submitting} className={classNames('min-h-12 rounded-lg bg-blue-700 px-5 font-bold text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:bg-slate-300', editing ? '' : 'sm:col-span-2')}>
-            {submitting ? 'Enregistrement...' : editing ? "Enregistrer l'offre" : "Publier l'offre"}
+            {submitting ? 'Enregistrement…' : editing ? "Enregistrer l’offre" : "Publier l’offre"}
           </button>
         </div>
       </form>
@@ -2366,9 +2376,9 @@ function NotificationsScreen({ notifications, markAllRead, updating }) {
   const unreadCount = notifications.filter((item) => !item.read).length;
   return (
     <div className="space-y-5">
-      <PageHeader title="Notifications" subtitle={`${notifications.length} message(s)`} />
+      <PageHeader title="Notifications" subtitle={formatCount(notifications.length, 'notification')} />
       <button onClick={markAllRead} disabled={updating || unreadCount === 0} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400">
-        {updating ? 'Mise a jour...' : unreadCount === 0 ? 'Tout est lu' : 'Tout marquer comme lu'}
+        {updating ? 'Mise à jour…' : unreadCount === 0 ? 'Tout est lu' : 'Tout marquer comme lu'}
       </button>
       <div className="grid gap-3">
         {notifications.map((item) => (
@@ -2385,30 +2395,30 @@ function NotificationsScreen({ notifications, markAllRead, updating }) {
 function SettingsScreen({ serviceStatus }) {
   const statusCopy = {
     online: {
-      title: 'Service operationnel',
-      body: 'Les comptes, offres, candidatures et CV sont geres de facon securisee.',
+      title: 'Service opérationnel',
+      body: 'Les comptes, les offres, les candidatures et les CV sont gérés de façon sécurisée.',
       tone: 'bg-emerald-600',
     },
     checking: {
-      title: 'Verification en cours',
-      body: 'Le service verifie la connexion aux comptes, offres, candidatures et CV.',
+      title: 'Vérification en cours',
+      body: 'Le service vérifie la connexion aux comptes, aux offres, aux candidatures et aux CV.',
       tone: 'bg-blue-700',
     },
     degraded: {
-      title: 'Service a verifier',
-      body: "Les donnees peuvent prendre du retard. L'equipe projet doit verifier la connexion de production.",
+      title: 'Service à vérifier',
+      body: 'Certaines données peuvent être temporairement indisponibles. Réessayez un peu plus tard.',
       tone: 'bg-amber-500',
     },
     offline: {
-      title: 'Configuration requise',
-      body: "La connexion de production doit etre configuree avant d'utiliser les comptes et les CV.",
+      title: 'Service temporairement indisponible',
+      body: 'Les comptes et les CV sont momentanément inaccessibles. Réessayez un peu plus tard.',
       tone: 'bg-slate-700',
     },
   };
   const copy = statusCopy[serviceStatus] || statusCopy.checking;
   return (
     <div className="space-y-5">
-      <PageHeader title="Parametres" subtitle="Gestion du compte et de la plateforme" />
+      <PageHeader title="Paramètres" subtitle="Gestion du compte et de la plateforme." />
       <div className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex items-center gap-3">
           <div className={classNames('flex h-11 w-11 items-center justify-center rounded-lg text-white', copy.tone)}>
@@ -2420,7 +2430,7 @@ function SettingsScreen({ serviceStatus }) {
           </div>
         </div>
         <div className="mt-5 rounded-lg bg-slate-100 p-4 text-sm font-semibold leading-7 text-slate-700">
-          Tu peux utiliser le site normalement. Les informations techniques restent reservees a l'equipe projet.
+          Vous pouvez utiliser le site normalement. Les informations techniques restent réservées à l’équipe projet.
         </div>
       </div>
     </div>
@@ -2478,7 +2488,7 @@ function JobCard({ job, onClick, saved, onSave }) {
           </span>
         </button>
         {onSave && (
-          <button onClick={onSave} aria-label={saved ? 'Retirer des favoris' : 'Sauvegarder'} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <button onClick={onSave} aria-label={saved ? 'Retirer des favoris' : 'Ajouter aux favoris'} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600">
             <Bookmark size={20} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-blue-700' : ''} />
           </button>
         )}

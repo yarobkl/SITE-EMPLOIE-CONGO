@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { hasSupabaseConfig, supabase } from './lib/supabase';
+import { formatCount } from './editorial';
 
 const CONTRACT_TYPES = ['CDI', 'CDD', 'Stage', 'Alternance', 'Freelance', 'Intérim'];
 const EMPTY_POST = {
@@ -148,10 +149,10 @@ function StatusPill({ status }) {
     accepted: ['Acceptée', 'bg-emerald-50 text-emerald-700'],
     declined: ['Refusée', 'bg-slate-100 text-slate-700'],
     pending: ['En vérification', 'bg-amber-50 text-amber-800'],
-    approved: ['Vérifié', 'bg-emerald-50 text-emerald-700'],
-    rejected: ['Refusé', 'bg-red-50 text-red-700'],
+    approved: ['Approuvée', 'bg-emerald-50 text-emerald-700'],
+    rejected: ['Refusée', 'bg-red-50 text-red-700'],
   };
-  const [label, tone] = settings[status] || [status || 'Inconnu', 'bg-slate-100 text-slate-700'];
+  const [label, tone] = settings[status] || ['Statut inconnu', 'bg-slate-100 text-slate-700'];
   return <span className={classNames('inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold', tone)}>{label}</span>;
 }
 
@@ -306,7 +307,7 @@ function OnboardingGate({ user, profile, locations, onCompleted }) {
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white"><MapPin size={23} /></div>
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Activation du profil</p>
-            <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Complétez vos informations Nzela</h2>
+            <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Complétez votre profil Nzela Jobs</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">Le téléphone et le quartier sont obligatoires pour sécuriser les comptes et produire des statistiques fiables sur l’emploi.</p>
           </div>
         </div>
@@ -476,7 +477,7 @@ function CandidateMarketplace({ user, profile, locations }) {
         <div className="flex gap-3">
           <Sparkles className="mt-0.5 shrink-0 text-blue-700" size={20} />
           <div>
-            <p className="font-black text-blue-950">Une publication mensuelle, des candidatures illimitées</p>
+            <p className="font-black text-blue-950">Une demande tous les 30 jours, des candidatures illimitées</p>
             <p className="mt-1 text-sm leading-6 text-blue-800">Votre propre demande d’emploi reste unique pendant 30 jours. Cela ne limite jamais le nombre d’offres auxquelles vous pouvez postuler sur Nzela Jobs.</p>
           </div>
         </div>
@@ -502,12 +503,12 @@ function CandidateMarketplace({ user, profile, locations }) {
         </div>
       ) : publicationLocked ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-          <div className="flex gap-3"><Clock3 className="shrink-0 text-amber-700" /><div><h3 className="font-black text-amber-950">Nouvelle publication disponible le {formatDate(nextPublicationDate)}</h3><p className="mt-1 text-sm leading-6 text-amber-800">La limite concerne uniquement votre propre demande d’emploi. Vous pouvez continuer à postuler sans limite aux offres publiées.</p></div></div>
+          <div className="flex gap-3"><Clock3 className="shrink-0 text-amber-700" /><div><h3 className="font-black text-amber-950">Nouvelle demande publiable à partir du {formatDate(nextPublicationDate)}</h3><p className="mt-1 text-sm leading-6 text-amber-800">La limite concerne uniquement votre propre demande d’emploi. Vous pouvez continuer à postuler sans limite aux offres publiées.</p></div></div>
         </div>
       ) : (
         <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
-            <div><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Demande d’emploi</p><h3 className="mt-1 text-xl font-black text-slate-950">{activePost ? 'Modifier ma publication' : 'Publier ma recherche'}</h3></div>
+            <div><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Demande d’emploi</p><h3 className="mt-1 text-xl font-black text-slate-950">{activePost ? 'Modifier ma demande' : 'Publier ma demande'}</h3></div>
             {activePost && <button type="button" onClick={() => setEditing(false)} className="text-sm font-bold text-slate-500">Annuler</button>}
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -516,7 +517,7 @@ function CandidateMarketplace({ user, profile, locations }) {
             <Field label="Quartier" required>
               <LocationSelect locations={locations} value={form.locationId} otherValue={form.otherQuarterName} onChange={(value) => updateField('locationId', value)} onOtherChange={(value) => updateField('otherQuarterName', value)} />
             </Field>
-            <Field label="Expérience"><Input type="number" min="0" max="60" value={form.experienceYears} onChange={(event) => updateField('experienceYears', event.target.value)} /></Field>
+            <Field label="Années d’expérience"><Input type="number" min="0" max="60" value={form.experienceYears} onChange={(event) => updateField('experienceYears', event.target.value)} /></Field>
             <Field label="Niveau d’études"><Input value={form.educationLevel} onChange={(event) => updateField('educationLevel', event.target.value)} placeholder="Ex. Bac+3" /></Field>
             <Field label="Disponibilité"><Input value={form.availability} onChange={(event) => updateField('availability', event.target.value)} placeholder="Ex. Immédiatement" /></Field>
             <Field label="Mobilité"><Input value={form.mobility} onChange={(event) => updateField('mobility', event.target.value)} placeholder="Ex. Brazzaville et Pointe-Noire" /></Field>
@@ -530,9 +531,9 @@ function CandidateMarketplace({ user, profile, locations }) {
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <Field label="Salaire minimum"><Input type="number" min="0" value={form.salaryMin} onChange={(event) => updateField('salaryMin', event.target.value)} placeholder="FCFA" /></Field>
             <Field label="Salaire maximum"><Input type="number" min="0" value={form.salaryMax} onChange={(event) => updateField('salaryMax', event.target.value)} placeholder="FCFA" /></Field>
-            <Field label="Contact recruteur">
+            <Field label="Visibilité du contact">
               <Select value={form.contactVisibility} onChange={(event) => updateField('contactVisibility', event.target.value)}>
-                <option value="request">Après mon accord</option>
+                <option value="request">Après mon accord uniquement</option>
                 <option value="direct">Téléphone visible aux recruteurs vérifiés</option>
               </Select>
             </Field>
@@ -548,7 +549,7 @@ function CandidateMarketplace({ user, profile, locations }) {
         )}
       </section>
 
-      {posts.length > 1 && <section><h3 className="mb-3 font-black text-slate-950">Historique mensuel</h3><div className="space-y-2">{posts.slice(1).map((post) => <div key={post.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-sm font-bold text-slate-900">{post.desired_job_title}</p><p className="text-xs text-slate-500">Publiée le {formatDate(post.published_at)}</p></div><StatusPill status={post.status} /></div>)}</div></section>}
+      {posts.length > 1 && <section><h3 className="mb-3 font-black text-slate-950">Historique des demandes</h3><div className="space-y-2">{posts.slice(1).map((post) => <div key={post.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"><div><p className="text-sm font-bold text-slate-900">{post.desired_job_title}</p><p className="text-xs text-slate-500">Publiée le {formatDate(post.published_at)}</p></div><StatusPill status={post.status} /></div>)}</div></section>}
     </div>
   );
 }
@@ -566,7 +567,7 @@ function TalentCard({ talent, onInvite, canInvite = true }) {
       </div>
       <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{talent.description}</p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{talent.experience_years || 0} an(s) d’expérience</span>
+        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{formatCount(talent.experience_years || 0, 'an')} d’expérience</span>
         {talent.availability && <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">{talent.availability}</span>}
         {(talent.skills || []).slice(0, 4).map((skill) => <span key={skill} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{skill}</span>)}
       </div>
@@ -679,12 +680,12 @@ function RecruiterMarketplace({ user, profile, locations }) {
         {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
         {success && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{success}</div>}
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-          <div className="flex gap-3"><ShieldCheck className="shrink-0 text-amber-700" /><div><h3 className="font-black text-amber-950">Vérification recruteur obligatoire</h3><p className="mt-1 text-sm leading-6 text-amber-800">Les demandes d’emploi sont réservées aux entreprises vérifiées afin de protéger les coordonnées et les parcours des candidats.</p></div></div>
+          <div className="flex gap-3"><ShieldCheck className="shrink-0 text-amber-700" /><div><h3 className="font-black text-amber-950">Vérification du recruteur requise</h3><p className="mt-1 text-sm leading-6 text-amber-800">L’accès aux demandes d’emploi est réservé aux entreprises vérifiées afin de protéger les coordonnées et les parcours des candidats.</p></div></div>
         </div>
         {verification && <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between gap-3"><div><p className="font-bold text-slate-950">Demande envoyée le {formatDate(verification.submitted_at)}</p><p className="mt-1 text-sm text-slate-500">{verification.professional_email}</p></div><StatusPill status={verification.status} /></div>{verification.review_note && <p className="mt-3 text-sm text-slate-600">{verification.review_note}</p>}</div>}
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="font-black text-slate-950">Demander la vérification</h3>
-          <div className="mt-4 space-y-4"><Field label="Entreprise"><Select value={companies[0]?.id || ''} disabled><option value="">{companies[0]?.name || 'Aucune entreprise configurée'}</option></Select></Field><Field label="E-mail professionnel"><Input type="email" value={professionalEmail} onChange={(event) => setProfessionalEmail(event.target.value)} placeholder="nom@entreprise.cg" /></Field><button type="button" onClick={requestVerification} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-black text-white"><ShieldCheck size={18} /> Envoyer la demande</button></div>
+          <div className="mt-4 space-y-4"><Field label="Entreprise"><Select value={companies[0]?.id || ''} disabled><option value="">{companies[0]?.name || 'Aucune entreprise configurée'}</option></Select></Field><Field label="Adresse e-mail professionnelle"><Input type="email" value={professionalEmail} onChange={(event) => setProfessionalEmail(event.target.value)} placeholder="nom@entreprise.cg" /></Field><button type="button" onClick={requestVerification} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-black text-white"><ShieldCheck size={18} /> Envoyer la demande</button></div>
         </div>
       </div>
     );
@@ -695,7 +696,7 @@ function RecruiterMarketplace({ user, profile, locations }) {
       {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
       {success && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{success}</div>}
       <section>
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Matching automatique</p><h3 className="mt-1 text-xl font-black text-slate-950">Les 10 talents les plus compatibles</h3></div><Select value={selectedJobId} onChange={(event) => setSelectedJobId(event.target.value)} className="max-w-sm"><option value="">Sélectionnez une offre</option>{jobs.map((job) => <option key={job.id} value={job.id}>{job.title}</option>)}</Select></div>
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Correspondances automatiques</p><h3 className="mt-1 text-xl font-black text-slate-950">Jusqu’à 10 talents compatibles</h3></div><Select value={selectedJobId} onChange={(event) => setSelectedJobId(event.target.value)} className="max-w-sm"><option value="">Sélectionnez une offre</option>{jobs.map((job) => <option key={job.id} value={job.id}>{job.title}</option>)}</Select></div>
         {!selectedJobId ? <EmptyState title="Sélectionnez une offre" body="Le moteur comparera l’offre choisie aux demandes d’emploi encore actives." /> : matches.length === 0 ? <EmptyState icon={UserRoundSearch} title="Aucun profil compatible pour le moment" body="Les nouvelles demandes actives seront automatiquement rapprochées de cette offre." /> : <div className="grid gap-4 lg:grid-cols-2">{matches.map((talent) => <TalentCard key={talent.job_seeker_post_id} talent={talent} onInvite={invite} />)}</div>}
       </section>
       <section>
@@ -742,11 +743,11 @@ function AdminTalentAnalytics() {
   return (
     <div className="space-y-6">
       {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
-      <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Observatoire Nzela</p><h3 className="mt-1 text-xl font-black text-slate-950">Demande d’emploi et répartition géographique</h3></div><button type="button" onClick={load} className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white"><RefreshCw size={18} /></button></div>
+      <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Observatoire Nzela</p><h3 className="mt-1 text-xl font-black text-slate-950">Demandes d’emploi et répartition géographique</h3></div><button type="button" onClick={load} className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white"><RefreshCw size={18} /></button></div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><MetricCard icon={Users} label="Demandeurs actifs" value={snapshot.active_job_seekers} note="Publications non expirées" /><MetricCard icon={CheckCircle2} label="Profils complets" value={snapshot.profiles_completed} /><MetricCard icon={ShieldCheck} label="Recruteurs vérifiés" value={snapshot.verified_recruiters} /><MetricCard icon={Send} label="Invitations envoyées" value={snapshot.invitations_sent} /></div>
       <div className="grid gap-5 lg:grid-cols-2">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h4 className="font-black text-slate-950">Demandeurs actifs par quartier</h4><p className="mt-1 text-sm text-slate-500">Données agrégées des utilisateurs Nzela Jobs.</p><div className="mt-5 space-y-3">{locations.length === 0 ? <p className="text-sm text-slate-500">Aucune donnée géographique disponible.</p> : locations.slice(0, 20).map((item) => <div key={item.location_id}><div className="mb-1 flex justify-between gap-3 text-xs"><span className="font-bold text-slate-700">{item.quartier} · {item.arrondissement}</span><span className="font-black text-slate-950">{item.active_job_seekers}</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.max(3, (Number(item.active_job_seekers || 0) / maxLocation) * 100)}%` }} /></div></div>)}</div></section>
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h4 className="font-black text-slate-950">Équilibre entre demandes et offres</h4><p className="mt-1 text-sm text-slate-500">Le ratio compare les intitulés actuellement publiés sur Nzela.</p><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[520px] text-left text-sm"><thead><tr className="border-b border-slate-200 text-xs uppercase text-slate-500"><th className="pb-3">Métier</th><th className="pb-3 text-right">Demandes</th><th className="pb-3 text-right">Offres</th><th className="pb-3 text-right">Ratio</th></tr></thead><tbody>{balance.slice(0, 20).map((item) => <tr key={item.job_family} className="border-b border-slate-100"><td className="py-3 font-bold capitalize text-slate-800">{item.job_family}</td><td className="py-3 text-right">{item.active_demands}</td><td className="py-3 text-right">{item.active_offers}</td><td className="py-3 text-right font-black text-blue-700">{item.demand_per_offer ?? '—'}</td></tr>)}</tbody></table></div></section>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h4 className="font-black text-slate-950">Équilibre entre demandes et offres</h4><p className="mt-1 text-sm text-slate-500">Le ratio compare le nombre de demandes au nombre d’offres actives, par métier.</p><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[520px] text-left text-sm"><thead><tr className="border-b border-slate-200 text-xs uppercase text-slate-500"><th className="pb-3">Métier</th><th className="pb-3 text-right">Demandes</th><th className="pb-3 text-right">Offres</th><th className="pb-3 text-right">Ratio</th></tr></thead><tbody>{balance.slice(0, 20).map((item) => <tr key={item.job_family} className="border-b border-slate-100"><td className="py-3 font-bold capitalize text-slate-800">{item.job_family}</td><td className="py-3 text-right">{item.active_demands}</td><td className="py-3 text-right">{item.active_offers}</td><td className="py-3 text-right font-black text-blue-700">{item.demand_per_offer ?? '—'}</td></tr>)}</tbody></table></div></section>
       </div>
     </div>
   );
@@ -765,7 +766,7 @@ export default function TalentMarketplaceExperience() {
 
   if (!hasSupabaseConfig || loading || !schemaReady) return null;
 
-  const label = profile?.role === 'recruteur' ? 'Talents' : profile?.role === 'admin' ? 'Données emploi' : 'Ma recherche';
+  const label = profile?.role === 'recruteur' ? 'Talents' : profile?.role === 'admin' ? 'Données sur l’emploi' : 'Ma demande';
 
   return (
     <>
@@ -774,7 +775,7 @@ export default function TalentMarketplaceExperience() {
         type="button"
         onClick={() => setOpen(true)}
         className="fixed bottom-24 right-4 z-[75] inline-flex min-h-12 items-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-black text-white shadow-xl transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 md:bottom-6"
-        aria-label="Ouvrir le marché des talents"
+        aria-label="Ouvrir Nzela Talents"
       >
         <UserRoundSearch size={19} /> {label}
       </button>
@@ -783,7 +784,7 @@ export default function TalentMarketplaceExperience() {
         <div className="fixed inset-0 z-[180] overflow-y-auto bg-slate-50">
           <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
             <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 md:px-6">
-              <div className="min-w-0"><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-blue-700"><Sparkles size={14} /> Marché à double sens</div><h1 className="mt-1 truncate text-xl font-black tracking-tight text-slate-950 md:text-2xl">Nzela Talents</h1></div>
+              <div className="min-w-0"><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-blue-700"><Sparkles size={14} /> Candidats et recruteurs</div><h1 className="mt-1 truncate text-xl font-black tracking-tight text-slate-950 md:text-2xl">Nzela Talents</h1></div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Fermer Nzela Talents" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-white"><X size={20} /></button>
             </div>
           </header>

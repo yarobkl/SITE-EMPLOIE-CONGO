@@ -28,7 +28,8 @@ const LEGAL_PAGES = {
     intro: 'Version applicable au 2 août 2026 — document de mise en conformité initiale.',
     sections: [
       ['Responsable du traitement', 'Rodrin Bakala Mouengue, fondateur et porteur du projet Nzela Jobs, détermine les finalités et les moyens des traitements réalisés par la plateforme pendant sa phase de structuration juridique. Les demandes relatives aux données sont déposées au moyen du formulaire « Vos droits » intégré au site.'],
-      ['Données traitées', 'Comptes utilisateurs, nom, prénom, adresse électronique, téléphone, ville, intitulé professionnel, CV, informations de candidature, favoris, messages, notifications, données de connexion et données techniques nécessaires à la sécurité du service. Nzela Jobs ne demande pas, dans ses formulaires standards, l’origine ethnique, la religion, les opinions politiques, la santé, la vie sexuelle ou le casier judiciaire.'],
+      ['Données traitées', 'Comptes utilisateurs, nom, prénom, adresse e-mail, téléphone, ville, intitulé professionnel, CV, informations de candidature, favoris, messages, notifications, données de connexion et données techniques nécessaires à la sécurité du service. Nzela Jobs ne demande pas, dans ses formulaires standards, l’origine ethnique, la religion, les opinions politiques, la santé, la vie sexuelle ou le casier judiciaire.'],
+      ['Annonces immobilières', 'Nzela Jobs traite les informations des logements publiés, leurs photos, leur ville, leur quartier, leur prix, leurs équipements, leur durée de disponibilité, les coordonnées rendues publiques par l’auteur, les favoris, les signalements et les demandes de contact ou de visite. Un identifiant aléatoire pseudonyme sert à compter une vue unique sans révéler au propriétaire l’identité des visiteurs. Les photos des annonces publiées sont accessibles publiquement ; les autres coordonnées et les messages restent soumis aux contrôles d’accès.'],
       ['Finalités et bases', 'Créer et sécuriser les comptes, publier et consulter les offres, transmettre les candidatures aux recruteurs concernés, assurer le suivi des candidatures, permettre la messagerie, prévenir les abus et répondre aux demandes des utilisateurs. Les traitements reposent selon les cas sur l’exécution du service demandé, les mesures précontractuelles, les obligations légales et le consentement lorsqu’il est requis, notamment pour la prospection.'],
       ['Destinataires', 'L’utilisateur concerné, les recruteurs propriétaires des offres auxquelles il postule, les administrateurs strictement habilités et les prestataires techniques agissant pour Nzela Jobs. Un CV n’est pas rendu public : il est conservé dans un espace privé et communiqué au recruteur concerné par un lien temporaire.'],
       ['Hébergement et transferts', 'La base de données et les fichiers sont actuellement opérés avec Supabase dans la région eu-west-3 (Paris). L’application est hébergée par Vercel. Ces services et certains de leurs sous-traitants peuvent conduire à des traitements hors de l’espace CEMAC/CEEAC ; ces flux doivent être documentés et présentés à l’autorité congolaise compétente.'],
@@ -39,13 +40,14 @@ const LEGAL_PAGES = {
     ],
   },
   terms: {
-    title: "Conditions générales d'utilisation",
+    title: 'Conditions générales d’utilisation',
     intro: 'Nzela Jobs est actuellement proposé en version bêta.',
     sections: [
       ['Objet', 'Nzela Jobs facilite la diffusion d’offres, la recherche d’opportunités, la transmission et le suivi des candidatures ainsi que les échanges entre candidats et recruteurs. La plateforme ne délivre aucun visa, contrat officiel, autorisation de travail ou décision administrative à la place de l’ACPE ou d’une autre autorité.'],
       ['Comptes', 'L’utilisateur fournit des informations exactes, protège ses identifiants et utilise un seul rôle cohérent avec son activité. Les comptes frauduleux, usurpés ou utilisés pour contourner les contrôles peuvent être suspendus.'],
       ['Offres et recrutements', 'Le recruteur demeure responsable de la légalité, de l’exactitude et de la non-discrimination de ses offres. Nzela Jobs peut modérer, suspendre ou retirer une offre présentant un risque, une incohérence ou un contenu illicite. La plateforme ne garantit ni recrutement ni embauche.'],
       ['Candidatures', 'Le candidat choisit les offres auxquelles il postule et autorise la transmission des informations et du CV au recruteur concerné. Il ne doit pas téléverser de documents contenant des données excessives ou sensibles sans nécessité.'],
+      ['Règles immobilières', 'Tout particulier ou professionnel peut publier une annonce s’il dispose du droit de proposer le bien et d’utiliser les photos. L’auteur reste responsable de l’exactitude du prix, de la disponibilité et des conditions. Nzela Jobs fournit un service de publication et de mise en relation : la plateforme n’est pas l’agence du propriétaire, ne garantit pas le bien et n’encaisse aucun loyer, caution ou acompte dans cette version. Les annonces frauduleuses, dupliquées, discriminatoires ou exigeant un paiement trompeur peuvent être suspendues.'],
       ['Interdictions', 'Sont interdits : usurpation d’identité, collecte automatisée non autorisée, revente de données, harcèlement, discrimination, fausses offres, frais illégitimes imposés aux candidats, contenus malveillants et atteintes à la sécurité.'],
       ['Responsabilité et bêta', 'La version bêta peut évoluer et connaître des interruptions. Nzela Jobs met en œuvre des moyens raisonnables de sécurité et de disponibilité sans garantir l’absence totale d’incident. Les utilisateurs doivent conserver leurs propres copies des documents importants.'],
     ],
@@ -56,6 +58,7 @@ const LEGAL_PAGES = {
     sections: [
       ['Éditeur et propriétaire du produit', 'Rodrin Bakala Mouengue — fondateur, porteur du projet et Product Owner de Nzela Jobs. La structure juridique commerciale définitive est en cours de formalisation ; les informations d’immatriculation seront ajoutées avant la commercialisation générale.'],
       ['Service', 'Nzela Jobs — plateforme privée indépendante de mise en relation et de gestion des candidatures, destinée prioritairement au Congo-Brazzaville.'],
+      ['Nzela Immobilier', 'Nzela Immobilier est un module de petites annonces en libre-service qui permet aux particuliers et aux professionnels de publier et de consulter des logements, puis de se contacter directement. Dans cette version, il ne constitue pas un service d’encaissement, de séquestre ou de gestion locative.'],
       ['Hébergement', 'Application : Vercel. Base de données, authentification et stockage privé des CV : Supabase, projet hébergé en région eu-west-3 (Paris).'],
       ['Propriété intellectuelle', 'La marque, l’interface, les contenus originaux, le code et les éléments graphiques de Nzela Jobs sont protégés. Les contenus transmis par les entreprises et les utilisateurs restent sous leur responsabilité.'],
       ['Contact', 'Les demandes liées aux données personnelles sont déposées dans l’espace « Vos droits ». Les demandes générales peuvent être adressées par les canaux officiels publiés sur le site ou le dépôt GitHub du projet pendant la phase bêta.'],
@@ -180,7 +183,7 @@ export default function PrivacyComplianceExperience() {
         const applicationButton = Array.from(document.querySelectorAll('button')).find((button) => /envoyer.*candidature|postuler maintenant/i.test(textOf(button)));
         createConsentBlock(applicationButton?.closest('form'), 'application', openLegal);
 
-        const reference = (document.body?.innerText || '').match(/Candidature envoy[eé]e\.\s*R[eé]f[eé]rence\s+(NZJ-[A-Z0-9-]+)/i)?.[1];
+        const reference = (document.body?.innerText || '').match(/Candidature envoy[eé]e\.\s*R[eé]f[eé]rence\s*:?\s*(NZJ-[A-Z0-9-]+)/i)?.[1];
         const pending = safeParse(localStorage.getItem(PENDING_APPLICATION_KEY));
         const alreadyRecorded = localStorage.getItem(RECORDED_APPLICATION_KEY);
         if (reference && pending && reference !== alreadyRecorded && hasSupabaseConfig && supabase) {
@@ -241,7 +244,7 @@ export default function PrivacyComplianceExperience() {
 
   const exportMyData = async () => {
     if (!session?.user || !supabase) { setMessage('Connectez-vous pour exporter les données liées à votre compte.'); return; }
-    setMessage('Préparation de votre export...');
+    setMessage('Préparation de votre export…');
     const [profile, applications, savedJobs, threads, messages, consents, requests] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle(),
       supabase.from('applications').select('*').eq('candidate_id', session.user.id),
@@ -269,7 +272,7 @@ export default function PrivacyComplianceExperience() {
     event.preventDefault();
     if (!hasSupabaseConfig || !supabase) { setMessage('Le service de demande est temporairement indisponible.'); return; }
     const email = requestForm.email.trim();
-    if (!email) { setMessage('Indiquez votre adresse électronique.'); return; }
+    if (!email) { setMessage('Indiquez votre adresse e-mail.'); return; }
     const { error } = await supabase.from('privacy_requests').insert({
       user_id: session?.user?.id || null, email, tracking_number: requestForm.tracking.trim() || null,
       request_type: requestForm.type, details: requestForm.details.trim() || null,
@@ -319,8 +322,8 @@ export default function PrivacyComplianceExperience() {
                 <section style={{ marginTop: 18 }}>
                   {session?.user && <button type="button" onClick={exportMyData} style={{ ...styles.tab, background: '#0f172a', color: '#fff', borderColor: '#0f172a', marginBottom: 18 }}>Télécharger mes données</button>}
                   <form onSubmit={submitPrivacyRequest} style={{ display: 'grid', gap: 12, maxWidth: 680 }}>
-                    <label><span style={{ display: 'block', fontWeight: 800, marginBottom: 5 }}>Adresse électronique</span><input type="email" required value={requestForm.email} onChange={(event) => setRequestForm((current) => ({ ...current, email: event.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #cbd5e1', borderRadius: 10 }} /></label>
-                    <label><span style={{ display: 'block', fontWeight: 800, marginBottom: 5 }}>Référence de candidature, le cas échéant</span><input value={requestForm.tracking} onChange={(event) => setRequestForm((current) => ({ ...current, tracking: event.target.value }))} placeholder="NZJ-CAND-..." style={{ width: '100%', padding: 12, border: '1px solid #cbd5e1', borderRadius: 10 }} /></label>
+                    <label><span style={{ display: 'block', fontWeight: 800, marginBottom: 5 }}>Adresse e-mail</span><input type="email" required value={requestForm.email} onChange={(event) => setRequestForm((current) => ({ ...current, email: event.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #cbd5e1', borderRadius: 10 }} /></label>
+                    <label><span style={{ display: 'block', fontWeight: 800, marginBottom: 5 }}>Référence de candidature, le cas échéant</span><input value={requestForm.tracking} onChange={(event) => setRequestForm((current) => ({ ...current, tracking: event.target.value }))} placeholder="NZJ-CAND-…" style={{ width: '100%', padding: 12, border: '1px solid #cbd5e1', borderRadius: 10 }} /></label>
                     <label><span style={{ display: 'block', fontWeight: 800, marginBottom: 5 }}>Type de demande</span><select value={requestForm.type} onChange={(event) => setRequestForm((current) => ({ ...current, type: event.target.value }))} style={{ width: '100%', padding: 12, border: '1px solid #cbd5e1', borderRadius: 10 }}><option value="access">Accès à mes données</option><option value="rectification">Rectification</option><option value="deletion">Suppression</option><option value="objection">Opposition</option><option value="portability">Portabilité</option><option value="consent_withdrawal">Retrait du consentement</option></select></label>
                     <label><span style={{ display: 'block', fontWeight: 800, marginBottom: 5 }}>Précisions</span><textarea value={requestForm.details} onChange={(event) => setRequestForm((current) => ({ ...current, details: event.target.value }))} rows={4} style={{ width: '100%', padding: 12, border: '1px solid #cbd5e1', borderRadius: 10, resize: 'vertical' }} /></label>
                     <button type="submit" style={{ ...styles.tab, background: '#1d4ed8', color: '#fff', borderColor: '#1d4ed8', justifySelf: 'start' }}>Enregistrer ma demande</button>
