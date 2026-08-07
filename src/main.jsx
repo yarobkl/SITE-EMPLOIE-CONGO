@@ -15,6 +15,7 @@ import PrivacyComplianceExperience from './PrivacyComplianceExperience.jsx'
 import JobViewCounterExperience from './JobViewCounterExperience.jsx'
 import TalentMarketplaceExperience from './TalentMarketplaceExperience.jsx'
 import RecruiterVerificationAdmin from './RecruiterVerificationAdmin.jsx'
+import OnboardingReliabilityExperience from './OnboardingReliabilityExperience.jsx'
 import './nzela-mobile-shell-fixes.css'
 import './index.css'
 
@@ -35,5 +36,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <JobViewCounterExperience />
     <TalentMarketplaceExperience />
     <RecruiterVerificationAdmin />
+    <OnboardingReliabilityExperience />
   </React.StrictMode>,
 )
