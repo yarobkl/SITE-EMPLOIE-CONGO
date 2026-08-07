@@ -12,13 +12,7 @@
   --nz2-shadow:0 14px 36px rgba(15,23,42,.08);
 }
 
-html[data-nz-immo-open='true']{overflow:hidden!important}
-html[data-nz-immo-open='true'] div[aria-label="Informations légales Nzela Jobs"]{display:none!important}
-.nzela-immo-nav-button svg{display:none!important}
-.nzela-immo-nav-button:before{content:"";width:22px;height:22px;background:center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 21h18'/%3E%3Cpath d='M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16'/%3E%3Cpath d='M9 7h.01M15 7h.01M9 11h.01M15 11h.01M9 15h.01M15 15h.01'/%3E%3C/svg%3E")}
-.nzela-immo-nav-button[aria-current='page']:before,.nzela-immo-nav-button.text-blue-700:before{filter:invert(27%) sepia(95%) saturate(2143%) hue-rotate(211deg) brightness(88%) contrast(93%)}
-
-.nz2-root{position:fixed;inset:0;z-index:2147482000;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;background:var(--nz2-background);color:var(--nz2-ink);font-family:inherit;isolation:isolate;overscroll-behavior:none}
+.nz2-root{position:relative;width:100%;height:100%;min-height:100%;display:flex;flex-direction:column;overflow:hidden;background:#fff;color:var(--nz2-ink);font-family:inherit;isolation:isolate;overscroll-behavior:none}
 .nz2-root.motion-dialog{animation:none!important;opacity:1!important;backdrop-filter:none!important}
 .nz2-root>.motion-dialog-panel{animation:none!important;transform:none!important;opacity:1!important}
 .nz2-root *{box-sizing:border-box}
@@ -42,7 +36,7 @@ html[data-nz-immo-open='true'] div[aria-label="Informations légales Nzela Jobs"
 
 .nz2-network-banner{flex:0 0 auto;min-height:38px;padding:8px 16px;background:#fff7ed;color:#9a3412;border-bottom:1px solid #fed7aa;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:700;text-align:center}
 .nz2-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:auto;scrollbar-gutter:stable}
-.nz2-main{width:min(1180px,100%);margin:auto;padding:0 16px calc(96px + env(safe-area-inset-bottom))}
+.nz2-main{width:min(1152px,100%);margin:auto;padding:20px 16px calc(126px + env(safe-area-inset-bottom))}
 
 .nz2-tabs{position:sticky;top:0;z-index:18;margin:0 -16px 14px;padding:9px 12px;background:rgba(245,247,251,.94);backdrop-filter:blur(14px);border-bottom:1px solid rgba(219,227,238,.8);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
 .nz2-tabs button{min-width:0;min-height:52px;border:1px solid transparent;border-radius:13px;background:transparent;color:#64748b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:800;cursor:pointer;line-height:1.1}
@@ -192,7 +186,7 @@ html[data-nz-immo-open='true'] div[aria-label="Informations légales Nzela Jobs"
 .nz2-existing-images>p{margin:0;color:var(--nz2-muted);font-size:12px;font-weight:800}
 .nz2-existing-images img{aspect-ratio:4/3}
 .nz2-confirmation-check{background:#f8fafc!important}
-.nz2-publish-footer{position:sticky;bottom:calc(72px + env(safe-area-inset-bottom));z-index:10;margin:0 -17px -17px;padding:12px 17px;background:rgba(255,255,255,.96);border-top:1px solid var(--nz2-line);backdrop-filter:blur(12px);display:grid;gap:10px}
+.nz2-publish-footer{position:sticky;bottom:calc(68px + env(safe-area-inset-bottom));z-index:10;margin:0 -17px -17px;padding:12px 17px;background:rgba(255,255,255,.96);border-top:1px solid var(--nz2-line);backdrop-filter:blur(12px);display:grid;gap:10px}
 .nz2-publish-footer>div{min-height:20px;color:var(--nz2-muted);font-size:12px}
 .nz2-publish-footer span{display:flex;align-items:center;gap:7px}
 
@@ -216,7 +210,7 @@ html[data-nz-immo-open='true'] div[aria-label="Informations légales Nzela Jobs"
 .nz2-confirm h2{margin:0;font-size:21px}
 .nz2-confirm p{margin:8px auto 18px;max-width:420px;color:var(--nz2-muted);line-height:1.55}
 .nz2-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.nz2-toast{position:absolute;left:12px;right:12px;bottom:calc(80px + env(safe-area-inset-bottom));z-index:80;width:min(460px,calc(100% - 24px));margin:auto;padding:13px 15px;border-radius:13px;background:#0f172a;color:white;text-align:center;font-size:13px;font-weight:750;box-shadow:0 18px 46px rgba(15,23,42,.3);animation:nz2-toast-in .22s ease both}
+.nz2-toast{position:absolute;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:80;width:min(460px,calc(100% - 24px));margin:auto;padding:13px 15px;border-radius:13px;background:#0f172a;color:white;text-align:center;font-size:13px;font-weight:750;box-shadow:0 18px 46px rgba(15,23,42,.3);animation:nz2-toast-in .22s ease both}
 .nz2-spin{animation:nz2-spin .75s linear infinite}
 
 @media(min-width:520px){
@@ -226,8 +220,8 @@ html[data-nz-immo-open='true'] div[aria-label="Informations légales Nzela Jobs"
 }
 
 @media(min-width:640px){
-  .nz2-main{padding-inline:22px}
-  .nz2-tabs{margin-inline:-22px;padding-inline:22px}
+  .nz2-main{padding-inline:24px}
+  .nz2-tabs{margin-inline:-24px;padding-inline:24px}
   .nz2-hero{padding:26px}
   .nz2-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .nz2-grid,.nz2-dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -240,7 +234,7 @@ html[data-nz-immo-open='true'] div[aria-label="Informations légales Nzela Jobs"
 
 @media(min-width:900px){
   .nz2-header-inner{padding-inline:24px;min-height:72px}
-  .nz2-main{padding:0 24px 54px}
+  .nz2-main{padding:32px 24px 54px}
   .nz2-bottom-nav{display:none}
   .nz2-tabs{position:relative;top:auto;width:max-content;margin:0;padding:18px 0 7px;background:transparent;border:0;backdrop-filter:none;display:flex;gap:8px}
   .nz2-tabs button{min-height:44px;padding:0 14px;border:1px solid #cbd5e1;border-radius:999px;background:white;flex-direction:row;font-size:13px}
@@ -264,8 +258,8 @@ html[data-nz-immo-open='true'] div[aria-label="Informations légales Nzela Jobs"
   .nz2-header-inner{min-height:68px;padding:8px 16px}
   .nz2-brand>span{width:42px;height:42px;flex-basis:42px}
   .nz2-brand strong{font-size:15px}
-  .nz2-main{padding-inline:12px}
-  .nz2-tabs{margin-inline:-12px}
+  .nz2-main{padding-inline:16px}
+  .nz2-tabs{margin-inline:-16px}
   .nz2-hero{padding:18px}
   .nz2-hero-actions{display:grid;grid-template-columns:1fr}
   .nz2-hero-actions .nz2-primary,.nz2-hero-actions .nz2-secondary{width:100%}

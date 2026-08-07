@@ -9,6 +9,7 @@ const JOBS_SCROLL_KEY = 'nzelajobs.navigation.jobsScroll';
 const SCREEN_PATHS = {
   home: '/',
   jobs: '/offres',
+  immobilier: '/immobilier',
   saved: '/favoris',
   tracking: '/candidatures',
   profile: '/profil',
@@ -52,12 +53,15 @@ function parseRoute(pathname = window.location.pathname) {
 }
 
 function detectScreen() {
-  const main = document.querySelector('#root > div > main') || document.querySelector('main.soft-enter');
+  const main = document.querySelector('.nz-platform-pane.is-active main')
+    || document.querySelector('#root > div > main')
+    || document.querySelector('main.soft-enter');
   if (!main) return { screen: '', main: null, title: '' };
   const title = normalizeText(main.querySelector('h1')?.textContent);
   const exact = {
     "Trouvez l’emploi qui vous correspond": 'home',
     "Offres d’emploi": 'jobs',
+    'Un logement à trouver ou à publier, simplement.': 'immobilier',
     'Postuler': 'apply',
     'Offres sauvegardées': 'saved',
     'Mes candidatures': 'tracking',
@@ -113,7 +117,13 @@ function writeStoredJson(key, value) {
 }
 
 function findButton(predicate) {
-  return Array.from(document.querySelectorAll('button')).find((button) => predicate(button, normalizeText(button.textContent)));
+  const activeScope = document.querySelector('.nz-platform-pane.is-active');
+  const candidates = [
+    ...Array.from(document.querySelectorAll('.nz-platform-header button, .nz-mobile-platform-nav button')),
+    ...Array.from(activeScope?.querySelectorAll('button') || []),
+    ...Array.from(document.querySelectorAll('button')),
+  ];
+  return [...new Set(candidates)].find((button) => predicate(button, normalizeText(button.textContent)));
 }
 
 function waitFor(getValue, timeout = 8000) {
@@ -203,10 +213,10 @@ export default function NavigationExperience() {
     const screen = detectScreen();
     if (screen.screen !== 'jobs') return;
     writeStoredJson(FILTERS_KEY, {
-      query: document.querySelector('input[aria-label="Métier ou mot-clé"]')?.value || '',
-      city: document.querySelector('select[aria-label="Ville"]')?.value || 'Toutes',
-      contract: document.querySelector('select[aria-label="Type de contrat"]')?.value || 'Tous',
-      sort: document.querySelector('select[aria-label="Trier les offres"]')?.value || 'recent',
+      query: screen.main.querySelector('input[aria-label="Métier ou mot-clé"]')?.value || '',
+      city: screen.main.querySelector('select[aria-label="Ville"]')?.value || 'Toutes',
+      contract: screen.main.querySelector('select[aria-label="Type de contrat"]')?.value || 'Tous',
+      sort: screen.main.querySelector('select[aria-label="Trier les offres"]')?.value || 'recent',
     });
   }, []);
 
@@ -228,6 +238,8 @@ export default function NavigationExperience() {
   const updateMeta = useCallback((screen, job) => {
     const title = screen === 'job' || screen === 'apply'
       ? `${job?.title || 'Offre d’emploi'} chez ${job?.company || 'une entreprise'} | Nzela Jobs`
+      : screen === 'immobilier'
+        ? 'Immobilier au Congo | Nzela'
       : screen === 'jobs'
         ? 'Offres d’emploi au Congo | Nzela Jobs'
         : 'Nzela Jobs - Plateforme de recrutement au Congo';
@@ -302,6 +314,7 @@ export default function NavigationExperience() {
       const selectors = {
         home: (element, text) => element.getAttribute('aria-label') === "Retour à l'accueil" || element.getAttribute('aria-label') === 'Navigation Accueil' || text === 'Accueil',
         jobs: (element, text) => text === 'Trouver un emploi' || element.getAttribute('aria-label') === 'Navigation Offres',
+        immobilier: (element, text) => text === 'Immobilier' || element.getAttribute('aria-label') === 'Navigation Immobilier',
         saved: (_element, text) => text === 'Favoris',
         tracking: (element, _text) => element.getAttribute('aria-label') === 'Navigation Suivi',
         profile: (element, _text) => element.getAttribute('aria-label') === 'Profil' || element.getAttribute('aria-label') === 'Navigation Profil',
@@ -419,6 +432,8 @@ export default function NavigationExperience() {
       const text = normalizeText(target.textContent);
       const aria = target.getAttribute('aria-label') || '';
 
+      if (target.closest('.nz2-root')) return;
+
       if (aria === 'Partager cette offre' && current.screen === 'job') {
         const route = parseRoute();
         const job = findJob(route.jobId) || jobsRef.current.find((item) => normalizeIdentity(item.title) === normalizeIdentity(current.title));
@@ -466,6 +481,7 @@ export default function NavigationExperience() {
       const routeTarget = (() => {
         if (aria === "Retour à l'accueil" || aria === 'Navigation Accueil') return { screen: 'home', path: '/' };
         if (text === 'Trouver un emploi' || aria === 'Navigation Offres' || text === 'Rechercher' || text === 'Voir tout' || text === 'Voir les offres') return { screen: 'jobs', path: '/offres' };
+        if (text === 'Immobilier' || aria === 'Navigation Immobilier') return { screen: 'immobilier', path: '/immobilier' };
         if (text === 'Favoris' || aria === 'Voir mes offres sauvegardées') return { screen: 'saved', path: '/favoris' };
         if (aria === 'Navigation Suivi') return { screen: 'tracking', path: '/candidatures' };
         if (aria === 'Profil' || aria === 'Navigation Profil') return { screen: 'profile', path: '/profil' };

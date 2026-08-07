@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { Briefcase, Building2, Home, User } from 'lucide-react';
 import './mobile-platform-shell.css';
 
@@ -10,8 +10,8 @@ export const PLATFORM_SECTIONS = [
 ];
 
 const SECTION_INDEX = new Map(PLATFORM_SECTIONS.map((item, index) => [item.id, index]));
-const SWIPE_START_DISTANCE = 10;
-const SWIPE_DURATION = 280;
+const SWIPE_START_DISTANCE = 9;
+const SWIPE_DURATION = 300;
 const CLICK_SUPPRESSION_DURATION = 420;
 
 function clamp(value, minimum, maximum) {
@@ -29,37 +29,8 @@ function prefersReducedMotion() {
 function shouldIgnoreSwipe(target) {
   if (!(target instanceof Element)) return false;
   return Boolean(target.closest(
-    'input, textarea, select, [contenteditable="true"], [data-platform-swipe="ignore"], .nz2-thumbs',
+    'input, textarea, select, [contenteditable="true"], [data-platform-swipe="ignore"], .nz2-thumbs, .overflow-x-auto, [role="slider"]',
   ));
-}
-
-function SectionPreview({ sectionId }) {
-  const section = PLATFORM_SECTIONS.find((item) => item.id === sectionId) || PLATFORM_SECTIONS[0];
-  const Icon = section.icon;
-
-  return (
-    <div className={`nz-platform-destination is-${section.id}`}>
-      <div className="nz-platform-destination-kicker">
-        <span><Icon size={19} /></span>
-        {section.id === 'immobilier' ? 'Nzela Immobilier' : 'Nzela Jobs'}
-      </div>
-      <h2>
-        {section.id === 'home' && "Trouvez l’emploi qui vous correspond"}
-        {section.id === 'jobs' && "Les offres d’emploi disponibles"}
-        {section.id === 'immobilier' && 'Un logement à trouver ou à publier, simplement.'}
-        {section.id === 'profile' && 'Votre profil et votre espace personnel'}
-      </h2>
-      <div className="nz-platform-destination-card">
-        <span />
-        <span />
-        <span />
-      </div>
-      <div className="nz-platform-destination-row">
-        <span />
-        <span />
-      </div>
-    </div>
-  );
 }
 
 export default function MobilePlatformShell({
@@ -67,18 +38,30 @@ export default function MobilePlatformShell({
   children,
   contained = false,
   disabled = false,
+  onBeforeNavigate,
   onNavigate,
   onPrepareNavigate,
+  sections,
   showNavigation = true,
   viewportClassName = '',
 }) {
   const activeIndex = SECTION_INDEX.get(activeId) ?? 0;
-  const [previewId, setPreviewId] = useState(null);
+  const hasPanels = Boolean(sections);
   const viewportRef = useRef(null);
+  const trackRef = useRef(null);
   const railRef = useRef(null);
+  const paneRefs = useRef(new Map());
   const transitionTimerRef = useRef(0);
-  const clickSuppressionTimerRef = useRef(0);
+  const clickTimerRef = useRef(0);
   const frameRef = useRef(0);
+  const previousIndexRef = useRef(activeIndex);
+  const activeIndexRef = useRef(activeIndex);
+  const activeIdRef = useRef(activeId);
+  const navigationTargetRef = useRef('');
+  const onBeforeNavigateRef = useRef(onBeforeNavigate);
+  const onNavigateRef = useRef(onNavigate);
+  const onPrepareNavigateRef = useRef(onPrepareNavigate);
+  const suppressClickRef = useRef(false);
   const gestureRef = useRef({
     pointerId: null,
     startX: 0,
@@ -89,156 +72,148 @@ export default function MobilePlatformShell({
     deltaX: 0,
     dragging: false,
     axis: '',
-    targetId: null,
-    suppressClick: false,
+    targetId: '',
     captureElement: null,
   });
 
-  const previewIndex = useMemo(() => (
-    previewId ? SECTION_INDEX.get(previewId) : null
-  ), [previewId]);
+  activeIndexRef.current = activeIndex;
+  activeIdRef.current = activeId;
+  onBeforeNavigateRef.current = onBeforeNavigate;
+  onNavigateRef.current = onNavigate;
+  onPrepareNavigateRef.current = onPrepareNavigate;
 
-  const clearTransitionTimer = () => {
+  const clearTransition = useCallback(() => {
     window.clearTimeout(transitionTimerRef.current);
     transitionTimerRef.current = 0;
-  };
+  }, []);
 
-  const clearClickSuppression = () => {
-    window.clearTimeout(clickSuppressionTimerRef.current);
-    clickSuppressionTimerRef.current = 0;
-    gestureRef.current.suppressClick = false;
+  const clearClickSuppression = useCallback(() => {
+    window.clearTimeout(clickTimerRef.current);
+    clickTimerRef.current = 0;
+    suppressClickRef.current = false;
     delete document.documentElement.dataset.nzPlatformSuppressClick;
-  };
+  }, []);
 
-  const scheduleClickSuppressionClear = () => {
-    window.clearTimeout(clickSuppressionTimerRef.current);
-    clickSuppressionTimerRef.current = window.setTimeout(
-      clearClickSuppression,
-      CLICK_SUPPRESSION_DURATION,
-    );
-  };
+  const suppressNextClick = useCallback(() => {
+    suppressClickRef.current = true;
+    document.documentElement.dataset.nzPlatformSuppressClick = 'true';
+    window.clearTimeout(clickTimerRef.current);
+    clickTimerRef.current = window.setTimeout(clearClickSuppression, CLICK_SUPPRESSION_DURATION);
+  }, [clearClickSuppression]);
 
-  const setIndicator = (position, immediate = false) => {
+  const setIndicator = useCallback((position, direct = false) => {
     const rail = railRef.current;
     if (!rail) return;
     const safePosition = clamp(position, 0, PLATFORM_SECTIONS.length - 1);
-    rail.style.setProperty('--nz-platform-indicator-left', `${(safePosition * 100) / PLATFORM_SECTIONS.length}%`);
-    rail.classList.toggle('is-direct-manipulation', immediate);
-  };
+    rail.style.setProperty(
+      '--nz-platform-indicator-left',
+      `${(safePosition * 100) / PLATFORM_SECTIONS.length}%`,
+    );
+    rail.classList.toggle('is-direct-manipulation', direct);
+  }, []);
 
-  const setVisualPosition = (deltaX, targetId = gestureRef.current.targetId) => {
+  const setVisualIndex = useCallback((position, direct = false) => {
     const viewport = viewportRef.current;
-    if (!viewport) return;
+    const track = trackRef.current;
+    if (!viewport || !track) return;
+    if (!isMobileViewport()) {
+      track.style.transform = 'none';
+      setIndicator(position, true);
+      return;
+    }
     const width = Math.max(viewport.getBoundingClientRect().width, 1);
-    const safeDeltaX = clamp(deltaX, -width, width);
-    const targetIndex = targetId ? SECTION_INDEX.get(targetId) : null;
-    const direction = targetIndex == null ? 0 : Math.sign(targetIndex - activeIndex);
-    const progress = clamp(Math.abs(safeDeltaX) / width, 0, 1);
+    const safePosition = clamp(position, -0.18, PLATFORM_SECTIONS.length - 0.82);
+    track.style.transform = `translate3d(${-safePosition * width}px, 0, 0)`;
+    setIndicator(safePosition, direct);
+  }, [setIndicator]);
 
-    viewport.style.setProperty('--nz-platform-page-x', `${safeDeltaX}px`);
-    viewport.style.setProperty('--nz-platform-preview-origin', `${direction * width}px`);
-    viewport.style.setProperty('--nz-platform-preview-opacity', String(clamp(progress * 1.35, 0, 1)));
-    setIndicator(activeIndex + (-safeDeltaX / width), true);
-  };
-
-  const resetVisuals = (animate = false) => {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-    viewport.classList.toggle('is-settling', animate && !prefersReducedMotion());
-    setVisualPosition(0, null);
-    setIndicator(activeIndex, !animate);
-    if (!animate) {
-      viewport.classList.remove('is-dragging', 'is-settling');
-      setPreviewId(null);
-    }
-  };
-
-  const completeNavigation = (targetId) => {
-    Promise.resolve().then(() => onNavigate?.(targetId)).finally(() => {
-      window.cancelAnimationFrame(frameRef.current);
-      frameRef.current = window.requestAnimationFrame(() => {
-        const viewport = viewportRef.current;
-        viewport?.classList.remove('is-dragging', 'is-settling');
-        if (viewport) {
-          viewport.style.setProperty('--nz-platform-page-x', '0px');
-          viewport.style.setProperty('--nz-platform-preview-opacity', '0');
-        }
-        setPreviewId(null);
-        setIndicator(SECTION_INDEX.get(targetId) ?? activeIndex, true);
-      });
-    });
-  };
-
-  const settleTo = (targetId) => {
-    const viewport = viewportRef.current;
-    if (!viewport || !targetId) return;
-    clearTransitionTimer();
-    const targetIndex = SECTION_INDEX.get(targetId);
-    const direction = Math.sign(targetIndex - activeIndex);
-    const width = Math.max(viewport.getBoundingClientRect().width, 1);
-
-    if (prefersReducedMotion()) {
-      completeNavigation(targetId);
-      return;
-    }
-
-    viewport.classList.remove('is-dragging');
-    viewport.classList.add('is-settling');
-    setPreviewId(targetId);
-    gestureRef.current.targetId = targetId;
+  const finishTransition = useCallback((index = activeIndexRef.current) => {
+    clearTransition();
     window.cancelAnimationFrame(frameRef.current);
-    frameRef.current = window.requestAnimationFrame(() => {
-      setVisualPosition(-direction * width, targetId);
-      setIndicator(targetIndex);
-    });
-    transitionTimerRef.current = window.setTimeout(() => completeNavigation(targetId), SWIPE_DURATION + 25);
-  };
+    const viewport = viewportRef.current;
+    viewport?.classList.remove('is-dragging', 'is-settling');
+    delete document.documentElement.dataset.nzPlatformSwiping;
+    setVisualIndex(index, true);
+  }, [clearTransition, setVisualIndex]);
 
-  const requestNavigation = (targetId) => {
-    if (
-      !SECTION_INDEX.has(targetId)
-      || gestureRef.current.pointerId != null
-      || viewportRef.current?.classList.contains('is-settling')
-    ) return;
-    if (targetId === activeId) {
-      onNavigate?.(targetId);
-      return;
-    }
-    if (!isMobileViewport() || prefersReducedMotion()) {
-      onNavigate?.(targetId);
-      return;
-    }
-
-    clearTransitionTimer();
-    resetVisuals(false);
-    setPreviewId(targetId);
-    gestureRef.current.targetId = targetId;
-    onPrepareNavigate?.(targetId);
-    window.cancelAnimationFrame(frameRef.current);
-    frameRef.current = window.requestAnimationFrame(() => {
-      setVisualPosition(0, targetId);
-      frameRef.current = window.requestAnimationFrame(() => settleTo(targetId));
-    });
-  };
-
-  const releasePointer = (pointerId) => {
-    const captureElement = gestureRef.current.captureElement;
-    // Invalider le geste avant de libérer la capture : Safari peut émettre
-    // `lostpointercapture` pendant cette opération.
-    gestureRef.current.pointerId = null;
-    gestureRef.current.captureElement = null;
+  const releasePointer = useCallback((pointerId) => {
+    const gesture = gestureRef.current;
+    const captureElement = gesture.captureElement;
+    gesture.pointerId = null;
+    gesture.captureElement = null;
     delete document.documentElement.dataset.nzPlatformSwiping;
     try {
-      if (captureElement?.hasPointerCapture?.(pointerId)) captureElement.releasePointerCapture(pointerId);
+      if (captureElement?.hasPointerCapture?.(pointerId)) {
+        captureElement.releasePointerCapture(pointerId);
+      }
     } catch {
-      // Safari peut perdre la capture lors d'un geste système. Le nettoyage reste identique.
+      // Safari peut perdre la capture lorsque le geste système prend la main.
     }
-  };
+  }, []);
 
-  const onPointerDown = (event) => {
+  const navigationAllowed = useCallback((targetId) => {
+    if (!targetId || targetId === activeIdRef.current) return true;
+    return onBeforeNavigateRef.current?.(targetId) !== false;
+  }, []);
+
+  const animateTo = useCallback((targetId, commit) => {
+    const targetIndex = SECTION_INDEX.get(targetId);
+    if (targetIndex == null) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    clearTransition();
+    const distance = Math.abs(targetIndex - activeIndexRef.current);
+    const duration = prefersReducedMotion() ? 1 : Math.min(380, SWIPE_DURATION + Math.max(0, distance - 1) * 35);
+    viewport.style.setProperty('--nz-platform-swipe-duration', `${duration}ms`);
+    viewport.classList.remove('is-dragging');
+    viewport.classList.add('is-settling');
+    window.cancelAnimationFrame(frameRef.current);
+    frameRef.current = window.requestAnimationFrame(() => setVisualIndex(targetIndex));
+
+    transitionTimerRef.current = window.setTimeout(() => {
+      if (!commit) {
+        finishTransition(activeIndexRef.current);
+        return;
+      }
+
+      navigationTargetRef.current = targetId;
+      Promise.resolve(onNavigateRef.current?.(targetId)).finally(() => {
+        window.cancelAnimationFrame(frameRef.current);
+        frameRef.current = window.requestAnimationFrame(() => {
+          finishTransition(targetIndex);
+          navigationTargetRef.current = '';
+        });
+      });
+    }, duration + 18);
+  }, [clearTransition, finishTransition, setVisualIndex]);
+
+  const cancelGesture = useCallback(() => {
+    animateTo(activeIdRef.current, false);
+  }, [animateTo]);
+
+  const requestNavigation = useCallback((targetId) => {
+    if (!SECTION_INDEX.has(targetId)) return;
+    if (targetId === activeIdRef.current) {
+      paneRefs.current.get(targetId)?.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+      onNavigateRef.current?.(targetId);
+      return;
+    }
+    if (gestureRef.current.pointerId != null || viewportRef.current?.classList.contains('is-settling')) return;
+    if (!navigationAllowed(targetId)) return;
+    if (!isMobileViewport() || prefersReducedMotion() || !hasPanels) {
+      onNavigateRef.current?.(targetId);
+      return;
+    }
+    onPrepareNavigateRef.current?.(targetId);
+    animateTo(targetId, true);
+  }, [animateTo, hasPanels, navigationAllowed]);
+
+  const onPointerDown = useCallback((event) => {
     if (
       disabled
       || !showNavigation
+      || !hasPanels
       || !isMobileViewport()
       || !event.isPrimary
       || event.button > 0
@@ -247,7 +222,7 @@ export default function MobilePlatformShell({
       || shouldIgnoreSwipe(event.target)
     ) return;
 
-    clearTransitionTimer();
+    clearTransition();
     const gesture = gestureRef.current;
     gesture.pointerId = event.pointerId;
     gesture.startX = event.clientX;
@@ -258,12 +233,11 @@ export default function MobilePlatformShell({
     gesture.deltaX = 0;
     gesture.dragging = false;
     gesture.axis = '';
-    gesture.targetId = null;
-    gesture.suppressClick = false;
+    gesture.targetId = '';
     gesture.captureElement = event.currentTarget;
-  };
+  }, [clearTransition, disabled, hasPanels, showNavigation]);
 
-  const onPointerMove = (event) => {
+  const onPointerMove = useCallback((event) => {
     const gesture = gestureRef.current;
     if (gesture.pointerId !== event.pointerId) return;
     const rawX = event.clientX - gesture.startX;
@@ -271,21 +245,20 @@ export default function MobilePlatformShell({
 
     if (!gesture.axis) {
       if (Math.max(Math.abs(rawX), Math.abs(rawY)) < SWIPE_START_DISTANCE) return;
-      if (Math.abs(rawY) >= Math.abs(rawX) * 0.9) {
+      if (Math.abs(rawY) >= Math.abs(rawX) * 0.92) {
         gesture.axis = 'vertical';
         releasePointer(event.pointerId);
         return;
       }
+
       gesture.axis = 'horizontal';
       gesture.dragging = true;
-      gesture.suppressClick = true;
-      document.documentElement.dataset.nzPlatformSuppressClick = 'true';
       document.documentElement.dataset.nzPlatformSwiping = 'true';
       viewportRef.current?.classList.add('is-dragging');
       try {
         gesture.captureElement?.setPointerCapture?.(event.pointerId);
       } catch {
-        // Le déplacement continue sans capture si le navigateur la refuse.
+        // Le geste reste fonctionnel si le navigateur refuse la capture.
       }
     }
 
@@ -293,25 +266,26 @@ export default function MobilePlatformShell({
     if (event.cancelable) event.preventDefault();
 
     const direction = rawX < 0 ? 1 : -1;
-    const targetIndex = activeIndex + direction;
+    const targetIndex = activeIndexRef.current + direction;
     const hasTarget = targetIndex >= 0 && targetIndex < PLATFORM_SECTIONS.length;
     const deltaX = hasTarget ? rawX : rawX * 0.18;
-    const nextTargetId = hasTarget ? PLATFORM_SECTIONS[targetIndex].id : null;
+    const targetId = hasTarget ? PLATFORM_SECTIONS[targetIndex].id : '';
     const elapsed = Math.max(event.timeStamp - gesture.lastAt, 1);
     gesture.velocity = (event.clientX - gesture.lastX) / elapsed;
     gesture.lastX = event.clientX;
     gesture.lastAt = event.timeStamp;
     gesture.deltaX = deltaX;
 
-    if (gesture.targetId !== nextTargetId) {
-      gesture.targetId = nextTargetId;
-      setPreviewId(nextTargetId);
-      if (nextTargetId) onPrepareNavigate?.(nextTargetId);
+    if (gesture.targetId !== targetId) {
+      gesture.targetId = targetId;
+      if (targetId) onPrepareNavigateRef.current?.(targetId);
     }
-    setVisualPosition(deltaX, nextTargetId);
-  };
 
-  const finishGesture = (event, cancelled = false) => {
+    const width = Math.max(viewportRef.current?.getBoundingClientRect().width || 1, 1);
+    setVisualIndex(activeIndexRef.current - (deltaX / width), true);
+  }, [releasePointer, setVisualIndex]);
+
+  const finishGesture = useCallback((event, cancelled = false) => {
     const gesture = gestureRef.current;
     if (gesture.pointerId !== event.pointerId) return;
     const wasDragging = gesture.dragging;
@@ -319,94 +293,130 @@ export default function MobilePlatformShell({
     const deltaX = gesture.deltaX;
     const velocity = gesture.velocity;
     const width = Math.max(viewportRef.current?.getBoundingClientRect().width || 1, 1);
-    const threshold = Math.min(96, width * 0.22);
+    const threshold = Math.min(92, width * 0.2);
     const velocityCommits = Math.abs(velocity) > 0.42 && Math.sign(velocity) === Math.sign(deltaX);
-    const shouldCommit = !cancelled && targetId && (Math.abs(deltaX) >= threshold || velocityCommits);
+    const shouldCommit = !cancelled
+      && targetId
+      && (Math.abs(deltaX) >= threshold || velocityCommits)
+      && navigationAllowed(targetId);
 
     releasePointer(event.pointerId);
     gesture.dragging = false;
     gesture.axis = '';
 
-    // Un appui simple doit rester un clic normal. L'ancienne logique ajoutait ici
-    // `is-settling`, puis le clic de la rubrique était rejeté juste après.
     if (!wasDragging) {
-      gesture.targetId = null;
+      gesture.targetId = '';
       gesture.deltaX = 0;
       gesture.velocity = 0;
-      clearClickSuppression();
-      resetVisuals(false);
       return;
     }
 
-    if (shouldCommit) {
-      scheduleClickSuppressionClear();
-      settleTo(targetId);
-      return;
-    }
+    suppressNextClick();
+    if (shouldCommit) animateTo(targetId, true);
+    else cancelGesture();
+  }, [animateTo, cancelGesture, navigationAllowed, releasePointer, suppressNextClick]);
 
-    const viewport = viewportRef.current;
-    viewport?.classList.remove('is-dragging');
-    viewport?.classList.add('is-settling');
-    setVisualPosition(0, targetId);
-    setIndicator(activeIndex);
-    transitionTimerRef.current = window.setTimeout(() => {
-      viewport?.classList.remove('is-settling');
-      setPreviewId(null);
-      gesture.targetId = null;
-    }, SWIPE_DURATION + 10);
-
-    scheduleClickSuppressionClear();
-  };
-
-  const onClickCapture = (event) => {
-    const gesture = gestureRef.current;
-    if (!gesture.suppressClick) return;
+  const onClickCapture = useCallback((event) => {
+    if (!suppressClickRef.current) return;
     event.preventDefault();
     event.stopPropagation();
     clearClickSuppression();
-  };
+  }, [clearClickSuppression]);
+
+  useLayoutEffect(() => {
+    if (!hasPanels) return;
+    const previousIndex = previousIndexRef.current;
+    const wasInternalNavigation = navigationTargetRef.current === activeId;
+
+    if (
+      previousIndex !== activeIndex
+      && !wasInternalNavigation
+      && isMobileViewport()
+      && showNavigation
+      && !prefersReducedMotion()
+    ) {
+      const viewport = viewportRef.current;
+      clearTransition();
+      viewport?.classList.add('is-settling');
+      viewport?.style.setProperty('--nz-platform-swipe-duration', `${SWIPE_DURATION}ms`);
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = window.requestAnimationFrame(() => setVisualIndex(activeIndex));
+      transitionTimerRef.current = window.setTimeout(() => finishTransition(activeIndex), SWIPE_DURATION + 18);
+    } else {
+      setVisualIndex(activeIndex, true);
+    }
+
+    previousIndexRef.current = activeIndex;
+  }, [activeId, activeIndex, clearTransition, finishTransition, hasPanels, setVisualIndex, showNavigation]);
 
   useEffect(() => {
-    resetVisuals(false);
-  }, [activeId]);
+    if (!hasPanels) return undefined;
+    const syncWidth = () => {
+      if (gestureRef.current.pointerId == null) setVisualIndex(activeIndexRef.current, true);
+    };
+    window.addEventListener('resize', syncWidth, { passive: true });
+    window.addEventListener('orientationchange', syncWidth, { passive: true });
+    return () => {
+      window.removeEventListener('resize', syncWidth);
+      window.removeEventListener('orientationchange', syncWidth);
+    };
+  }, [hasPanels, setVisualIndex]);
 
   useEffect(() => () => {
-    clearTransitionTimer();
+    clearTransition();
     clearClickSuppression();
     window.cancelAnimationFrame(frameRef.current);
     delete document.documentElement.dataset.nzPlatformSwiping;
-  }, []);
+  }, [clearClickSuppression, clearTransition]);
+
+  const gestureHandlers = {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp: (event) => finishGesture(event),
+    onPointerCancel: (event) => finishGesture(event, true),
+    onLostPointerCapture: (event) => finishGesture(event, true),
+    onClickCapture,
+  };
 
   return (
-    <div className={`nz-platform-page-shell ${contained ? 'is-contained' : ''}`}>
+    <div className={`nz-platform-page-shell ${contained ? 'is-contained' : ''} ${hasPanels ? 'has-platform-panels' : ''}`}>
       <div
         ref={viewportRef}
         className={`nz-platform-swipe-viewport ${viewportClassName}`}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={(event) => finishGesture(event)}
-        onPointerCancel={(event) => finishGesture(event, true)}
-        onLostPointerCapture={(event) => finishGesture(event, true)}
-        onClickCapture={onClickCapture}
+        {...gestureHandlers}
       >
-        {previewId && previewIndex != null && (
-          <div className="nz-platform-swipe-preview" aria-hidden="true" inert="">
-            <SectionPreview sectionId={previewId} />
+        {hasPanels ? (
+          <div ref={trackRef} className="nz-platform-panels">
+            {PLATFORM_SECTIONS.map((item) => {
+              const active = item.id === activeId;
+              return (
+                <section
+                  key={item.id}
+                  ref={(node) => {
+                    if (node) paneRefs.current.set(item.id, node);
+                    else paneRefs.current.delete(item.id);
+                  }}
+                  className={`nz-platform-pane ${active ? 'is-active' : ''}`}
+                  data-platform-section={item.id}
+                  aria-label={item.label}
+                  aria-hidden={!active}
+                  inert={active ? undefined : ''}
+                >
+                  {sections[item.id]}
+                </section>
+              );
+            })}
           </div>
+        ) : (
+          <div className="nz-platform-swipe-current">{children}</div>
         )}
-        <div className="nz-platform-swipe-current">{children}</div>
       </div>
 
-      {showNavigation && (
+      {showNavigation ? (
         <nav
           className="nz-mobile-platform-nav"
           aria-label={contained ? 'Navigation principale Nzela' : 'Navigation mobile'}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={(event) => finishGesture(event)}
-          onPointerCancel={(event) => finishGesture(event, true)}
-          onLostPointerCapture={(event) => finishGesture(event, true)}
-          onClickCapture={onClickCapture}
+          {...gestureHandlers}
         >
           <div
             ref={railRef}
@@ -425,14 +435,14 @@ export default function MobilePlatformShell({
                   onClick={() => requestNavigation(item.id)}
                   className={active ? 'is-active text-blue-700 nz-mobile-active' : ''}
                 >
-                  <Icon size={21} strokeWidth={active ? 2.35 : 1.85} />
+                  <Icon size={20} strokeWidth={active ? 2.35 : 1.85} />
                   <span>{item.label}</span>
                 </button>
               );
             })}
           </div>
         </nav>
-      )}
+      ) : null}
     </div>
   );
 }
