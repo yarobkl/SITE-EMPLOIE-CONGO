@@ -1,0 +1,8 @@
+{
+  "appId": "com.nzela.app",
+  "appName": "Nzela",
+  "webDir": "dist",
+  "server": {
+    "iosScheme": "https"
+  }
+}
