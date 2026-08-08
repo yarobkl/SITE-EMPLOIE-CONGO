@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "check:architecture": "node scripts/check-platform-architecture.mjs",
-    "security:audit": "npm audit --audit-level=high || true",
+    "security:audit": "npm audit --audit-level=high",
     "build": "npm run security:audit && npm run check:architecture && vite build",
     "preview": "vite preview"
   },
@@ -21,8 +21,11 @@
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^6.0.2",
     "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32",
+    "postcss": "^8.5.23",
     "tailwindcss": "^3.4.1",
     "vite": "^8.0.13"
+  },
+  "overrides": {
+    "nanoid": "3.3.17"
   }
 }
