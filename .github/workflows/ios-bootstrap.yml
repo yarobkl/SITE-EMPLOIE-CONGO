@@ -1,0 +1,51 @@
+name: iOS bootstrap
+
+on:
+  push:
+    branches:
+      - agent/ios-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: ${{ !contains(github.event.head_commit.message, '[ios-bootstrap]') }}
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: agent/ios-foundation
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies and refresh lockfile
+        run: npm install
+
+      - name: Validate web build
+        run: npm run build
+
+      - name: Generate or sync iOS project
+        run: |
+          if [ -d ios ]; then
+            npx cap sync ios
+          else
+            npx cap add ios
+          fi
+
+      - name: Commit generated native foundation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json ios
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+            exit 0
+          fi
+          git commit -m "feat(ios): generate native Xcode project [ios-bootstrap]"
+          git push origin HEAD:agent/ios-foundation
