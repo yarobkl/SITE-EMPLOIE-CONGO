@@ -4,13 +4,19 @@ on:
   push:
     branches:
       - agent/ios-foundation
+  pull_request:
+    branches:
+      - main
+    types: [opened, reopened, synchronize]
 
 permissions:
   contents: write
 
 jobs:
   bootstrap:
-    if: ${{ !contains(github.event.head_commit.message, '[ios-bootstrap]') }}
+    if: >-
+      (github.event_name == 'push' && !contains(github.event.head_commit.message, '[ios-bootstrap]')) ||
+      (github.event_name == 'pull_request' && github.actor != 'github-actions[bot]')
     runs-on: macos-latest
     steps:
       - name: Checkout
