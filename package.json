@@ -16,15 +16,24 @@
     "ios:run": "npm run build && npx cap run ios"
   },
   "dependencies": {
-    "@capacitor/core": "8.4.2",
-    "@capacitor/ios": "8.4.2",
+    "@capacitor/app": "7.1.2",
+    "@capacitor/browser": "7.0.5",
+    "@capacitor/camera": "7.0.5",
+    "@capacitor/core": "7.6.8",
+    "@capacitor/haptics": "7.0.5",
+    "@capacitor/ios": "7.6.8",
+    "@capacitor/network": "7.0.4",
+    "@capacitor/push-notifications": "7.0.7",
+    "@capacitor/share": "7.0.4",
+    "@capacitor/splash-screen": "7.0.5",
+    "@capacitor/status-bar": "7.0.6",
     "@supabase/supabase-js": "^2.106.0",
     "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.4.2",
+    "@capacitor/cli": "7.6.8",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^6.0.2",

@@ -9,7 +9,7 @@ Le code React/Vite/Supabase reste la source produit principale. Capacitor fourni
 
 - Web : React + Vite
 - Backend : Supabase
-- Native runtime : Capacitor 8
+- Native runtime : Capacitor 7
 - iOS : projet Xcode généré par Capacitor
 - Auth : Google + Sign in with Apple
 - Distribution : TestFlight puis App Store
@@ -66,6 +66,8 @@ Le code React/Vite/Supabase reste la source produit principale. Capacitor fourni
 - Review App Store.
 
 ## Contraintes Apple 2026
+
+Le projet est actuellement stabilise en Capacitor 7 pour compiler sur le Mac disponible avec Xcode 15.2. Une migration Capacitor/Xcode plus recente reste possible avant soumission App Store si Apple l'exige au moment de la publication.
 
 - Build de soumission avec Xcode 26 ou plus récent et SDK iOS 26 ou plus récent.
 - L’application doit apporter une expérience suffisamment native et utile pour ne pas être considérée comme un simple site reconditionné.
