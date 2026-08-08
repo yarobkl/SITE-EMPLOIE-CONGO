@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   BarChart3,
-  BriefcaseBusiness,
+  Briefcase,
   CheckCircle2,
   Clock3,
   Edit3,
@@ -13,7 +13,7 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
-  UserRoundSearch,
+  User,
   Users,
   X,
 } from 'lucide-react';
@@ -156,7 +156,7 @@ function StatusPill({ status }) {
   return <span className={classNames('inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold', tone)}>{label}</span>;
 }
 
-function EmptyState({ icon: Icon = BriefcaseBusiness, title, body }) {
+function EmptyState({ icon: Icon = Briefcase, title, body }) {
   return (
     <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-7 text-center">
       <Icon className="mx-auto text-slate-400" size={34} />
@@ -599,7 +599,7 @@ function RecruiterMarketplace({ user, profile, locations }) {
       {success && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{success}</div>}
       <section>
         <div className="mb-3 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Correspondances automatiques</p><h3 className="mt-1 text-xl font-black text-slate-950">Jusqu’à 10 talents compatibles</h3></div><Select value={selectedJobId} onChange={(event) => setSelectedJobId(event.target.value)} className="max-w-sm"><option value="">Sélectionnez une offre</option>{jobs.map((job) => <option key={job.id} value={job.id}>{job.title}</option>)}</Select></div>
-        {!selectedJobId ? <EmptyState title="Sélectionnez une offre" body="Le moteur comparera l’offre choisie aux demandes d’emploi encore actives." /> : matches.length === 0 ? <EmptyState icon={UserRoundSearch} title="Aucun profil compatible pour le moment" body="Les nouvelles demandes actives seront automatiquement rapprochées de cette offre." /> : <div className="grid gap-4 lg:grid-cols-2">{matches.map((talent) => <TalentCard key={talent.job_seeker_post_id} talent={talent} onInvite={invite} />)}</div>}
+        {!selectedJobId ? <EmptyState title="Sélectionnez une offre" body="Le moteur comparera l’offre choisie aux demandes d’emploi encore actives." /> : matches.length === 0 ? <EmptyState icon={User} title="Aucun profil compatible pour le moment" body="Les nouvelles demandes actives seront automatiquement rapprochées de cette offre." /> : <div className="grid gap-4 lg:grid-cols-2">{matches.map((talent) => <TalentCard key={talent.job_seeker_post_id} talent={talent} onInvite={invite} />)}</div>}
       </section>
       <section>
         <div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-blue-700">Recherche libre</p><h3 className="mt-1 text-xl font-black text-slate-950">Tous les talents disponibles</h3></div>
@@ -678,7 +678,7 @@ export default function TalentMarketplaceExperience() {
         className="fixed bottom-24 right-4 z-[75] inline-flex min-h-12 items-center gap-2 rounded-full bg-blue-600 px-4 text-sm font-black text-white shadow-xl transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 md:bottom-6"
         aria-label="Ouvrir Nzela Talents"
       >
-        <UserRoundSearch size={19} /> {label}
+        <User size={19} /> {label}
       </button>
 
       {open && (
