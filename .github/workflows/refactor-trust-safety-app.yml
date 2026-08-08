@@ -1,0 +1,138 @@
+name: Refactor Trust Safety App
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - src/App.jsx
+      - .github/workflows/refactor-trust-safety-app.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Integrate Trust Safety into App
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/App.jsx')
+          text = path.read_text()
+          original = text
+
+          def replace_once(old, new, label):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 occurrence, found {count}')
+              text = text.replace(old, new, 1)
+
+          # Icon used by the candidate reporting action.
+          replace_once('  FileText,\n  Home,', '  FileText,\n  Flag,\n  Home,', 'Flag import')
+
+          # Job normalization now carries company trust + moderation state.
+          replace_once(
+              "    company: row.companies?.name || row.company || 'Entreprise',\n    role: row.title || row.role,",
+              "    company: row.companies?.name || row.company || 'Entreprise',\n    companyVerified: Boolean(row.companies?.verified),\n    role: row.title || row.role,",
+              'company verification normalization',
+          )
+          replace_once(
+              "    status: row.status || 'published',\n    createdAt: row.created_at,",
+              "    status: row.status || 'published',\n    moderationStatus: row.moderation_status || 'approved',\n    createdAt: row.created_at,",
+              'moderation normalization',
+          )
+
+          old_select = ".select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,created_at,companies(name)')"
+          new_select = ".select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,moderation_status,created_at,companies(name,verified)')"
+          select_count = text.count(old_select)
+          if select_count < 3:
+              raise SystemExit(f'job selects: expected at least 3 occurrences, found {select_count}')
+          text = text.replace(old_select, new_select)
+
+          # Never surface a pending/blocked job from persisted client state.
+          replace_once(
+              "  const publishedJobs = jobs.filter((job) => job.status === 'published');",
+              "  const publishedJobs = jobs.filter((job) => job.status === 'published' && job.moderationStatus === 'approved');",
+              'published job filtering',
+          )
+
+          # Keep recruiter workspace complete while public collection only receives approved jobs.
+          replace_once(
+              "      return updatedJob.status === 'published' ? [updatedJob, ...current] : current;",
+              "      return updatedJob.status === 'published' && updatedJob.moderationStatus === 'approved' ? [updatedJob, ...current] : current;",
+              'public collection sync',
+          )
+
+          # Candidate-facing verified badge in compact cards.
+          replace_once(
+              '            <span className="mt-0.5 block text-sm text-slate-700">{job.company}</span>\n            <span className="mt-2 flex items-center gap-1.5 text-sm text-slate-600">',
+              '            <span className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-slate-700">{job.company}{job.companyVerified && <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-black text-blue-700"><ShieldCheck size={12} /> Vérifiée</span>}</span>\n            <span className="mt-2 flex items-center gap-1.5 text-sm text-slate-600">',
+              'job card verified badge',
+          )
+
+          # Job detail: report action + verified badge.
+          replace_once(
+              "function JobScreen({ job, saved, toggleSave, setScreen, notify }) {\n  if (!job) return <EmptyState title=\"Offre introuvable\" body=\"Retournez à la liste des offres.\" />;\n  const shareJob = async () => {",
+              "function JobScreen({ job, saved, toggleSave, setScreen, notify }) {\n  if (!job) return <EmptyState title=\"Offre introuvable\" body=\"Retournez à la liste des offres.\" />;\n\n  const reportJob = async () => {\n    if (!hasSupabaseConfig || !supabase || !isSupabaseId(job.id)) {\n      notify('Le signalement est indisponible pour cette offre.');\n      return;\n    }\n    const { data } = await supabase.auth.getUser();\n    const user = data?.user;\n    if (!user) {\n      notify('Connectez-vous pour signaler une offre.');\n      return;\n    }\n    const choice = window.prompt('Pourquoi signalez-vous cette offre ?\\n1. Arnaque suspectée\\n2. Demande de paiement\\n3. Identité douteuse\\n4. Contenu trompeur\\n5. Discrimination\\n6. Autre motif');\n    if (choice === null) return;\n    const reasons = { '1': 'scam', '2': 'payment_request', '3': 'identity', '4': 'misleading', '5': 'discrimination', '6': 'other' };\n    const reason = reasons[String(choice).trim()];\n    if (!reason) {\n      notify('Choisissez un motif entre 1 et 6.');\n      return;\n    }\n    const details = window.prompt('Décrivez brièvement le problème (facultatif) :', '');\n    if (details === null) return;\n    const { error } = await supabase.from('job_reports').insert({\n      job_id: job.id,\n      reporter_id: user.id,\n      reason,\n      details: details.trim().slice(0, 1200) || null,\n      status: 'open',\n    });\n    if (error?.code === '23505') {\n      notify('Vous avez déjà signalé cette offre.');\n      return;\n    }\n    if (error) {\n      notify('Le signalement n’a pas pu être envoyé.');\n      return;\n    }\n    notify('Signalement envoyé à l’équipe Nzela.');\n  };\n\n  const shareJob = async () => {",
+              'job report action',
+          )
+          replace_once(
+              '          <p className="mt-2 text-base font-semibold text-blue-700">{job.company}</p>\n          <p className="mt-3 flex items-center gap-2 text-sm text-slate-600"><MapPin size={17} /> {job.loc}</p>',
+              '          <p className="mt-2 flex flex-wrap items-center gap-2 text-base font-semibold text-blue-700">{job.company}{job.companyVerified && <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-700"><ShieldCheck size={13} /> Entreprise vérifiée</span>}</p>\n          <p className="mt-3 flex items-center gap-2 text-sm text-slate-600"><MapPin size={17} /> {job.loc}</p>',
+              'job detail verified badge',
+          )
+          replace_once(
+              '          <div className="mt-5 flex flex-wrap gap-2">\n            <span className="neutral-chip">{job.type}</span>\n            <span className="neutral-chip">{job.sector || \'Tous secteurs\'}</span>\n          </div>',
+              '          <div className="mt-5 flex flex-wrap gap-2">\n            <span className="neutral-chip">{job.type}</span>\n            <span className="neutral-chip">{job.sector || \'Tous secteurs\'}</span>\n          </div>\n          <button type="button" onClick={reportJob} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-bold text-slate-500 hover:bg-red-50 hover:text-red-700"><Flag size={16} /> Signaler cette offre</button>',
+              'job report button',
+          )
+
+          # Recruiter status distinguishes publication from trust review.
+          replace_once(
+              "          const isPublished = job.status === 'published';\n          return (",
+              "          const isPublished = job.status === 'published';\n          const isPendingModeration = job.moderationStatus === 'pending';\n          const isBlockedModeration = job.moderationStatus === 'blocked';\n          return (",
+              'recruiter moderation variables',
+          )
+          old_status = "                    <span className={classNames('rounded-full px-3 py-1 text-xs font-bold', isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700')}>\n                      {isPublished ? 'En ligne' : job.status === 'closed' ? 'Fermée' : 'Brouillon'}\n                    </span>"
+          new_status = "                    <span className={classNames('rounded-full px-3 py-1 text-xs font-bold', isBlockedModeration ? 'bg-red-100 text-red-800' : isPendingModeration ? 'bg-amber-100 text-amber-800' : isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700')}>\n                      {isBlockedModeration ? 'Bloquée' : isPendingModeration ? 'En vérification' : isPublished ? 'En ligne' : job.status === 'closed' ? 'Fermée' : 'Brouillon'}\n                    </span>"
+          replace_once(old_status, new_status, 'recruiter moderation status label')
+
+          # Publishing feedback reflects moderation result.
+          replace_once(
+              "      setNotifications((current) => [\n        { id: Date.now(), title: 'Offre publiée', body: `${publishedJob.role} est maintenant visible.`, read: false },\n        ...current,\n      ]);\n      setScreen('recruiter');\n      notify('Offre publiée.');",
+              "      const pendingModeration = publishedJob.moderationStatus === 'pending';\n      setNotifications((current) => [\n        {\n          id: Date.now(),\n          title: pendingModeration ? 'Offre en vérification' : 'Offre publiée',\n          body: pendingModeration ? `${publishedJob.role} sera visible après validation Nzela.` : `${publishedJob.role} est maintenant visible.`,\n          read: false,\n        },\n        ...current,\n      ]);\n      setScreen('recruiter');\n      notify(pendingModeration ? 'Offre envoyée pour vérification.' : 'Offre publiée.');",
+              'publication moderation feedback',
+          )
+
+          if text == original:
+              raise SystemExit('No App changes were produced')
+          path.write_text(text)
+          PY
+      - name: Validate Trust Safety source contracts
+        run: |
+          grep -q "companyVerified" src/App.jsx
+          grep -q "moderationStatus" src/App.jsx
+          grep -q "Signaler cette offre" src/App.jsx
+          grep -q "Offre envoyée pour vérification" src/App.jsx
+          grep -q "En vérification" src/App.jsx
+      - name: Commit App integration
+        run: |
+          if git diff --quiet -- src/App.jsx; then
+            echo "Already integrated."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.jsx
+          git commit -m "Intégrer Trust & Safety dans les offres"
+          git push origin HEAD:${{ github.head_ref }}
