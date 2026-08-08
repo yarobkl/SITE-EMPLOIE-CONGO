@@ -1,0 +1,104 @@
+name: Integrate Marketplace KPIs
+
+on:
+  push:
+    branches: [agent/marketplace-health-dashboard]
+    paths:
+      - src/AdminPlatformDashboard.jsx
+      - .github/workflows/integrate-marketplace-kpis.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/marketplace-health-dashboard
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Integrate marketplace health into admin dashboard
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/AdminPlatformDashboard.jsx')
+          text = p.read_text()
+
+          def once(old, new, label):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one occurrence, found {count}')
+              text = text.replace(old, new, 1)
+
+          once(
+              "const EMPTY_SNAPSHOT = {\n",
+              "const EMPTY_MARKETPLACE = {\n  live_jobs: 0,\n  live_jobs_with_applications: 0,\n  live_jobs_without_applications: 0,\n  job_application_coverage_pct: 0,\n  avg_applications_per_live_job: 0,\n  median_hours_to_first_application: 0,\n  applications_total: 0,\n  applications_accepted: 0,\n  application_acceptance_pct: 0,\n  applications_progressed: 0,\n  application_progress_pct: 0,\n  applications_with_conversation: 0,\n  application_to_conversation_pct: 0,\n  active_talent_posts: 0,\n  hired_talent_posts: 0,\n  talent_invitations: 0,\n  talent_invitations_accepted: 0,\n  talent_invitation_acceptance_pct: 0,\n  companies_total: 0,\n  verified_companies: 0,\n  verified_company_pct: 0,\n};\n\nconst EMPTY_SNAPSHOT = {\n",
+              'empty marketplace state',
+          )
+
+          once(
+              "  const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT);\n  const [users, setUsers] = useState([]);",
+              "  const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT);\n  const [marketplace, setMarketplace] = useState(EMPTY_MARKETPLACE);\n  const [atRiskJobs, setAtRiskJobs] = useState([]);\n  const [users, setUsers] = useState([]);",
+              'marketplace component state',
+          )
+
+          once(
+              "    const [snapshotResult, usersResult, jobsResult, activityResult] = await Promise.all([\n      supabase.rpc('admin_platform_snapshot'),\n      supabase.rpc('admin_users_overview'),\n      supabase.rpc('admin_jobs_overview'),\n      supabase.rpc('admin_recent_activity', { p_limit: 80 }),\n    ]);\n\n    const firstError = snapshotResult.error || usersResult.error || jobsResult.error || activityResult.error;",
+              "    const [snapshotResult, usersResult, jobsResult, activityResult, marketplaceResult, atRiskResult] = await Promise.all([\n      supabase.rpc('admin_platform_snapshot'),\n      supabase.rpc('admin_users_overview'),\n      supabase.rpc('admin_jobs_overview'),\n      supabase.rpc('admin_recent_activity', { p_limit: 80 }),\n      supabase.rpc('admin_marketplace_kpis'),\n      supabase.rpc('admin_marketplace_jobs_at_risk'),\n    ]);\n\n    const firstError = snapshotResult.error || usersResult.error || jobsResult.error || activityResult.error || marketplaceResult.error || atRiskResult.error;",
+              'dashboard rpc loading',
+          )
+
+          once(
+              "      setSnapshot({ ...EMPTY_SNAPSHOT, ...(snapshotResult.data || {}) });\n      setUsers(usersResult.data || []);",
+              "      setSnapshot({ ...EMPTY_SNAPSHOT, ...(snapshotResult.data || {}) });\n      setMarketplace({ ...EMPTY_MARKETPLACE, ...(marketplaceResult.data || {}) });\n      setAtRiskJobs(atRiskResult.data || []);\n      setUsers(usersResult.data || []);",
+              'dashboard marketplace assignment',
+          )
+
+          once(
+              "      .on('postgres_changes', { event: '*', schema: 'public', table: 'message_threads' }, scheduleRefresh)\n      .subscribe();",
+              "      .on('postgres_changes', { event: '*', schema: 'public', table: 'message_threads' }, scheduleRefresh)\n      .on('postgres_changes', { event: '*', schema: 'public', table: 'job_seeker_posts' }, scheduleRefresh)\n      .on('postgres_changes', { event: '*', schema: 'public', table: 'talent_invitations' }, scheduleRefresh)\n      .on('postgres_changes', { event: '*', schema: 'public', table: 'companies' }, scheduleRefresh)\n      .subscribe();",
+              'marketplace realtime sources',
+          )
+
+          once(
+              "                  ['overview', 'Vue générale'],\n                  ['users', 'Utilisateurs'],",
+              "                  ['overview', 'Vue générale'],\n                  ['marketplace', 'Marketplace'],\n                  ['users', 'Utilisateurs'],",
+              'marketplace tab',
+          )
+
+          once(
+              "            {tab !== 'overview' && (",
+              "            {!['overview', 'marketplace'].includes(tab) && (",
+              'search visibility',
+          )
+
+          marker = "            {tab === 'users' && ("
+          if text.count(marker) != 1:
+              raise SystemExit('marketplace panel insertion marker missing')
+          panel = '''            {tab === 'marketplace' && (\n              <div className=\"space-y-4\">\n                <section className=\"rounded-xl border border-slate-200 bg-white p-5\">\n                  <div className=\"flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between\">\n                    <div>\n                      <p className=\"text-xs font-bold uppercase tracking-wide text-blue-700\">Liquidité du marketplace</p>\n                      <h2 className=\"mt-1 text-xl font-bold text-slate-950\">Est-ce que les offres rencontrent réellement des candidats ?</h2>\n                    </div>\n                    <p className=\"text-sm font-semibold text-slate-500\">{marketplace.live_jobs_with_applications}/{marketplace.live_jobs} offres ont reçu une candidature</p>\n                  </div>\n                  <div className=\"mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4\">\n                    <MetricCard icon={Briefcase} label=\"Couverture des offres\" value={`${marketplace.job_application_coverage_pct}%`} note={`${marketplace.live_jobs_without_applications} offre(s) sans candidature`} />\n                    <MetricCard icon={ClipboardList} label=\"Candidatures / offre\" value={marketplace.avg_applications_per_live_job} note=\"Moyenne sur les offres publiques approuvées\" />\n                    <MetricCard icon={Bell} label=\"Candidature → conversation\" value={`${marketplace.application_to_conversation_pct}%`} note={`${marketplace.applications_with_conversation} candidature(s) avec conversation`} />\n                    <MetricCard icon={Eye} label=\"Progression candidatures\" value={`${marketplace.application_progress_pct}%`} note={`${marketplace.applications_accepted} acceptée(s) · pas encore un KPI d’embauche`} />\n                  </div>\n                </section>\n\n                <div className=\"grid gap-4 lg:grid-cols-2\">\n                  <section className=\"rounded-xl border border-slate-200 bg-white p-5\">\n                    <h2 className=\"text-lg font-bold text-slate-950\">Nzela Talents</h2>\n                    <div className=\"mt-4 grid grid-cols-2 gap-3\">\n                      <div className=\"rounded-lg bg-blue-50 p-4\"><p className=\"text-2xl font-bold text-blue-700\">{marketplace.active_talent_posts}</p><p className=\"mt-1 text-sm font-semibold text-blue-950\">Demandes actives</p></div>\n                      <div className=\"rounded-lg bg-violet-50 p-4\"><p className=\"text-2xl font-bold text-violet-700\">{marketplace.talent_invitations}</p><p className=\"mt-1 text-sm font-semibold text-violet-950\">Invitations</p></div>\n                      <div className=\"rounded-lg bg-emerald-50 p-4\"><p className=\"text-2xl font-bold text-emerald-700\">{marketplace.talent_invitations_accepted}</p><p className=\"mt-1 text-sm font-semibold text-emerald-950\">Invitations acceptées</p></div>\n                      <div className=\"rounded-lg bg-slate-100 p-4\"><p className=\"text-2xl font-bold text-slate-800\">{marketplace.hired_talent_posts}</p><p className=\"mt-1 text-sm font-semibold text-slate-700\">Demandes marquées recrutées</p></div>\n                    </div>\n                  </section>\n\n                  <section className=\"rounded-xl border border-slate-200 bg-white p-5\">\n                    <h2 className=\"text-lg font-bold text-slate-950\">Confiance recruteur</h2>\n                    <p className=\"mt-1 text-sm text-slate-500\">La vérification doit progresser sans bloquer la liquidité du marché.</p>\n                    <div className=\"mt-5 flex items-end justify-between gap-4\">\n                      <div><p className=\"text-4xl font-bold tracking-tight text-slate-950\">{marketplace.verified_company_pct}%</p><p className=\"mt-1 text-sm font-semibold text-slate-600\">Entreprises vérifiées</p></div>\n                      <p className=\"text-right text-sm text-slate-500\">{marketplace.verified_companies} vérifiée(s)<br />sur {marketplace.companies_total}</p>\n                    </div>\n                    <div className=\"mt-4 h-2 overflow-hidden rounded-full bg-slate-100\"><div className=\"h-full rounded-full bg-blue-700\" style={{ width: `${Math.min(100, Number(marketplace.verified_company_pct) || 0)}%` }} /></div>\n                  </section>\n                </div>\n\n                <section className=\"rounded-xl border border-slate-200 bg-white p-5\">\n                  <div className=\"flex items-center justify-between gap-3\">\n                    <div><p className=\"text-xs font-bold uppercase tracking-wide text-red-700\">Action requise</p><h2 className=\"mt-1 text-lg font-bold text-slate-950\">Offres sans aucune candidature</h2></div>\n                    <span className=\"rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700\">{atRiskJobs.length} à surveiller</span>\n                  </div>\n                  <div className=\"mt-4 grid gap-3 md:grid-cols-2\">\n                    {atRiskJobs.map((item) => (\n                      <article key={item.job_id} className=\"rounded-lg border border-slate-200 p-4\">\n                        <div className=\"flex items-start justify-between gap-3\">\n                          <div className=\"min-w-0\"><p className=\"truncate text-xs font-bold uppercase tracking-wide text-slate-500\">{item.company_name}</p><h3 className=\"mt-1 font-bold text-slate-950\">{item.title}</h3></div>\n                          <span className={classNames('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold', item.health === 'critical' ? 'bg-red-50 text-red-700' : item.health === 'watch' ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-700')}>{item.health === 'critical' ? 'Critique' : item.health === 'watch' ? 'À surveiller' : 'Nouvelle'}</span>\n                        </div>\n                        <p className=\"mt-3 text-sm text-slate-500\">0 candidature · en ligne depuis {Math.max(1, Math.floor(Number(item.age_hours || 0) / 24))} jour(s)</p>\n                      </article>\n                    ))}\n                    {atRiskJobs.length === 0 && <EmptyPanel title=\"Toutes les offres ont reçu une candidature\" body=\"Aucune offre publique n’est actuellement sans candidature.\" />}\n                  </div>\n                </section>\n              </div>\n            )}\n\n'''
+          text = text.replace(marker, panel + marker, 1)
+
+          p.write_text(text)
+          PY
+      - name: Validate source contracts
+        run: |
+          grep -q "admin_marketplace_kpis" src/AdminPlatformDashboard.jsx
+          grep -q "Marketplace" src/AdminPlatformDashboard.jsx
+          grep -q "Couverture des offres" src/AdminPlatformDashboard.jsx
+          grep -q "Offres sans aucune candidature" src/AdminPlatformDashboard.jsx
+          grep -q "admin_marketplace_jobs_at_risk" src/AdminPlatformDashboard.jsx
+      - name: Commit dashboard integration
+        run: |
+          if git diff --quiet -- src/AdminPlatformDashboard.jsx; then
+            echo "Already integrated"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/AdminPlatformDashboard.jsx
+          git commit -m "Ajouter le pilotage de liquidité marketplace"
+          git push origin HEAD:agent/marketplace-health-dashboard
