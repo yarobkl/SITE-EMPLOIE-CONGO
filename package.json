@@ -9,15 +9,22 @@
     "check:build-budget": "node scripts/check-build-budget.mjs",
     "security:audit": "npm audit --audit-level=high",
     "build": "npm run security:audit && npm run check:architecture && vite build && npm run check:build-budget",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "ios:add": "npm run build && npx cap add ios",
+    "ios:sync": "npm run build && npx cap sync ios",
+    "ios:open": "npx cap open ios",
+    "ios:run": "npm run build && npx cap run ios"
   },
   "dependencies": {
+    "@capacitor/core": "8.4.2",
+    "@capacitor/ios": "8.4.2",
     "@supabase/supabase-js": "^2.106.0",
     "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.4.2",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^6.0.2",
