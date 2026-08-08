@@ -1,0 +1,60 @@
+name: Refactor onboarding single source
+
+on:
+  push:
+    branches:
+      - agent/onboarding-single-source
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/onboarding-single-source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Remove legacy onboarding gate
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/TalentMarketplaceExperience.jsx')
+          text = path.read_text()
+
+          start = text.find('function OnboardingGate(')
+          end = text.find('function CandidateMarketplace(', start)
+          if start != -1 and end != -1:
+              text = text[:start] + text[end:]
+
+          text = text.replace(
+              'const { user, profile, locations, schemaReady, loading, reload } = useTalentCore();',
+              'const { user, profile, locations, schemaReady, loading } = useTalentCore();',
+          )
+          text = text.replace(
+              '      <OnboardingGate user={user} profile={profile} locations={locations} onCompleted={reload} />\n',
+              '',
+          )
+
+          path.write_text(text)
+          PY
+      - name: Verify legacy onboarding is gone
+        run: |
+          ! grep -q "function OnboardingGate" src/TalentMarketplaceExperience.jsx
+          ! grep -q "<OnboardingGate" src/TalentMarketplaceExperience.jsx
+          ! grep -q "complete_nzela_profile" src/TalentMarketplaceExperience.jsx
+      - name: Commit refactor when changed
+        run: |
+          if git diff --quiet -- src/TalentMarketplaceExperience.jsx; then
+            echo "Already refactored."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/TalentMarketplaceExperience.jsx
+          git commit -m "Retirer l’onboarding historique de Nzela Talents"
+          git push origin HEAD:agent/onboarding-single-source
