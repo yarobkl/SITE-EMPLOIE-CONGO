@@ -1,20 +1,23 @@
 name: Refactor onboarding single source
 
 on:
-  push:
-    branches:
-      - agent/onboarding-single-source
+  pull_request:
+    branches: [main]
+    paths:
+      - src/TalentMarketplaceExperience.jsx
+      - .github/workflows/refactor-onboarding-single-source.yml
 
 permissions:
   contents: write
 
 jobs:
   refactor:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/onboarding-single-source
+          ref: ${{ github.head_ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -57,4 +60,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/TalentMarketplaceExperience.jsx
           git commit -m "Retirer l’onboarding historique de Nzela Talents"
-          git push origin HEAD:agent/onboarding-single-source
+          git push origin HEAD:${{ github.head_ref }}
