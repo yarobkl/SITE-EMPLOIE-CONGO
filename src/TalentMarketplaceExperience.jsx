@@ -263,104 +263,6 @@ function useTalentCore() {
   return { user, profile, locations, schemaReady, loading, reload };
 }
 
-function OnboardingGate({ user, profile, locations, onCompleted }) {
-  const [phone, setPhone] = useState(profile?.phone || '');
-  const [city] = useState(profile?.city || 'Brazzaville');
-  const [locationId, setLocationId] = useState(profile?.location_id ? String(profile.location_id) : profile?.other_quarter_name ? 'other' : '');
-  const [otherQuarterName, setOtherQuarterName] = useState(profile?.other_quarter_name || '');
-  const [role, setRole] = useState(profile?.role === 'recruteur' ? 'recruteur' : 'candidat');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    setPhone(profile?.phone || '');
-    setLocationId(profile?.location_id ? String(profile.location_id) : profile?.other_quarter_name ? 'other' : '');
-    setOtherQuarterName(profile?.other_quarter_name || '');
-    setRole(profile?.role === 'recruteur' ? 'recruteur' : 'candidat');
-  }, [profile]);
-
-  async function submit(event) {
-    event.preventDefault();
-    setSaving(true);
-    setError('');
-    const { error: rpcError } = await supabase.rpc('complete_nzela_profile', {
-      p_phone: phone,
-      p_city: city,
-      p_location_id: locationId && locationId !== 'other' ? Number(locationId) : null,
-      p_other_quarter_name: locationId === 'other' ? otherQuarterName : null,
-      p_role: role,
-    });
-    if (rpcError) {
-      setError(friendlyError(rpcError));
-    } else {
-      await onCompleted();
-    }
-    setSaving(false);
-  }
-
-  if (!user || !profile || profile.profile_completed) return null;
-
-  return (
-    <div className="fixed inset-0 z-[220] overflow-y-auto bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
-      <div className="mx-auto max-w-xl rounded-3xl bg-white p-5 shadow-2xl md:p-7">
-        <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white"><MapPin size={23} /></div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Activation du profil</p>
-            <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Complétez votre profil Nzela Jobs</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Le téléphone et le quartier sont obligatoires pour sécuriser les comptes et produire des statistiques fiables sur l’emploi.</p>
-          </div>
-        </div>
-
-        <form onSubmit={submit} className="mt-6 space-y-5">
-          {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
-          <Field label="Votre usage principal" required>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                ['candidat', 'Je cherche un emploi'],
-                ['recruteur', 'Je recrute'],
-              ].map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setRole(value)}
-                  className={classNames(
-                    'min-h-12 rounded-xl border px-3 text-sm font-bold transition',
-                    role === value ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-slate-300 bg-white text-slate-700',
-                  )}
-                >{label}</button>
-              ))}
-            </div>
-          </Field>
-          <Field label="Numéro de téléphone" required hint="Il ne sera pas affiché publiquement sans votre accord.">
-            <div className="relative">
-              <Phone className="pointer-events-none absolute left-3.5 top-3 text-slate-400" size={18} />
-              <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Ex. +242 06 000 00 00" className="pl-10" required />
-            </div>
-          </Field>
-          <Field label="Quartier de résidence à Brazzaville" required>
-            <LocationSelect
-              locations={locations}
-              value={locationId}
-              otherValue={otherQuarterName}
-              onChange={setLocationId}
-              onOtherChange={setOtherQuarterName}
-            />
-          </Field>
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-700 disabled:opacity-60"
-          >
-            {saving ? <RefreshCw className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
-            Activer mon profil
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 function CandidateMarketplace({ user, profile, locations }) {
   const [posts, setPosts] = useState([]);
   const [invitations, setInvitations] = useState([]);
@@ -754,7 +656,7 @@ function AdminTalentAnalytics() {
 }
 
 export default function TalentMarketplaceExperience() {
-  const { user, profile, locations, schemaReady, loading, reload } = useTalentCore();
+  const { user, profile, locations, schemaReady, loading } = useTalentCore();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -770,7 +672,6 @@ export default function TalentMarketplaceExperience() {
 
   return (
     <>
-      <OnboardingGate user={user} profile={profile} locations={locations} onCompleted={reload} />
       <button
         type="button"
         onClick={() => setOpen(true)}

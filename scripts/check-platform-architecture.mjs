@@ -29,6 +29,8 @@ const app = read('src/App.jsx');
 const shell = read('src/MobilePlatformShell.jsx');
 const main = read('src/main.jsx');
 const navigation = read('src/NavigationExperience.jsx');
+const talentMarketplace = read('src/TalentMarketplaceExperience.jsx');
+const onboarding = read('src/OnboardingReliabilityExperience.jsx');
 const jsxFiles = listFiles(srcDir).filter((file) => /\.jsx?$/.test(file));
 
 // 1. Un seul shell primaire doit contrôler le pager et la bottom navigation.
@@ -98,6 +100,19 @@ if (primaryRouteRegistryFiles.length > 2) {
   fail(`Trop de registres de routes primaires (${primaryRouteRegistryFiles.length}). Maximum temporaire: 2 pendant le refactor.`);
 }
 
+// 6. Un seul onboarding peut activer un profil.
+if (count(main, /<OnboardingReliabilityExperience\s*\/>/g) !== 1) {
+  fail('main.jsx doit monter exactement un OnboardingReliabilityExperience.');
+}
+
+if (!onboarding.includes("p_phone_country: country.iso")) {
+  fail('L’onboarding officiel doit utiliser la RPC moderne avec pays du téléphone.');
+}
+
+if (talentMarketplace.includes('function OnboardingGate') || talentMarketplace.includes('<OnboardingGate') || talentMarketplace.includes('complete_nzela_profile')) {
+  fail('TalentMarketplaceExperience ne doit plus embarquer ni appeler un onboarding parallèle.');
+}
+
 if (process.exitCode) process.exit(process.exitCode);
 
-console.log('[architecture] OK — un seul pager/bottom-nav primaire, ordre des sections stable, routeur legacy isolé.');
+console.log('[architecture] OK — navigation primaire unique et onboarding unique protégés.');
