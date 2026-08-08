@@ -35,9 +35,9 @@ export default function RecruiterTrustCenter() {
     setProfile(profileRow || null);
     setCompanies(companyRows || []);
     setVerifications(verificationRows || []);
-    if (!companyId && companyRows?.[0]?.id) setCompanyId(companyRows[0].id);
-    if (!email) setEmail(profileRow?.email || sessionUser.email || '');
-  }, [companyId, email]);
+    setCompanyId((current) => current || companyRows?.[0]?.id || '');
+    setEmail((current) => current || profileRow?.email || sessionUser.email || '');
+  }, []);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) return undefined;
@@ -54,6 +54,8 @@ export default function RecruiterTrustCenter() {
         setProfile(null);
         setCompanies([]);
         setVerifications([]);
+        setCompanyId('');
+        setEmail('');
         setOpen(false);
       }
     });

@@ -16,6 +16,7 @@ import {
   EyeOff,
   ExternalLink,
   FileText,
+  Flag,
   Home,
   LayoutDashboard,
   ListFilter,
@@ -241,6 +242,7 @@ function normalizeJob(row) {
     id: row.id,
     companyId: row.company_id,
     company: row.companies?.name || row.company || 'Entreprise',
+    companyVerified: Boolean(row.companies?.verified),
     role: row.title || row.role,
     loc: row.location || row.loc,
     type: row.contract_type || row.type,
@@ -251,6 +253,7 @@ function normalizeJob(row) {
       ? row.requirements.map(normalizeRequirement)
       : ['Expérience pertinente', 'Disponibilité', 'Motivation'],
     status: row.status || 'published',
+    moderationStatus: row.moderation_status || 'approved',
     createdAt: row.created_at,
   };
 }
@@ -350,7 +353,7 @@ export default function App() {
     async function loadJobs() {
       const { data, error } = await supabase
         .from('jobs')
-        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,created_at,companies(name)')
+        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,moderation_status,created_at,companies(name,verified)')
         .eq('status', 'published')
         .order('created_at', { ascending: false });
       if (cancelled) return;
@@ -508,7 +511,7 @@ export default function App() {
 
       const { data: ownedJobs } = await supabase
         .from('jobs')
-        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,created_at,companies(name)')
+        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,moderation_status,created_at,companies(name,verified)')
         .in('company_id', companyIds)
         .order('created_at', { ascending: false });
       const normalizedOwnedJobs = ownedJobs?.map(normalizeJob) || [];
@@ -556,7 +559,7 @@ export default function App() {
     };
   }, [authUser?.id]);
 
-  const publishedJobs = jobs.filter((job) => job.status === 'published');
+  const publishedJobs = jobs.filter((job) => job.status === 'published' && job.moderationStatus === 'approved');
   const hasPublishedOffer = recruiterJobs.length > 0;
   const filteredJobs = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -991,7 +994,7 @@ export default function App() {
     ));
     setJobs((current) => {
       if (current.some((job) => job.id === updatedJob.id)) return current.map(replaceJob);
-      return updatedJob.status === 'published' ? [updatedJob, ...current] : current;
+      return updatedJob.status === 'published' && updatedJob.moderationStatus === 'approved' ? [updatedJob, ...current] : current;
     });
     setSelectedJob((current) => (current?.id === updatedJob.id ? updatedJob : current));
   };
@@ -1064,7 +1067,7 @@ export default function App() {
           requirements: nextJob.requirements,
           status: 'published',
         })
-        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,created_at,companies(name)')
+        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,moderation_status,created_at,companies(name,verified)')
         .single();
       if (jobError || !savedJob) {
         notify(`Offre non publiée : ${jobError?.message || 'service indisponible'}`);
@@ -1073,12 +1076,18 @@ export default function App() {
       const publishedJob = normalizeJob(savedJob);
       syncJobCollections(publishedJob);
       setJobForm(emptyJob);
+      const pendingModeration = publishedJob.moderationStatus === 'pending';
       setNotifications((current) => [
-        { id: Date.now(), title: 'Offre publiée', body: `${publishedJob.role} est maintenant visible.`, read: false },
+        {
+          id: Date.now(),
+          title: pendingModeration ? 'Offre en vérification' : 'Offre publiée',
+          body: pendingModeration ? `${publishedJob.role} sera visible après validation Nzela.` : `${publishedJob.role} est maintenant visible.`,
+          read: false,
+        },
         ...current,
       ]);
       setScreen('recruiter');
-      notify('Offre publiée.');
+      notify(pendingModeration ? 'Offre envoyée pour vérification.' : 'Offre publiée.');
     } catch (error) {
       notify(`Offre non publiée : ${error?.message || 'service indisponible'}`);
     } finally {
@@ -1139,7 +1148,7 @@ export default function App() {
           sector: jobForm.sector || null,
         })
         .eq('id', editingJob.id)
-        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,created_at,companies(name)')
+        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,moderation_status,created_at,companies(name,verified)')
         .maybeSingle();
       if (error || !savedJob) {
         notify(`Modification impossible : ${error?.message || 'offre introuvable ou accès refusé'}`);
@@ -1167,7 +1176,7 @@ export default function App() {
         .from('jobs')
         .update({ status: nextStatus })
         .eq('id', job.id)
-        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,created_at,companies(name)')
+        .select('id,company_id,title,description,location,contract_type,salary_range,sector,requirements,status,moderation_status,created_at,companies(name,verified)')
         .maybeSingle();
       if (error || !savedJob) {
         notify(`Statut non modifié : ${error?.message || 'offre introuvable ou accès refusé'}`);
@@ -1616,6 +1625,46 @@ function JobsScreen({ jobs, query, setQuery, city, setCity, contract, setContrac
 
 function JobScreen({ job, saved, toggleSave, setScreen, notify }) {
   if (!job) return <EmptyState title="Offre introuvable" body="Retournez à la liste des offres." />;
+
+  const reportJob = async () => {
+    if (!hasSupabaseConfig || !supabase || !isSupabaseId(job.id)) {
+      notify('Le signalement est indisponible pour cette offre.');
+      return;
+    }
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
+    if (!user) {
+      notify('Connectez-vous pour signaler une offre.');
+      return;
+    }
+    const choice = window.prompt('Pourquoi signalez-vous cette offre ?\n1. Arnaque suspectée\n2. Demande de paiement\n3. Identité douteuse\n4. Contenu trompeur\n5. Discrimination\n6. Autre motif');
+    if (choice === null) return;
+    const reasons = { '1': 'scam', '2': 'payment_request', '3': 'identity', '4': 'misleading', '5': 'discrimination', '6': 'other' };
+    const reason = reasons[String(choice).trim()];
+    if (!reason) {
+      notify('Choisissez un motif entre 1 et 6.');
+      return;
+    }
+    const details = window.prompt('Décrivez brièvement le problème (facultatif) :', '');
+    if (details === null) return;
+    const { error } = await supabase.from('job_reports').insert({
+      job_id: job.id,
+      reporter_id: user.id,
+      reason,
+      details: details.trim().slice(0, 1200) || null,
+      status: 'open',
+    });
+    if (error?.code === '23505') {
+      notify('Vous avez déjà signalé cette offre.');
+      return;
+    }
+    if (error) {
+      notify('Le signalement n’a pas pu être envoyé.');
+      return;
+    }
+    notify('Signalement envoyé à l’équipe Nzela.');
+  };
+
   const shareJob = async () => {
     const shareData = {
       title: `${job.role} — ${job.company}`,
@@ -1651,12 +1700,13 @@ function JobScreen({ job, saved, toggleSave, setScreen, notify }) {
       <article className="pb-4">
         <header className="border-b border-slate-200 pb-6">
           <h1 className="text-[1.8rem] font-bold leading-tight tracking-[-0.025em] text-slate-950 md:text-4xl">{job.role}</h1>
-          <p className="mt-2 text-base font-semibold text-blue-700">{job.company}</p>
+          <p className="mt-2 flex flex-wrap items-center gap-2 text-base font-semibold text-blue-700">{job.company}{job.companyVerified && <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-700"><ShieldCheck size={13} /> Entreprise vérifiée</span>}</p>
           <p className="mt-3 flex items-center gap-2 text-sm text-slate-600"><MapPin size={17} /> {job.loc}</p>
           <div className="mt-5 flex flex-wrap gap-2">
             <span className="neutral-chip">{job.type}</span>
             <span className="neutral-chip">{job.sector || 'Tous secteurs'}</span>
           </div>
+          <button type="button" onClick={reportJob} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-bold text-slate-500 hover:bg-red-50 hover:text-red-700"><Flag size={16} /> Signaler cette offre</button>
           <p className="mt-5 flex items-center gap-2 text-sm font-semibold text-slate-800">
             <Briefcase size={17} /> {formatSalary(job.salary)}
           </p>
@@ -2181,6 +2231,8 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
           const boostRequest = boostRequests.find((request) => request.jobId === job.id);
           const jobBusy = jobAction.endsWith(`:${job.id}`);
           const isPublished = job.status === 'published';
+          const isPendingModeration = job.moderationStatus === 'pending';
+          const isBlockedModeration = job.moderationStatus === 'blocked';
           return (
             <article
               key={job.id}
@@ -2196,8 +2248,8 @@ function RecruiterScreen({ jobs, applications, stats, boostRequests, setScreen, 
                     <p className="mt-1 text-sm font-semibold text-slate-500">{job.company} · {job.loc}</p>
                   </div>
                   <span className="flex shrink-0 flex-col items-end gap-1">
-                    <span className={classNames('rounded-full px-3 py-1 text-xs font-bold', isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700')}>
-                      {isPublished ? 'En ligne' : job.status === 'closed' ? 'Fermée' : 'Brouillon'}
+                    <span className={classNames('rounded-full px-3 py-1 text-xs font-bold', isBlockedModeration ? 'bg-red-100 text-red-800' : isPendingModeration ? 'bg-amber-100 text-amber-800' : isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700')}>
+                      {isBlockedModeration ? 'Bloquée' : isPendingModeration ? 'En vérification' : isPublished ? 'En ligne' : job.status === 'closed' ? 'Fermée' : 'Brouillon'}
                     </span>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{formatCount(count, 'candidature')}</span>
                   </span>
@@ -2489,7 +2541,7 @@ function JobCard({ job, onClick, saved, onSave }) {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-base font-bold leading-6 text-slate-950 md:text-[17px]">{job.role}</span>
-            <span className="mt-0.5 block text-sm text-slate-700">{job.company}</span>
+            <span className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-slate-700">{job.company}{job.companyVerified && <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-black text-blue-700"><ShieldCheck size={12} /> Vérifiée</span>}</span>
             <span className="mt-2 flex items-center gap-1.5 text-sm text-slate-600">
               <MapPin size={15} /> {job.loc}
             </span>
