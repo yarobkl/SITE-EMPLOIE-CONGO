@@ -1,9 +1,6 @@
 name: iOS bootstrap
 
 on:
-  push:
-    branches:
-      - agent/ios-foundation
   pull_request:
     branches:
       - main
@@ -14,9 +11,7 @@ permissions:
 
 jobs:
   bootstrap:
-    if: >-
-      (github.event_name == 'push' && !contains(github.event.head_commit.message, '[ios-bootstrap]')) ||
-      (github.event_name == 'pull_request' && github.actor != 'github-actions[bot]')
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -54,4 +49,5 @@ jobs:
             exit 0
           fi
           git commit -m "feat(ios): generate native Xcode project [ios-bootstrap]"
+          git pull --rebase origin agent/ios-foundation
           git push origin HEAD:agent/ios-foundation
