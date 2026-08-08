@@ -31,6 +31,7 @@ const main = read('src/main.jsx');
 const navigation = read('src/NavigationExperience.jsx');
 const talentMarketplace = read('src/TalentMarketplaceExperience.jsx');
 const onboarding = read('src/OnboardingReliabilityExperience.jsx');
+const viteConfig = read('vite.config.js');
 const jsxFiles = listFiles(srcDir).filter((file) => /\.jsx?$/.test(file));
 
 // 1. Un seul shell primaire doit contrôler le pager et la bottom navigation.
@@ -113,6 +114,15 @@ if (talentMarketplace.includes('function OnboardingGate') || talentMarketplace.i
   fail('TalentMarketplaceExperience ne doit plus embarquer ni appeler un onboarding parallèle.');
 }
 
+// 7. Les règles métier doivent vivre dans le source, jamais dans des remplacements de chaînes au build.
+if (viteConfig.includes('talentMarketplaceCompatibility') || viteConfig.includes('.replaceAll(') || viteConfig.includes('eliebakala@gmail.com')) {
+  fail('vite.config.js ne doit pas réécrire le code ou les rôles métier pendant le build.');
+}
+
+if (talentMarketplace.includes('BriefcaseBusiness') || talentMarketplace.includes('UserRoundSearch')) {
+  fail('Nzela Talents contient encore des symboles nécessitant l’ancien rewrite Vite.');
+}
+
 if (process.exitCode) process.exit(process.exitCode);
 
-console.log('[architecture] OK — navigation primaire unique et onboarding unique protégés.');
+console.log('[architecture] OK — navigation, onboarding et règles métier ont une source explicite.');
