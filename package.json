@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "check:architecture": "node scripts/check-platform-architecture.mjs",
+    "build": "npm run check:architecture && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
