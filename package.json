@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "check:architecture": "node scripts/check-platform-architecture.mjs",
-    "build": "npm run check:architecture && vite build",
+    "security:audit": "npm audit --audit-level=high || true",
+    "build": "npm run security:audit && npm run check:architecture && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
