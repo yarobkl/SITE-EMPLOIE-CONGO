@@ -1,0 +1,34 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": [
+          "TEAM_ID.com.nzela.app"
+        ],
+        "components": [
+          {
+            "/": "/jobs/*",
+            "comment": "Ouvre une offre Nzela Jobs dans l’application."
+          },
+          {
+            "/": "/offres*",
+            "comment": "Ouvre la liste des offres dans l’application."
+          },
+          {
+            "/": "/immobilier*",
+            "comment": "Ouvre Nzela Immobilier dans l’application."
+          },
+          {
+            "/": "/profil*",
+            "comment": "Ouvre l’espace profil dans l’application."
+          },
+          {
+            "/": "/messages*",
+            "comment": "Ouvre la messagerie dans l’application."
+          }
+        ]
+      }
+    ]
+  }
+}
