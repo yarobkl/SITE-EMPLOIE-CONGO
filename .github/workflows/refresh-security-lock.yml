@@ -1,0 +1,33 @@
+name: Refresh security lock
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - package.json
+      - package-lock.json
+      - .github/workflows/refresh-security-lock.yml
+
+permissions:
+  contents: read
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Regenerate lockfile only
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Audit corrected dependency tree
+        run: npm audit --audit-level=high
+      - name: Upload regenerated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: corrected-package-lock
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 1
