@@ -333,6 +333,7 @@ export default function App() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
+  const [appleAuthLoading, setAppleAuthLoading] = useState(false);
   const [authUser, setAuthUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
   const [serviceStatus, setServiceStatus] = useState(hasSupabaseConfig ? 'checking' : 'offline');
@@ -700,25 +701,16 @@ export default function App() {
           notify(friendlyEmailAuthError(error.message));
           return;
         }
-        if (data.user) {
-          const nextProfile = {
-            id: data.user.id,
-            email: data.user.email,
-            role: loginRole,
-            nom: profile.nom,
-            prenom: profile.prenom,
-            phone: profile.phone,
-            city: profile.city,
-            title: profile.title,
-          };
-          await supabase.from('profiles').upsert({
-            ...nextProfile,
-          });
-          setProfile((current) => ({ ...current, ...nextProfile }));
-        }
         setLoginPassword('');
-        setScreen(loginRole === 'recruteur' ? 'recruiter' : 'profile');
-        notify(data.session ? 'Compte créé et connecté.' : 'Compte créé. Vérifiez votre adresse e-mail pour vous connecter.');
+        if (data.session) {
+          setAuthUser(data.user);
+          setScreen(loginRole === 'recruteur' ? 'recruiter' : 'profile');
+          notify('Compte créé et connecté.');
+        } else {
+          setAuthMode('signin');
+          setScreen('login');
+          notify('Compte créé. Vérifiez votre adresse e-mail, puis connectez-vous.');
+        }
         return;
       }
 
@@ -791,35 +783,58 @@ export default function App() {
       notify('La connexion avec Apple est temporairement indisponible.');
       return;
     }
-    if (googleAuthLoading) return;
+    if (appleAuthLoading) return;
     if (isOffline) {
       notify('Pas de connexion Internet. Reconnectez-vous puis réessayez.');
       return;
     }
-
-    setGoogleAuthLoading(true);
+    if (serviceStatus !== 'online') {
+      notify('Connexion avec Apple temporairement indisponible. Réessayez dans quelques instants.');
+      return;
+    }
+    setAppleAuthLoading(true);
     localStorage.setItem(PENDING_LOGIN_ROLE_KEY, JSON.stringify(loginRole));
-
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
-        options: {
-          redirectTo: getAuthRedirectUrl(),
-          skipBrowserRedirect: true,
-        },
+        options: { redirectTo: getAuthRedirectUrl(), skipBrowserRedirect: true },
       });
       if (error) {
         localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
-        setGoogleAuthLoading(false);
+        setAppleAuthLoading(false);
         notify(friendlyAuthError(error.message));
         return;
       }
-      if (data?.url) await openExternalAuth(data.url);
+      if (!data?.url) {
+        localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
+        setAppleAuthLoading(false);
+        notify('Apple n’a pas renvoyé de page de connexion. Réessayez.');
+        return;
+      }
+      await openExternalAuth(data.url);
     } catch {
       localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
-      setGoogleAuthLoading(false);
+      setAppleAuthLoading(false);
       notify('La connexion avec Apple est temporairement indisponible.');
     }
+  };
+
+  const handlePasswordReset = async () => {
+    const email = loginEmail.trim();
+    if (!email) {
+      notify('Saisissez d’abord votre adresse e-mail.');
+      return;
+    }
+    if (!hasSupabaseConfig || !supabase || isOffline) {
+      notify('La récupération du mot de passe est temporairement indisponible.');
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: getWebUrlForPath('/profil') });
+    if (error) {
+      notify(friendlyEmailAuthError(error.message));
+      return;
+    }
+    notify('E-mail de réinitialisation envoyé. Vérifiez votre boîte de réception.');
   };
 
   const handleLogout = async () => {
@@ -1543,7 +1558,9 @@ export default function App() {
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'tracking') return <TrackingScreen applications={applications} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} authLoading={authLoading} />;
     if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} profileSubmitting={profileSubmitting} setScreen={setScreen} openLogin={openLogin} openRecruiterSpace={openRecruiterSpace} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} hasPublishedOffer={hasPublishedOffer} />;
-    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleGoogleSignIn={handleGoogleSignIn} handleAppleSignIn={handleAppleSignIn} googleAuthLoading={googleAuthLoading} googleAuthEnabled={hasSupabaseConfig} serviceStatus={serviceStatus} networkStatus={networkStatus} setScreen={setScreen} notify={notify} />;
+    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleGoogleSignIn={handleGoogleSignIn} handleAppleSignIn={handleAppleSignIn}
+            handlePasswordReset={handlePasswordReset} googleAuthLoading={googleAuthLoading}
+            appleAuthLoading={appleAuthLoading} googleAuthEnabled={hasSupabaseConfig} serviceStatus={serviceStatus} networkStatus={networkStatus} setScreen={setScreen} notify={notify} />;
     if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} boostRequests={boostRequests} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} downloadApplicationCv={downloadApplicationCv} startEditJob={startEditJob} setJobStatus={setJobStatus} deleteJob={deleteJob} requestJobBoost={requestJobBoost} jobAction={jobAction} isLoggedIn={isLoggedIn} role={profile.role} />;
     if (screen === 'admin') return <AdminScreen boostRequests={boostRequests} reviewBoostRequest={reviewBoostRequest} role={profile.role} setScreen={setScreen} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} submitting={jobFormSubmitting} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} notify={notify} />;
@@ -2201,25 +2218,13 @@ function GoogleMark() {
   );
 }
 
-function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleGoogleSignIn, handleAppleSignIn, googleAuthLoading, googleAuthEnabled, serviceStatus, networkStatus, setScreen, notify }) {
+function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, profile, setProfile, handleAuth, handleGoogleSignIn, handleAppleSignIn, handlePasswordReset, googleAuthLoading, appleAuthLoading, googleAuthEnabled, serviceStatus, networkStatus, setScreen, notify }) {
   const isSignup = authMode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
-  const notifyInvalid = useInvalidNotice(notify, 'Renseignez votre adresse e-mail et votre mot de passe pour continuer.');
-  const notifySubmitBlocker = () => {
-    if (!loginEmail.trim() || !loginPassword.trim()) notifyInvalid();
-  };
+  const notifyInvalid = useInvalidNotice(notify, isSignup ? 'Complétez votre prénom, votre nom, votre e-mail et votre mot de passe.' : 'Renseignez votre adresse e-mail et votre mot de passe pour continuer.');
   const isRecruiterLogin = loginRole === 'recruteur';
-  const loginTitle = isSignup ? 'Créer votre compte' : 'Connexion';
-  const loginSubtitle = isSignup
-    ? isRecruiterLogin
-      ? 'Créez un compte recruteur pour publier vos offres et gérer les candidatures.'
-      : 'Créez un compte candidat pour postuler et suivre vos candidatures.'
-    : isRecruiterLogin
-      ? 'Accédez à votre espace recruteur pour publier vos offres et gérer les candidatures.'
-      : 'Accédez à votre espace candidat pour postuler et suivre vos candidatures.';
-  const authStatusText = serviceStatus === 'checking'
-    ? 'Vérification du service en cours. Réessayez dans quelques secondes.'
-    : 'Connexion temporairement indisponible. Réessayez un peu plus tard.';
+  const authStatusText = serviceStatus === 'checking' ? 'Vérification du service en cours. Réessayez dans quelques secondes.' : 'Connexion temporairement indisponible. Réessayez un peu plus tard.';
+  const switchMode = (mode) => { setAuthMode(mode); setLoginPassword(''); };
 
   return (
     <div className="mx-auto w-full max-w-md space-y-6 px-1 pb-8 pt-1">
@@ -2230,80 +2235,33 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
         </button>
         <span className="text-sm font-semibold text-slate-600">Français</span>
       </div>
-      <div><h1 className="text-[2rem] font-black tracking-tight text-slate-950">Bienvenue</h1><p className="mt-2 text-base font-medium leading-7 text-slate-500">Connectez-vous pour accéder à votre espace et gérer vos opportunités.</p></div>
+      <div>
+        <h1 className="text-[2rem] font-black tracking-tight text-slate-950">{isSignup ? 'Créer votre compte' : 'Bienvenue'}</h1>
+        <p className="mt-2 text-base font-medium leading-7 text-slate-500">{isSignup ? (isRecruiterLogin ? 'Créez votre espace recruteur et commencez à publier vos offres.' : 'Créez votre espace candidat pour postuler et suivre vos candidatures.') : 'Connectez-vous pour accéder à votre espace et gérer vos opportunités.'}</p>
+      </div>
       <div className="grid grid-cols-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <button type="button" onClick={() => setLoginRole('candidat')} className={classNames('min-h-[5.2rem] px-3 py-3 text-base font-black transition-colors', !isRecruiterLogin ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600')}>
-          <span className="block">Candidat</span><span className="mt-1 block text-xs font-medium">Je cherche un emploi</span>
-        </button>
-        <button type="button" onClick={() => setLoginRole('recruteur')} className={classNames('min-h-[5.2rem] px-3 py-3 text-base font-black transition-colors', isRecruiterLogin ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600')}>
-          <span className="block">Recruteur</span><span className="mt-1 block text-xs font-medium">Je recrute des talents</span>
-        </button>
+        <button type="button" onClick={() => setLoginRole('candidat')} className={classNames('min-h-[5.2rem] px-3 py-3 text-base font-black transition-colors', !isRecruiterLogin ? 'bg-blue-50 text-blue-700 ring-2 ring-inset ring-blue-600' : 'text-slate-600')}><span className="block">Candidat</span><span className="mt-1 block text-xs font-medium">Je cherche un emploi</span></button>
+        <button type="button" onClick={() => setLoginRole('recruteur')} className={classNames('min-h-[5.2rem] px-3 py-3 text-base font-black transition-colors', isRecruiterLogin ? 'bg-blue-50 text-blue-700 ring-2 ring-inset ring-blue-600' : 'text-slate-600')}><span className="block">Recruteur</span><span className="mt-1 block text-xs font-medium">Je recrute des talents</span></button>
       </div>
-      {serviceStatus !== 'online' && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">
-          {authStatusText}
-        </p>
-      )}
-      {networkStatus === 'offline' && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold leading-5 text-red-800">
-          Pas de connexion Internet. La connexion sera disponible après reconnexion.
-        </p>
-      )}
+      {serviceStatus !== 'online' && <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-5 text-amber-800">{authStatusText}</p>}
+      {networkStatus === 'offline' && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold leading-5 text-red-800">Pas de connexion Internet.</p>}
       <div className="grid grid-cols-2 border-b border-slate-200">
-        <button type="button" onClick={() => setAuthMode('signin')} className={classNames('min-h-11 border-b-2 text-sm font-semibold', !isSignup ? 'border-blue-700 text-blue-700' : 'border-transparent text-slate-500')}>
-          Se connecter
-        </button>
-        <button type="button" onClick={() => setAuthMode('signup')} className={classNames('min-h-11 border-b-2 text-sm font-semibold', isSignup ? 'border-blue-700 text-blue-700' : 'border-transparent text-slate-500')}>
-          Créer un compte
-        </button>
+        <button type="button" onClick={() => switchMode('signin')} className={classNames('min-h-12 border-b-[3px] text-sm font-black', !isSignup ? 'border-blue-600 text-slate-950' : 'border-transparent text-slate-400')}>Se connecter</button>
+        <button type="button" onClick={() => switchMode('signup')} className={classNames('min-h-12 border-b-[3px] text-sm font-black', isSignup ? 'border-blue-600 text-slate-950' : 'border-transparent text-slate-400')}>Créer un compte</button>
       </div>
-      <button
-        type="button"
-        onClick={handleGoogleSignIn}
-        disabled={!googleAuthEnabled || googleAuthLoading || networkStatus === 'offline'}
-        aria-busy={googleAuthLoading}
-        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold shadow-sm text-slate-800 transition-colors hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
-      >
-        <GoogleMark />
-        {googleAuthLoading ? 'Redirection vers Google…' : 'Continuer avec Google'}
-      </button>
-      <button
-        type="button"
-        onClick={handleAppleSignIn}
-        disabled={!googleAuthEnabled || googleAuthLoading || networkStatus === 'offline'}
-        aria-busy={googleAuthLoading}
-        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-slate-950 px-5 text-sm font-bold shadow-sm text-white transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-      >
-        <span aria-hidden="true" className="text-base font-black"></span>
-        Continuer avec Apple
-      </button>
-      <div className="flex items-center gap-3" aria-hidden="true">
-        <span className="h-px flex-1 bg-slate-200" />
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">ou</span>
-        <span className="h-px flex-1 bg-slate-200" />
+      <div className="space-y-3">
+        <button type="button" onClick={handleGoogleSignIn} disabled={!googleAuthEnabled || googleAuthLoading || networkStatus === 'offline'} aria-busy={googleAuthLoading} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-900 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50"><GoogleMark /> {googleAuthLoading ? 'Redirection vers Google…' : 'Continuer avec Google'}</button>
+        <button type="button" onClick={handleAppleSignIn} disabled={appleAuthLoading || networkStatus === 'offline' || serviceStatus !== 'online'} aria-busy={appleAuthLoading} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-slate-950 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"><span aria-hidden="true" className="text-xl leading-none"></span> {appleAuthLoading ? 'Ouverture d’Apple…' : 'Continuer avec Apple'}</button>
       </div>
+      <div className="flex items-center gap-3" aria-hidden="true"><span className="h-px flex-1 bg-slate-200" /><span className="text-xs font-bold text-slate-400">ou</span><span className="h-px flex-1 bg-slate-200" /></div>
       <form onSubmit={handleAuth} onInvalidCapture={notifyInvalid} className="space-y-4">
-        <TextField label="Adresse e-mail" type="email" value={loginEmail} onChange={setLoginEmail} required />
-        <PasswordField
-          label="Mot de passe"
-          value={loginPassword}
-          onChange={setLoginPassword}
-          required
-          placeholder="Minimum 6 caractères"
-          visible={showPassword}
-          onToggle={() => setShowPassword((visible) => !visible)}
-        />
-        <button type="submit" onClick={notifySubmitBlocker} className="flex min-h-14 w-full items-center justify-center rounded-xl bg-gradient-to-r from-blue-700 to-blue-500 px-5 text-base font-black text-white shadow-lg shadow-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-600">
-          {isSignup ? `Créer mon compte ${isRecruiterLogin ? 'recruteur' : 'candidat'}` : `Se connecter comme ${isRecruiterLogin ? 'recruteur' : 'candidat'}`}
-        </button>
-        <p className="text-xs font-semibold leading-5 text-slate-500">
-          {isSignup
-            ? `Ce compte sera créé comme ${isRecruiterLogin ? 'recruteur' : 'candidat'}. Si une confirmation par e-mail est requise, utilisez le lien reçu avant de vous connecter.`
-            : isRecruiterLogin
-              ? 'Utilisez votre compte recruteur pour voir vos offres, vos candidats et leurs CV.'
-              : 'Utilisez votre compte candidat pour postuler et suivre vos candidatures.'}
-        </p>
+        {isSignup && <div className="grid grid-cols-2 gap-3"><TextField label="Prénom" value={profile.prenom} onChange={(prenom) => setProfile({ ...profile, prenom })} required /><TextField label="Nom" value={profile.nom} onChange={(nom) => setProfile({ ...profile, nom })} required /></div>}
+        <TextField label="Adresse e-mail" type="email" value={loginEmail} onChange={setLoginEmail} required placeholder="votre@email.com" />
+        <PasswordField label="Mot de passe" value={loginPassword} onChange={setLoginPassword} required placeholder="Minimum 6 caractères" visible={showPassword} onToggle={() => setShowPassword((visible) => !visible)} />
+        {!isSignup && <div className="-mt-2 text-right"><button type="button" onClick={handlePasswordReset} className="min-h-10 text-sm font-semibold text-blue-600 hover:text-blue-800">Mot de passe oublié ?</button></div>}
+        <button type="submit" className="flex min-h-14 w-full items-center justify-center rounded-xl bg-gradient-to-r from-blue-700 to-blue-500 px-5 text-base font-black text-white shadow-lg shadow-blue-200 transition hover:from-blue-800 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600">{isSignup ? `Créer mon compte ${isRecruiterLogin ? 'recruteur' : 'candidat'}` : `Se connecter comme ${isRecruiterLogin ? 'recruteur' : 'candidat'}`}</button>
       </form>
+      <p className="text-center text-xs font-medium leading-5 text-slate-500">{isSignup ? 'Votre profil est créé une seule fois et reste lié à votre compte.' : 'Vos données sont sécurisées et confidentielles.'}</p>
     </div>
   );
 }
