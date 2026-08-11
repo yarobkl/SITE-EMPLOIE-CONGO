@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 
 const MessagingCenterV2 = lazy(() => import('./MessagingCenterV2.jsx'));
 const MessagingKeyboardShortcut = lazy(() => import('./MessagingKeyboardShortcut.jsx'));
@@ -16,6 +17,7 @@ const TrustSafetyAdmin = lazy(() => import('./TrustSafetyAdmin.jsx'));
 
 export default function DeferredPlatformEnhancements() {
   const [ready, setReady] = useState(false);
+  const nativeApp = Capacitor.isNativePlatform();
 
   useEffect(() => {
     const activate = () => setReady(true);
@@ -40,9 +42,9 @@ export default function DeferredPlatformEnhancements() {
       <AdminPlatformDashboard />
       <OfferLifecycleCenter />
       <OfferLifecycleMobileTrigger />
-      <PrivacyComplianceExperience />
+      {!nativeApp && <PrivacyComplianceExperience />}
       <JobViewCounterExperience />
-      <TalentMarketplaceExperience />
+      {!nativeApp && <TalentMarketplaceExperience />}
       <RecruiterVerificationAdmin />
       <RecruiterTrustCenter />
       <TrustSafetyAdmin />
