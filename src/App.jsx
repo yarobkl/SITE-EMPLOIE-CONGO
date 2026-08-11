@@ -1963,7 +1963,7 @@ function ApplyScreen({ job, form, setForm, submitApplication, submitting, setScr
           </button>
         </div>
       )}
-      <form onSubmit={submitApplication} onInvalidCapture={notifyInvalid} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+      <form onSubmit={submitApplication} onInvalidCapture={notifyInvalid} className="space-y-4">
         {isLoggedIn && (
           <button type="button" onClick={fillFromProfile} className="secondary-button">
             Utiliser mon profil
@@ -2152,7 +2152,7 @@ function ProfileScreen({ profile, setProfile, applications, updateProfile, profi
       </div>
 
       {isRecruiter ? (
-        <button onClick={openRecruiterSpace} className="primary-button w-full">
+        <button onClick={openRecruiterSpace} className="flex min-h-14 w-full items-center justify-center rounded-xl bg-gradient-to-r from-blue-700 to-blue-500 px-5 text-base font-black text-white shadow-lg shadow-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-600">
           <LayoutDashboard size={18} /> {hasPublishedOffer ? 'Ouvrir mon espace recruteur' : 'Publier ma première offre'}
         </button>
       ) : (
@@ -2222,15 +2222,21 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
     : 'Connexion temporairement indisponible. Réessayez un peu plus tard.';
 
   return (
-    <div className="mx-auto max-w-md space-y-5">
-      <BackButton onClick={() => setScreen('home')} label="Accueil" />
-      <PageHeader title={loginTitle} subtitle={loginSubtitle} />
-      <div className="grid grid-cols-2 rounded-lg border border-slate-200 bg-slate-50 p-1">
-        <button type="button" onClick={() => setLoginRole('candidat')} className={classNames('min-h-11 rounded-md text-sm font-semibold transition-colors', !isRecruiterLogin ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600')}>
-          Candidat
+    <div className="mx-auto w-full max-w-md space-y-6 px-1 pb-8 pt-1">
+      <div className="flex items-center justify-between gap-3">
+        <button type="button" onClick={() => setScreen('home')} className="flex min-h-11 items-center gap-3 rounded-xl pr-3 text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-700 to-blue-500 text-xl font-black text-white shadow-sm">N</span>
+          <span><span className="block text-xl font-black tracking-tight text-slate-950">Nzela <span className="text-blue-600">Jobs</span></span><span className="block text-xs font-medium text-slate-500">L'emploi au Congo, plus simple.</span></span>
         </button>
-        <button type="button" onClick={() => setLoginRole('recruteur')} className={classNames('min-h-11 rounded-md text-sm font-semibold transition-colors', isRecruiterLogin ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600')}>
-          Recruteur
+        <span className="text-sm font-semibold text-slate-600">Français</span>
+      </div>
+      <div><h1 className="text-[2rem] font-black tracking-tight text-slate-950">Bienvenue</h1><p className="mt-2 text-base font-medium leading-7 text-slate-500">Connectez-vous pour accéder à votre espace et gérer vos opportunités.</p></div>
+      <div className="grid grid-cols-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <button type="button" onClick={() => setLoginRole('candidat')} className={classNames('min-h-[5.2rem] px-3 py-3 text-base font-black transition-colors', !isRecruiterLogin ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600')}>
+          <span className="block">Candidat</span><span className="mt-1 block text-xs font-medium">Je cherche un emploi</span>
+        </button>
+        <button type="button" onClick={() => setLoginRole('recruteur')} className={classNames('min-h-[5.2rem] px-3 py-3 text-base font-black transition-colors', isRecruiterLogin ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600')}>
+          <span className="block">Recruteur</span><span className="mt-1 block text-xs font-medium">Je recrute des talents</span>
         </button>
       </div>
       {serviceStatus !== 'online' && (
@@ -2245,10 +2251,10 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
       )}
       <div className="grid grid-cols-2 border-b border-slate-200">
         <button type="button" onClick={() => setAuthMode('signin')} className={classNames('min-h-11 border-b-2 text-sm font-semibold', !isSignup ? 'border-blue-700 text-blue-700' : 'border-transparent text-slate-500')}>
-          Connexion
+          Se connecter
         </button>
         <button type="button" onClick={() => setAuthMode('signup')} className={classNames('min-h-11 border-b-2 text-sm font-semibold', isSignup ? 'border-blue-700 text-blue-700' : 'border-transparent text-slate-500')}>
-          Inscription
+          Créer un compte
         </button>
       </div>
       <button
@@ -2256,7 +2262,7 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
         onClick={handleGoogleSignIn}
         disabled={!googleAuthEnabled || googleAuthLoading || networkStatus === 'offline'}
         aria-busy={googleAuthLoading}
-        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 transition-colors hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
+        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold shadow-sm text-slate-800 transition-colors hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
       >
         <GoogleMark />
         {googleAuthLoading ? 'Redirection vers Google…' : 'Continuer avec Google'}
@@ -2266,7 +2272,7 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
         onClick={handleAppleSignIn}
         disabled={!googleAuthEnabled || googleAuthLoading || networkStatus === 'offline'}
         aria-busy={googleAuthLoading}
-        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-slate-950 px-5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-slate-950 px-5 text-sm font-bold shadow-sm text-white transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
       >
         <span aria-hidden="true" className="text-base font-black"></span>
         Continuer avec Apple
@@ -2276,7 +2282,7 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">ou</span>
         <span className="h-px flex-1 bg-slate-200" />
       </div>
-      <form onSubmit={handleAuth} onInvalidCapture={notifyInvalid} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+      <form onSubmit={handleAuth} onInvalidCapture={notifyInvalid} className="space-y-4">
         <TextField label="Adresse e-mail" type="email" value={loginEmail} onChange={setLoginEmail} required />
         <PasswordField
           label="Mot de passe"
@@ -2287,8 +2293,8 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
           visible={showPassword}
           onToggle={() => setShowPassword((visible) => !visible)}
         />
-        <button type="submit" onClick={notifySubmitBlocker} className="primary-button w-full">
-          {isSignup ? `Créer mon compte ${isRecruiterLogin ? 'recruteur' : 'candidat'}` : `Me connecter comme ${isRecruiterLogin ? 'recruteur' : 'candidat'}`}
+        <button type="submit" onClick={notifySubmitBlocker} className="flex min-h-14 w-full items-center justify-center rounded-xl bg-gradient-to-r from-blue-700 to-blue-500 px-5 text-base font-black text-white shadow-lg shadow-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          {isSignup ? `Créer mon compte ${isRecruiterLogin ? 'recruteur' : 'candidat'}` : `Se connecter comme ${isRecruiterLogin ? 'recruteur' : 'candidat'}`}
         </button>
         <p className="text-xs font-semibold leading-5 text-slate-500">
           {isSignup
