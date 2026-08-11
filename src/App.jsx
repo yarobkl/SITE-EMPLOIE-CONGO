@@ -36,6 +36,14 @@ import { hasSupabaseConfig, supabase } from './lib/supabase';
 import { formatCount, formatSalary } from './editorial';
 import MobilePlatformShell from './MobilePlatformShell.jsx';
 import RealEstateExperienceStable from './RealEstateExperienceStable.jsx';
+import {
+  getPlatformRedirectUrl,
+  installNativeAppBridge,
+  nativeLightFeedback,
+  nativeSuccessFeedback,
+  openExternalAuth,
+  shareNzelaItem,
+} from './nativeApp';
 
 const initialJobs = [];
 
@@ -129,7 +137,11 @@ function classNames(...values) {
 }
 
 function getAuthRedirectUrl() {
-  return window.location.origin;
+  return getPlatformRedirectUrl();
+}
+
+function getWebUrlForPath(pathname = '/') {
+  return new URL(pathname, window.location.origin).toString();
 }
 
 function getOAuthErrorFromUrl() {
@@ -332,6 +344,7 @@ export default function App() {
   const [jobAction, setJobAction] = useState('');
   const [notificationsUpdating, setNotificationsUpdating] = useState(false);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const [networkStatus, setNetworkStatus] = useState('online');
   const realEstateNavigationGuardRef = useRef(null);
 
   const [jobs, setJobs] = useStoredState('nzelajobs.v3.jobs', initialJobs);
@@ -346,6 +359,9 @@ export default function App() {
     { id: 1, title: 'Bienvenue sur Nzela Jobs', body: 'Votre espace emploi est prêt.', read: false },
   ]);
   const isLoggedIn = Boolean(authUser);
+  const isOffline = networkStatus === 'offline';
+
+  useEffect(() => installNativeAppBridge({ onNetworkChange: setNetworkStatus }), []);
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) return;
@@ -594,6 +610,7 @@ export default function App() {
   };
 
   const openJob = (job, nextScreen = 'job') => {
+    nativeLightFeedback();
     setSelectedJob(job);
     setScreen(nextScreen);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -614,6 +631,10 @@ export default function App() {
   };
 
   const toggleSave = async (job) => {
+    if (isOffline) {
+      notify('Pas de connexion Internet. Le favori n’a pas été modifié.');
+      return;
+    }
     const exists = savedIds.includes(job.id);
     if (hasSupabaseConfig && supabase && authUser) {
       let error;
@@ -640,12 +661,17 @@ export default function App() {
       exists ? current.filter((id) => id !== job.id) : [...current, job.id]
     ));
     notify(exists ? 'Offre retirée des favoris.' : 'Offre ajoutée aux favoris.');
+    nativeSuccessFeedback();
   };
 
   const handleAuth = async (event) => {
     event.preventDefault();
     if (!hasSupabaseConfig || !supabase) {
       notify('Connexion indisponible pour le moment.');
+      return;
+    }
+    if (isOffline) {
+      notify('Pas de connexion Internet. Reconnectez-vous puis réessayez.');
       return;
     }
     if (serviceStatus !== 'online') {
@@ -739,21 +765,60 @@ export default function App() {
     localStorage.setItem(PENDING_LOGIN_ROLE_KEY, JSON.stringify(loginRole));
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: getAuthRedirectUrl(),
+          skipBrowserRedirect: true,
         },
       });
       if (error) {
         localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
         setGoogleAuthLoading(false);
         notify(friendlyAuthError(error.message));
+        return;
       }
+      if (data?.url) await openExternalAuth(data.url);
     } catch {
       localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
       setGoogleAuthLoading(false);
       notify('La connexion avec Google est temporairement indisponible.');
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    if (!hasSupabaseConfig || !supabase) {
+      notify('La connexion avec Apple est temporairement indisponible.');
+      return;
+    }
+    if (googleAuthLoading) return;
+    if (isOffline) {
+      notify('Pas de connexion Internet. Reconnectez-vous puis réessayez.');
+      return;
+    }
+
+    setGoogleAuthLoading(true);
+    localStorage.setItem(PENDING_LOGIN_ROLE_KEY, JSON.stringify(loginRole));
+
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: getAuthRedirectUrl(),
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error) {
+        localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
+        setGoogleAuthLoading(false);
+        notify(friendlyAuthError(error.message));
+        return;
+      }
+      if (data?.url) await openExternalAuth(data.url);
+    } catch {
+      localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
+      setGoogleAuthLoading(false);
+      notify('La connexion avec Apple est temporairement indisponible.');
     }
   };
 
@@ -790,6 +855,10 @@ export default function App() {
     }
     if (!hasSupabaseConfig || !supabase) {
       notify('La candidature est indisponible pour le moment. Réessayez dans quelques instants.');
+      return;
+    }
+    if (isOffline) {
+      notify('Pas de connexion Internet. Candidature non envoyée.');
       return;
     }
     if (!isSupabaseId(activeJob.id)) {
@@ -881,6 +950,7 @@ export default function App() {
       setApplicationForm(emptyApplication);
       setScreen(trackingEnabled ? 'profile' : 'jobs');
       notify(`Candidature envoyée. Référence : ${trackingNumber}`);
+      nativeSuccessFeedback();
     } catch (error) {
       notify(`Candidature non envoyée : ${error?.message || 'service indisponible'}`);
     } finally {
@@ -1012,6 +1082,10 @@ export default function App() {
       setScreen('profile');
       return;
     }
+    if (isOffline) {
+      notify('Pas de connexion Internet. Offre non publiée.');
+      return;
+    }
     if (!hasSupabaseConfig || !supabase || !authUser) {
       notify('Publication indisponible pour l’instant.');
       return;
@@ -1087,6 +1161,8 @@ export default function App() {
         ...current,
       ]);
       setScreen('recruiter');
+      notify('Offre publiée.');
+      nativeSuccessFeedback();
       notify(pendingModeration ? 'Offre envoyée pour vérification.' : 'Offre publiée.');
     } catch (error) {
       notify(`Offre non publiée : ${error?.message || 'service indisponible'}`);
@@ -1113,6 +1189,10 @@ export default function App() {
   const saveJobEdit = async (event) => {
     event.preventDefault();
     if (!editingJob || jobFormSubmitting) return;
+    if (isOffline) {
+      notify('Pas de connexion Internet. Modification non enregistrée.');
+      return;
+    }
     if (!hasSupabaseConfig || !supabase || !isSupabaseId(editingJob.id)) {
       notify('Modification indisponible pour l’instant.');
       return;
@@ -1159,6 +1239,7 @@ export default function App() {
       setJobForm(emptyJob);
       setScreen('recruiter');
       notify('Offre modifiée.');
+      nativeSuccessFeedback();
     } catch (error) {
       notify(`Modification impossible : ${error?.message || 'service indisponible'}`);
     } finally {
@@ -1168,6 +1249,10 @@ export default function App() {
 
   const setJobStatus = async (job, nextStatus) => {
     if (jobAction || !hasSupabaseConfig || !supabase || !isSupabaseId(job.id)) return;
+    if (isOffline) {
+      notify('Pas de connexion Internet. Statut non modifié.');
+      return;
+    }
     const actionKey = `status:${job.id}`;
     setJobAction(actionKey);
     notify(nextStatus === 'published' ? 'Remise en ligne de l’offre…' : 'Fermeture de l’offre…');
@@ -1184,6 +1269,7 @@ export default function App() {
       }
       syncJobCollections(normalizeJob(savedJob));
       notify(nextStatus === 'published' ? 'Offre remise en ligne.' : 'Offre fermée.');
+      nativeSuccessFeedback();
     } catch (error) {
       notify(`Statut non modifié : ${error?.message || 'service indisponible'}`);
     } finally {
@@ -1202,6 +1288,10 @@ export default function App() {
     if (!confirmed) return;
     if (!hasSupabaseConfig || !supabase || !isSupabaseId(job.id)) {
       notify('Suppression indisponible pour l’instant.');
+      return;
+    }
+    if (isOffline) {
+      notify('Pas de connexion Internet. Offre non supprimée.');
       return;
     }
     const actionKey = `delete:${job.id}`;
@@ -1229,6 +1319,7 @@ export default function App() {
       });
       setSelectedJob((current) => (current?.id === job.id ? null : current));
       notify('Offre supprimée.');
+      nativeSuccessFeedback();
     } catch (error) {
       notify(`Suppression impossible : ${error?.message || 'service indisponible'}`);
     } finally {
@@ -1240,6 +1331,10 @@ export default function App() {
     if (jobAction) return;
     if (!hasSupabaseConfig || !supabase || !authUser) {
       notify('Connectez-vous comme recruteur pour promouvoir une offre.');
+      return;
+    }
+    if (isOffline) {
+      notify('Pas de connexion Internet. Demande non envoyée.');
       return;
     }
     if (!isSupabaseId(job.id) || !job.companyId) {
@@ -1268,6 +1363,7 @@ export default function App() {
       }
       setBoostRequests((current) => [normalizeBoostRequest(data), ...current]);
       notify('Demande de mise en avant envoyée à l’administrateur.');
+      nativeSuccessFeedback();
     } finally {
       setJobAction('');
     }
@@ -1299,6 +1395,10 @@ export default function App() {
       notify('Connectez-vous pour enregistrer votre profil.');
       return;
     }
+    if (isOffline) {
+      notify('Pas de connexion Internet. Profil non enregistré.');
+      return;
+    }
     setProfileSubmitting(true);
     try {
       const { data: savedProfile, error } = await supabase.from('profiles').upsert({
@@ -1319,6 +1419,7 @@ export default function App() {
       }
       setProfile((current) => ({ ...current, ...savedProfile }));
       notify('Profil mis à jour.');
+      nativeSuccessFeedback();
     } catch (error) {
       notify(`Profil non enregistré : ${error?.message || 'service indisponible'}`);
     } finally {
@@ -1388,6 +1489,44 @@ export default function App() {
     setScreen(target);
   }, []);
 
+  useEffect(() => {
+    const handleNativeUrl = async (event) => {
+      const url = event.detail?.url;
+      if (!url) return;
+      try {
+        const parsed = new URL(url);
+        const path = parsed.protocol === 'com.nzela.app:'
+          ? (parsed.hostname === 'auth' ? '/auth/callback' : parsed.pathname)
+          : parsed.pathname;
+        const authCode = parsed.searchParams.get('code');
+        if (path === '/auth/callback' && authCode && hasSupabaseConfig && supabase) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
+          if (error) {
+            notify(friendlyAuthError(error.message));
+            return;
+          }
+          setAuthUser(data.session?.user || null);
+          notify('Connexion réussie.');
+          commitPlatformSection('profile');
+          return;
+        }
+        if (path.startsWith('/offres') || path.startsWith('/jobs')) {
+          commitPlatformSection('jobs');
+        } else if (path.startsWith('/immobilier')) {
+          commitPlatformSection('immobilier');
+        } else if (path.startsWith('/profil')) {
+          commitPlatformSection('profile');
+        } else if (path.startsWith('/messages')) {
+          commitPlatformSection('profile');
+        }
+      } catch {
+        commitPlatformSection('home');
+      }
+    };
+    window.addEventListener('nzela:native-url', handleNativeUrl);
+    return () => window.removeEventListener('nzela:native-url', handleNativeUrl);
+  }, [commitPlatformSection]);
+
   const setRealEstateNavigationGuard = useCallback((guard) => {
     realEstateNavigationGuardRef.current = guard;
   }, []);
@@ -1404,7 +1543,7 @@ export default function App() {
     if (screen === 'saved') return <SavedScreen jobs={savedJobs} openJob={openJob} />;
     if (screen === 'tracking') return <TrackingScreen applications={applications} setScreen={setScreen} openLogin={openLogin} isLoggedIn={isLoggedIn} authLoading={authLoading} />;
     if (screen === 'profile') return <ProfileScreen profile={profile} setProfile={setProfile} applications={applications} updateProfile={updateProfile} profileSubmitting={profileSubmitting} setScreen={setScreen} openLogin={openLogin} openRecruiterSpace={openRecruiterSpace} isLoggedIn={isLoggedIn} authLoading={authLoading} handleLogout={handleLogout} hasPublishedOffer={hasPublishedOffer} />;
-    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleGoogleSignIn={handleGoogleSignIn} googleAuthLoading={googleAuthLoading} googleAuthEnabled={hasSupabaseConfig} serviceStatus={serviceStatus} setScreen={setScreen} notify={notify} />;
+    if (screen === 'login') return <LoginScreen authMode={authMode} setAuthMode={setAuthMode} loginRole={loginRole} setLoginRole={setLoginRole} loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleAuth={handleAuth} handleGoogleSignIn={handleGoogleSignIn} handleAppleSignIn={handleAppleSignIn} googleAuthLoading={googleAuthLoading} googleAuthEnabled={hasSupabaseConfig} serviceStatus={serviceStatus} networkStatus={networkStatus} setScreen={setScreen} notify={notify} />;
     if (screen === 'recruiter') return <RecruiterScreen jobs={recruiterJobs} applications={recruiterApplications} stats={recruiterJobStats} boostRequests={boostRequests} setScreen={setScreen} openLogin={openLogin} markApplicationActivity={markApplicationActivity} downloadApplicationCv={downloadApplicationCv} startEditJob={startEditJob} setJobStatus={setJobStatus} deleteJob={deleteJob} requestJobBoost={requestJobBoost} jobAction={jobAction} isLoggedIn={isLoggedIn} role={profile.role} />;
     if (screen === 'admin') return <AdminScreen boostRequests={boostRequests} reviewBoostRequest={reviewBoostRequest} role={profile.role} setScreen={setScreen} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} submitting={jobFormSubmitting} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} notify={notify} />;
@@ -1482,6 +1621,12 @@ export default function App() {
         sections={platformSections}
         showNavigation={showMobileChrome}
       />
+
+      {isOffline && (
+        <div role="status" aria-live="polite" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] z-[58] mx-auto max-w-sm rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-bold text-amber-900 shadow-lg md:bottom-6">
+          Pas de connexion Internet. Les envois seront bloqués jusqu’à la reconnexion.
+        </div>
+      )}
 
       {toast && (
         <div role="status" aria-live="polite" className="soft-enter fixed bottom-24 left-4 right-4 z-[60] mx-auto max-w-sm rounded-lg border border-slate-200 bg-slate-950 px-4 py-3 text-center text-sm font-semibold text-white shadow-xl md:bottom-6">
@@ -1667,17 +1812,13 @@ function JobScreen({ job, saved, toggleSave, setScreen, notify }) {
 
   const shareJob = async () => {
     const shareData = {
-      title: `${job.role} — ${job.company}`,
+      title: `${job.role} chez ${job.company}`,
       text: `${job.role} chez ${job.company}, à ${job.loc}.`,
-      url: window.location.origin,
+      url: getWebUrlForPath('/offres'),
     };
     try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-        notify('Lien de l’offre copié.');
-      }
+      await shareNzelaItem(shareData);
+      notify('Offre prête à partager.');
     } catch (error) {
       if (error?.name !== 'AbortError') notify('Partage indisponible pour le moment.');
     }
@@ -2060,7 +2201,7 @@ function GoogleMark() {
   );
 }
 
-function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleGoogleSignIn, googleAuthLoading, googleAuthEnabled, serviceStatus, setScreen, notify }) {
+function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleGoogleSignIn, handleAppleSignIn, googleAuthLoading, googleAuthEnabled, serviceStatus, networkStatus, setScreen, notify }) {
   const isSignup = authMode === 'signup';
   const [showPassword, setShowPassword] = useState(false);
   const notifyInvalid = useInvalidNotice(notify, 'Renseignez votre adresse e-mail et votre mot de passe pour continuer.');
@@ -2097,6 +2238,11 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
           {authStatusText}
         </p>
       )}
+      {networkStatus === 'offline' && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold leading-5 text-red-800">
+          Pas de connexion Internet. La connexion sera disponible après reconnexion.
+        </p>
+      )}
       <div className="grid grid-cols-2 border-b border-slate-200">
         <button type="button" onClick={() => setAuthMode('signin')} className={classNames('min-h-11 border-b-2 text-sm font-semibold', !isSignup ? 'border-blue-700 text-blue-700' : 'border-transparent text-slate-500')}>
           Connexion
@@ -2108,12 +2254,22 @@ function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmai
       <button
         type="button"
         onClick={handleGoogleSignIn}
-        disabled={!googleAuthEnabled || googleAuthLoading}
+        disabled={!googleAuthEnabled || googleAuthLoading || networkStatus === 'offline'}
         aria-busy={googleAuthLoading}
         className="flex min-h-12 w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 transition-colors hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
       >
         <GoogleMark />
         {googleAuthLoading ? 'Redirection vers Google…' : 'Continuer avec Google'}
+      </button>
+      <button
+        type="button"
+        onClick={handleAppleSignIn}
+        disabled={!googleAuthEnabled || googleAuthLoading || networkStatus === 'offline'}
+        aria-busy={googleAuthLoading}
+        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-slate-950 px-5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+      >
+        <span aria-hidden="true" className="text-base font-black"></span>
+        Continuer avec Apple
       </button>
       <div className="flex items-center gap-3" aria-hidden="true">
         <span className="h-px flex-1 bg-slate-200" />
