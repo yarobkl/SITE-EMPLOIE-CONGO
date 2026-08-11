@@ -1,0 +1,83 @@
+name: Finalize iOS integration
+
+on:
+  push:
+    branches:
+      - agent/ios-foundation
+    paths:
+      - .github/workflows/ios-finalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate-and-validate:
+    if: ${{ !contains(github.event.head_commit.message, 'integrate iOS foundation with V1') }}
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: agent/ios-foundation
+
+      - name: Merge current main while preserving iOS and V1 changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          BASE="$(git merge-base HEAD origin/main)"
+
+          git show HEAD:src/App.jsx > /tmp/app-ios.jsx
+          git show "$BASE":src/App.jsx > /tmp/app-base.jsx
+          git show origin/main:src/App.jsx > /tmp/app-main.jsx
+
+          set +e
+          git merge origin/main --no-commit --no-ff
+          MERGE_STATUS=$?
+          set -e
+
+          if [ "$MERGE_STATUS" -ne 0 ]; then
+            git checkout --ours package.json package-lock.json src/App.jsx
+            git merge-file --union /tmp/app-ios.jsx /tmp/app-base.jsx /tmp/app-main.jsx || true
+            if grep -Eq '^(<<<<<<<|=======|>>>>>>>)' /tmp/app-ios.jsx; then
+              echo "Unresolved conflict markers remain in App.jsx"
+              exit 1
+            fi
+            cp /tmp/app-ios.jsx src/App.jsx
+            git add src/App.jsx package.json package-lock.json
+            git add -A
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate web build
+        run: npm run build
+
+      - name: Sync Capacitor iOS
+        run: npx cap sync ios
+
+      - name: Build iOS simulator app
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Commit integrated iOS foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/ios-finalize.yml
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+          git commit -m "feat: integrate iOS foundation with V1"
+          git push origin HEAD:agent/ios-foundation
