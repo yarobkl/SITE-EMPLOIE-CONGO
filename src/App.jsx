@@ -838,17 +838,32 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    if (hasSupabaseConfig && supabase) {
-      await supabase.auth.signOut();
-    }
     localStorage.removeItem(PENDING_LOGIN_ROLE_KEY);
     setAuthUser(null);
     setProfile(initialProfile);
     setApplications([]);
     setSavedIds([]);
     setNotifications([]);
+    setLoginEmail('');
+    setLoginPassword('');
+    setAuthMode('signin');
+    setLoginRole('candidat');
+    setGoogleAuthLoading(false);
+    setAppleAuthLoading(false);
     setScreen('home');
+    window.history.replaceState({}, document.title, '/');
+    window.scrollTo({ top: 0, behavior: 'auto' });
     notify('Déconnexion réussie.');
+
+    if (hasSupabaseConfig && supabase) {
+      try {
+        const { error } = await supabase.auth.signOut({ scope: 'local' });
+        if (error) throw error;
+      } catch {
+        // L’interface est déjà déconnectée : la prochaine initialisation Auth
+        // vérifiera de nouveau la session au lieu de bloquer le bouton.
+      }
+    }
   };
 
   const submitApplication = async (event) => {
