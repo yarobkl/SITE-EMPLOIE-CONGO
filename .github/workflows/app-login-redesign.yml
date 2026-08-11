@@ -1,0 +1,124 @@
+name: Apply app login redesign
+on:
+  push:
+    branches: [agent/login-app-redesign]
+permissions:
+  contents: write
+jobs:
+  redesign:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/login-app-redesign
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Redesign login and hide web-only overlays in native app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('src/App.jsx')
+          s=p.read_text()
+          new=r'''function LoginScreen({ authMode, setAuthMode, loginRole, setLoginRole, loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleAuth, handleGoogleSignIn, handleAppleSignIn, googleAuthLoading, googleAuthEnabled, serviceStatus, networkStatus, setScreen, notify }) {
+  const isSignup = authMode === 'signup';
+  const [showPassword, setShowPassword] = useState(false);
+  const notifyInvalid = useInvalidNotice(notify, 'Renseignez votre adresse e-mail et votre mot de passe pour continuer.');
+  const notifySubmitBlocker = () => {
+    if (!loginEmail.trim() || !loginPassword.trim()) notifyInvalid();
+  };
+  const isRecruiterLogin = loginRole === 'recruteur';
+  const authStatusText = serviceStatus === 'checking'
+    ? 'Vérification du service en cours. Réessayez dans quelques secondes.'
+    : 'Connexion temporairement indisponible. Réessayez un peu plus tard.';
+
+  return (
+    <div className="mx-auto w-full max-w-md px-1 pb-8 pt-1">
+      <div className="mb-7 flex items-center justify-between gap-3">
+        <button type="button" onClick={() => setScreen('home')} className="flex min-h-11 items-center gap-3 rounded-xl pr-3 text-left focus:outline-none focus:ring-2 focus:ring-blue-600">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-700 to-blue-500 text-xl font-black text-white shadow-sm">N</span>
+          <span>
+            <span className="block text-xl font-black tracking-tight text-slate-950">Nzela <span className="text-blue-600">Jobs</span></span>
+            <span className="block text-xs font-medium text-slate-500">L'emploi au Congo, plus simple.</span>
+          </span>
+        </button>
+        <span className="text-sm font-semibold text-slate-600">Français</span>
+      </div>
+
+      <div className="mb-7">
+        <h1 className="text-[2rem] font-black tracking-tight text-slate-950">Bienvenue</h1>
+        <p className="mt-2 text-base font-medium leading-7 text-slate-500">Connectez-vous pour accéder à votre espace et gérer vos opportunités.</p>
+      </div>
+
+      <div className="mb-6 grid grid-cols-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <button type="button" onClick={() => setLoginRole('candidat')} className={classNames('min-h-[5.4rem] px-3 py-3 text-center transition', !isRecruiterLogin ? 'border-2 border-blue-600 bg-blue-50/60 text-blue-700' : 'text-slate-600')}>
+          <span className="block text-base font-black">Candidat</span>
+          <span className="mt-1 block text-xs font-medium">Je cherche un emploi</span>
+        </button>
+        <button type="button" onClick={() => setLoginRole('recruteur')} className={classNames('min-h-[5.4rem] px-3 py-3 text-center transition', isRecruiterLogin ? 'border-2 border-blue-600 bg-blue-50/60 text-blue-700' : 'text-slate-600')}>
+          <span className="block text-base font-black">Recruteur</span>
+          <span className="mt-1 block text-xs font-medium">Je recrute des talents</span>
+        </button>
+      </div>
+
+      {(serviceStatus !== 'online' || networkStatus === 'offline') && (
+        <p className={classNames('mb-5 rounded-xl border px-3 py-2 text-xs font-bold leading-5', networkStatus === 'offline' ? 'border-red-200 bg-red-50 text-red-800' : 'border-amber-200 bg-amber-50 text-amber-800')}>
+          {networkStatus === 'offline' ? 'Pas de connexion Internet. La connexion sera disponible après reconnexion.' : authStatusText}
+        </p>
+      )}
+
+      <div className="mb-6 grid grid-cols-2 border-b border-slate-200">
+        <button type="button" onClick={() => setAuthMode('signin')} className={classNames('min-h-12 border-b-[3px] text-sm font-black', !isSignup ? 'border-blue-600 text-slate-950' : 'border-transparent text-slate-400')}>Se connecter</button>
+        <button type="button" onClick={() => setAuthMode('signup')} className={classNames('min-h-12 border-b-[3px] text-sm font-black', isSignup ? 'border-blue-600 text-slate-950' : 'border-transparent text-slate-400')}>Créer un compte</button>
+      </div>
+
+      <div className="space-y-3">
+        <button type="button" onClick={handleGoogleSignIn} disabled={!googleAuthEnabled || googleAuthLoading || networkStatus === 'offline'} aria-busy={googleAuthLoading} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-900 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:opacity-50">
+          <GoogleMark /> {googleAuthLoading ? 'Redirection vers Google…' : 'Continuer avec Google'}
+        </button>
+        <button type="button" onClick={handleAppleSignIn} disabled={!googleAuthEnabled || googleAuthLoading || networkStatus === 'offline'} aria-busy={googleAuthLoading} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-slate-950 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-700 disabled:opacity-50">
+          <span aria-hidden="true" className="text-xl leading-none"></span> Continuer avec Apple
+        </button>
+      </div>
+
+      <div className="my-6 flex items-center gap-3" aria-hidden="true"><span className="h-px flex-1 bg-slate-200" /><span className="text-xs font-bold text-slate-400">ou</span><span className="h-px flex-1 bg-slate-200" /></div>
+
+      <form onSubmit={handleAuth} onInvalidCapture={notifyInvalid} className="space-y-4">
+        <TextField label="Adresse e-mail" type="email" value={loginEmail} onChange={setLoginEmail} required />
+        <PasswordField label="Mot de passe" value={loginPassword} onChange={setLoginPassword} required placeholder="Minimum 6 caractères" visible={showPassword} onToggle={() => setShowPassword((visible) => !visible)} />
+        {!isSignup && <div className="-mt-1 text-right"><button type="button" onClick={() => notify('La récupération du mot de passe arrive bientôt.')} className="min-h-9 text-sm font-semibold text-blue-600">Mot de passe oublié ?</button></div>}
+        <button type="submit" onClick={notifySubmitBlocker} className="flex min-h-14 w-full items-center justify-center rounded-xl bg-gradient-to-r from-blue-700 to-blue-500 px-5 text-base font-black text-white shadow-lg shadow-blue-200 transition hover:from-blue-800 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600">
+          {isSignup ? `Créer mon compte ${isRecruiterLogin ? 'recruteur' : 'candidat'}` : `Se connecter comme ${isRecruiterLogin ? 'recruteur' : 'candidat'}`}
+        </button>
+      </form>
+
+      <p className="mt-6 text-center text-xs font-medium text-slate-500">Vos données sont sécurisées et confidentielles.</p>
+    </div>
+  );
+}
+'''
+          s2=re.sub(r'function LoginScreen\([\s\S]*?\n}\n\n(?=function RecruiterScreen)', new+'\n', s, count=1)
+          if s2==s: raise SystemExit('LoginScreen replacement failed')
+          p.write_text(s2)
+
+          d=Path('src/DeferredPlatformEnhancements.jsx')
+          t=d.read_text()
+          if "@capacitor/core" not in t:
+              t=t.replace("import { lazy, Suspense, useEffect, useState } from 'react';", "import { lazy, Suspense, useEffect, useState } from 'react';\nimport { Capacitor } from '@capacitor/core';")
+          t=t.replace('export default function DeferredPlatformEnhancements() {\n  const [ready, setReady] = useState(false);', "export default function DeferredPlatformEnhancements() {\n  const [ready, setReady] = useState(false);\n  const nativeApp = Capacitor.isNativePlatform();")
+          t=t.replace('      <PrivacyComplianceExperience />', '      {!nativeApp && <PrivacyComplianceExperience />}')
+          t=t.replace('      <TalentMarketplaceExperience />', '      {!nativeApp && <TalentMarketplaceExperience />}')
+          d.write_text(t)
+          PY
+      - run: npm ci
+      - run: npm run build
+      - name: Commit redesign
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/App.jsx src/DeferredPlatformEnhancements.jsx
+          git commit -m "feat: redesign app login experience"
+          git push origin HEAD:agent/login-app-redesign
