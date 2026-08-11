@@ -1580,7 +1580,7 @@ export default function App() {
     if (screen === 'admin') return <AdminScreen boostRequests={boostRequests} reviewBoostRequest={reviewBoostRequest} role={profile.role} setScreen={setScreen} />;
     if (screen === 'post-job') return <PostJobScreen form={jobForm} setForm={setJobForm} onSubmit={editingJob ? saveJobEdit : publishJob} setScreen={setScreen} editing={Boolean(editingJob)} submitting={jobFormSubmitting} cancelEdit={() => { setEditingJob(null); setJobForm(emptyJob); setScreen('recruiter'); }} notify={notify} />;
     if (screen === 'notifications') return <NotificationsScreen notifications={notifications} markAllRead={markAllNotificationsRead} updating={notificationsUpdating} />;
-    if (screen === 'settings') return <SettingsScreen serviceStatus={serviceStatus} />;
+    if (screen === 'settings') return <SettingsScreen serviceStatus={serviceStatus} isLoggedIn={isLoggedIn} handleLogout={handleLogout} />;
     return <HomeScreen jobs={filteredJobs.slice(0, 3)} totalJobs={publishedJobs.length} query={query} setQuery={setQuery} city={city} setCity={setCity} clearSearch={clearSearch} openJob={openJob} setScreen={setScreen} openLogin={openLogin} savedIds={savedIds} toggleSave={toggleSave} />;
   };
 
@@ -2592,7 +2592,7 @@ function NotificationsScreen({ notifications, markAllRead, updating }) {
   );
 }
 
-function SettingsScreen({ serviceStatus }) {
+function SettingsScreen({ serviceStatus, isLoggedIn, handleLogout }) {
   const statusCopy = {
     online: {
       title: 'Service opérationnel',
@@ -2633,6 +2633,22 @@ function SettingsScreen({ serviceStatus }) {
           Vous pouvez utiliser le site normalement. Les informations techniques restent réservées à l’équipe projet.
         </div>
       </div>
+
+      {isLoggedIn && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div>
+            <h2 className="text-base font-black text-slate-950">Compte</h2>
+            <p className="mt-1 text-sm font-medium leading-6 text-slate-500">Gérez votre session Nzela sur cet appareil.</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="mt-4 flex min-h-12 w-full items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-black text-red-700 transition hover:border-red-300 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            Se déconnecter
+          </button>
+        </section>
+      )}
     </div>
   );
 }
