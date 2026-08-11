@@ -42,9 +42,7 @@ export default function DeferredPlatformEnhancements() {
       <AdminPlatformDashboard />
       <OfferLifecycleCenter />
       <OfferLifecycleMobileTrigger />
-      {!nativeApp && <PrivacyComplianceExperience />}
       <JobViewCounterExperience />
-      {!nativeApp && <TalentMarketplaceExperience />}
       <RecruiterVerificationAdmin />
       <RecruiterTrustCenter />
       <TrustSafetyAdmin />
