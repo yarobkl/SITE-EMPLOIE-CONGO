@@ -11,6 +11,8 @@ const PrivacyComplianceExperience = lazy(() => import('./PrivacyComplianceExperi
 const JobViewCounterExperience = lazy(() => import('./JobViewCounterExperience.jsx'));
 const TalentMarketplaceExperience = lazy(() => import('./TalentMarketplaceExperience.jsx'));
 const RecruiterVerificationAdmin = lazy(() => import('./RecruiterVerificationAdmin.jsx'));
+const RecruiterTrustCenter = lazy(() => import('./RecruiterTrustCenter.jsx'));
+const TrustSafetyAdmin = lazy(() => import('./TrustSafetyAdmin.jsx'));
 
 export default function DeferredPlatformEnhancements() {
   const [ready, setReady] = useState(false);
@@ -42,6 +44,8 @@ export default function DeferredPlatformEnhancements() {
       <JobViewCounterExperience />
       <TalentMarketplaceExperience />
       <RecruiterVerificationAdmin />
+      <RecruiterTrustCenter />
+      <TrustSafetyAdmin />
     </Suspense>
   );
 }

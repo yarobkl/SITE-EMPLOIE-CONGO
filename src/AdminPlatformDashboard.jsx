@@ -54,6 +54,30 @@ function activityLabel(eventType) {
   return ACTIVITY_LABELS[eventType] || 'Activité de la plateforme';
 }
 
+const EMPTY_MARKETPLACE = {
+  live_jobs: 0,
+  live_jobs_with_applications: 0,
+  live_jobs_without_applications: 0,
+  job_application_coverage_pct: 0,
+  avg_applications_per_live_job: 0,
+  median_hours_to_first_application: 0,
+  applications_total: 0,
+  applications_accepted: 0,
+  application_acceptance_pct: 0,
+  applications_progressed: 0,
+  application_progress_pct: 0,
+  applications_with_conversation: 0,
+  application_to_conversation_pct: 0,
+  active_talent_posts: 0,
+  hired_talent_posts: 0,
+  talent_invitations: 0,
+  talent_invitations_accepted: 0,
+  talent_invitation_acceptance_pct: 0,
+  companies_total: 0,
+  verified_companies: 0,
+  verified_company_pct: 0,
+};
+
 const EMPTY_SNAPSHOT = {
   users_total: 0,
   candidates_total: 0,
@@ -153,6 +177,8 @@ export default function AdminPlatformDashboard() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState('overview');
   const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT);
+  const [marketplace, setMarketplace] = useState(EMPTY_MARKETPLACE);
+  const [atRiskJobs, setAtRiskJobs] = useState([]);
   const [users, setUsers] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [activity, setActivity] = useState([]);
@@ -166,18 +192,22 @@ export default function AdminPlatformDashboard() {
     if (!quiet) setLoading(true);
     setError('');
 
-    const [snapshotResult, usersResult, jobsResult, activityResult] = await Promise.all([
+    const [snapshotResult, usersResult, jobsResult, activityResult, marketplaceResult, atRiskResult] = await Promise.all([
       supabase.rpc('admin_platform_snapshot'),
       supabase.rpc('admin_users_overview'),
       supabase.rpc('admin_jobs_overview'),
       supabase.rpc('admin_recent_activity', { p_limit: 80 }),
+      supabase.rpc('admin_marketplace_kpis'),
+      supabase.rpc('admin_marketplace_jobs_at_risk'),
     ]);
 
-    const firstError = snapshotResult.error || usersResult.error || jobsResult.error || activityResult.error;
+    const firstError = snapshotResult.error || usersResult.error || jobsResult.error || activityResult.error || marketplaceResult.error || atRiskResult.error;
     if (firstError) {
       setError('Certaines données du tableau de bord ne peuvent pas être chargées.');
     } else {
       setSnapshot({ ...EMPTY_SNAPSHOT, ...(snapshotResult.data || {}) });
+      setMarketplace({ ...EMPTY_MARKETPLACE, ...(marketplaceResult.data || {}) });
+      setAtRiskJobs(atRiskResult.data || []);
       setUsers(usersResult.data || []);
       setJobs(jobsResult.data || []);
       setActivity(activityResult.data || []);
@@ -217,6 +247,9 @@ export default function AdminPlatformDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'message_threads' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'job_seeker_posts' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'talent_invitations' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'companies' }, scheduleRefresh)
       .subscribe();
 
     const interval = window.setInterval(() => loadDashboard(true), 30000);
@@ -317,6 +350,7 @@ export default function AdminPlatformDashboard() {
               <div className="flex min-w-max gap-1">
                 {[
                   ['overview', 'Vue générale'],
+                  ['marketplace', 'Marketplace'],
                   ['users', 'Utilisateurs'],
                   ['jobs', 'Offres'],
                   ['activity', 'Activité en direct'],
@@ -336,7 +370,7 @@ export default function AdminPlatformDashboard() {
               </div>
             </div>
 
-            {tab !== 'overview' && (
+            {!['overview', 'marketplace'].includes(tab) && (
               <label className="flex min-h-12 items-center gap-3 rounded-xl border border-slate-300 bg-white px-4">
                 <Search size={19} className="text-slate-500" />
                 <input
@@ -397,6 +431,67 @@ export default function AdminPlatformDashboard() {
                         <p className="mt-2 text-xs text-slate-400">{formatDate(item.created_at)}</p>
                       </div>
                     ))}
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {tab === 'marketplace' && (
+              <div className="space-y-4">
+                <section className="rounded-xl border border-slate-200 bg-white p-5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-blue-700">Liquidité du marketplace</p>
+                      <h2 className="mt-1 text-xl font-bold text-slate-950">Est-ce que les offres rencontrent réellement des candidats ?</h2>
+                    </div>
+                    <p className="text-sm font-semibold text-slate-500">{marketplace.live_jobs_with_applications}/{marketplace.live_jobs} offres ont reçu une candidature</p>
+                  </div>
+                  <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <MetricCard icon={Briefcase} label="Couverture des offres" value={`${marketplace.job_application_coverage_pct}%`} note={`${marketplace.live_jobs_without_applications} offre(s) sans candidature`} />
+                    <MetricCard icon={ClipboardList} label="Candidatures / offre" value={marketplace.avg_applications_per_live_job} note="Moyenne sur les offres publiques approuvées" />
+                    <MetricCard icon={Bell} label="Candidature → conversation" value={`${marketplace.application_to_conversation_pct}%`} note={`${marketplace.applications_with_conversation} candidature(s) avec conversation`} />
+                    <MetricCard icon={Eye} label="Progression candidatures" value={`${marketplace.application_progress_pct}%`} note={`${marketplace.applications_accepted} acceptée(s) · pas encore un KPI d’embauche`} />
+                  </div>
+                </section>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <section className="rounded-xl border border-slate-200 bg-white p-5">
+                    <h2 className="text-lg font-bold text-slate-950">Nzela Talents</h2>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="rounded-lg bg-blue-50 p-4"><p className="text-2xl font-bold text-blue-700">{marketplace.active_talent_posts}</p><p className="mt-1 text-sm font-semibold text-blue-950">Demandes actives</p></div>
+                      <div className="rounded-lg bg-violet-50 p-4"><p className="text-2xl font-bold text-violet-700">{marketplace.talent_invitations}</p><p className="mt-1 text-sm font-semibold text-violet-950">Invitations</p></div>
+                      <div className="rounded-lg bg-emerald-50 p-4"><p className="text-2xl font-bold text-emerald-700">{marketplace.talent_invitations_accepted}</p><p className="mt-1 text-sm font-semibold text-emerald-950">Invitations acceptées</p></div>
+                      <div className="rounded-lg bg-slate-100 p-4"><p className="text-2xl font-bold text-slate-800">{marketplace.hired_talent_posts}</p><p className="mt-1 text-sm font-semibold text-slate-700">Demandes marquées recrutées</p></div>
+                    </div>
+                  </section>
+
+                  <section className="rounded-xl border border-slate-200 bg-white p-5">
+                    <h2 className="text-lg font-bold text-slate-950">Confiance recruteur</h2>
+                    <p className="mt-1 text-sm text-slate-500">La vérification doit progresser sans bloquer la liquidité du marché.</p>
+                    <div className="mt-5 flex items-end justify-between gap-4">
+                      <div><p className="text-4xl font-bold tracking-tight text-slate-950">{marketplace.verified_company_pct}%</p><p className="mt-1 text-sm font-semibold text-slate-600">Entreprises vérifiées</p></div>
+                      <p className="text-right text-sm text-slate-500">{marketplace.verified_companies} vérifiée(s)<br />sur {marketplace.companies_total}</p>
+                    </div>
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-700" style={{ width: `${Math.min(100, Number(marketplace.verified_company_pct) || 0)}%` }} /></div>
+                  </section>
+                </div>
+
+                <section className="rounded-xl border border-slate-200 bg-white p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div><p className="text-xs font-bold uppercase tracking-wide text-red-700">Action requise</p><h2 className="mt-1 text-lg font-bold text-slate-950">Offres sans aucune candidature</h2></div>
+                    <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">{atRiskJobs.length} à surveiller</span>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {atRiskJobs.map((item) => (
+                      <article key={item.job_id} className="rounded-lg border border-slate-200 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0"><p className="truncate text-xs font-bold uppercase tracking-wide text-slate-500">{item.company_name}</p><h3 className="mt-1 font-bold text-slate-950">{item.title}</h3></div>
+                          <span className={classNames('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold', item.health === 'critical' ? 'bg-red-50 text-red-700' : item.health === 'watch' ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-700')}>{item.health === 'critical' ? 'Critique' : item.health === 'watch' ? 'À surveiller' : 'Nouvelle'}</span>
+                        </div>
+                        <p className="mt-3 text-sm text-slate-500">0 candidature · en ligne depuis {Math.max(1, Math.floor(Number(item.age_hours || 0) / 24))} jour(s)</p>
+                      </article>
+                    ))}
+                    {atRiskJobs.length === 0 && <EmptyPanel title="Toutes les offres ont reçu une candidature" body="Aucune offre publique n’est actuellement sans candidature." />}
                   </div>
                 </section>
               </div>
