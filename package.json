@@ -8,6 +8,7 @@
     "check:architecture": "node scripts/check-platform-architecture.mjs",
     "check:build-budget": "node scripts/check-build-budget.mjs",
     "security:audit": "npm audit --audit-level=high",
+    "prebuild": "npm view nanoid@3.3.18 version dist.tarball dist.integrity",
     "build": "npm run security:audit && npm run check:architecture && vite build && npm run check:build-budget",
     "preview": "vite preview",
     "ios:add": "npm run build && npx cap add ios",
