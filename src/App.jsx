@@ -829,7 +829,7 @@ export default function App() {
       notify('La récupération du mot de passe est temporairement indisponible.');
       return;
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: getWebUrlForPath('/profil') });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: getWebUrlForPath('/nouveau-mot-de-passe') });
     if (error) {
       notify(friendlyEmailAuthError(error.message));
       return;
