@@ -101,7 +101,7 @@ export default function PasswordRecoveryExperience() {
       <main className="mx-auto w-full max-w-md">
         <div className="mb-6 text-center">
           <div className="text-2xl font-black tracking-tight text-slate-950"><span className="text-blue-600">Nzela</span> Jobs</div>
-          <p className="mt-1 text-sm font-semibold text-slate-500">La plateforme emploi du Congo</p>
+          <p className="mt-1 text-sm font-semibold text-slate-500">L’emploi au Congo</p>
         </div>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-8">
@@ -120,7 +120,7 @@ export default function PasswordRecoveryExperience() {
               <h1 className="mt-5 text-2xl font-black tracking-tight text-slate-950">Choisissez un nouveau mot de passe</h1>
               <p className="mt-2 text-sm font-medium leading-6 text-slate-600">Créez un nouveau mot de passe pour sécuriser votre compte Nzela Jobs.</p>
 
-              {!ready && <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-900">Vérification du lien sécurisé en cours…</div>}
+              {!ready && <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-900">Vérification du lien…</div>}
 
               <form onSubmit={submit} className="mt-6 space-y-4">
                 <label className="block">
@@ -148,7 +148,7 @@ export default function PasswordRecoveryExperience() {
 
               <div className="mt-5 flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3 text-xs font-semibold leading-5 text-slate-500">
                 <ShieldCheck className="mt-0.5 shrink-0 text-blue-600" size={18} />
-                <span>Pour votre sécurité, ne réutilisez pas un mot de passe déjà utilisé sur un autre service.</span>
+                <span>Évitez de réutiliser ce mot de passe sur un autre service.</span>
               </div>
             </>
           )}
