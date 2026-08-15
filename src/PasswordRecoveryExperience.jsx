@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Eye, EyeOff, KeyRound, ShieldCheck } from 'lucide-react';
 import { hasSupabaseConfig, supabase } from './lib/supabase';
 
@@ -12,7 +12,8 @@ function hasRecoveryHint() {
 }
 
 export default function PasswordRecoveryExperience() {
-  const [active, setActive] = useState(hasRecoveryHint);
+  const recoveryDetectedRef = useRef(hasRecoveryHint());
+  const [active, setActive] = useState(recoveryDetectedRef.current);
   const [ready, setReady] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -30,14 +31,16 @@ export default function PasswordRecoveryExperience() {
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       if (event === 'PASSWORD_RECOVERY') {
+        recoveryDetectedRef.current = true;
         setActive(true);
         setReady(Boolean(session));
         setError('');
+      } else if (recoveryDetectedRef.current && session) {
+        setReady(true);
       }
-      if (active && session) setReady(true);
     });
 
-    if (active) {
+    if (recoveryDetectedRef.current) {
       supabase.auth.getSession().then(({ data }) => {
         if (!mounted) return;
         setReady(Boolean(data.session));
@@ -48,7 +51,7 @@ export default function PasswordRecoveryExperience() {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, [active]);
+  }, []);
 
   if (!active) return null;
 
