@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Eye, EyeOff, KeyRound, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { hasSupabaseConfig, supabase } from './lib/supabase';
 
 function hasRecoveryHint() {
@@ -27,7 +27,6 @@ export default function PasswordRecoveryExperience() {
     if (!hasSupabaseConfig || !supabase) return undefined;
 
     let mounted = true;
-
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       if (event === 'PASSWORD_RECOVERY') {
@@ -42,8 +41,7 @@ export default function PasswordRecoveryExperience() {
 
     if (recoveryDetectedRef.current) {
       supabase.auth.getSession().then(({ data }) => {
-        if (!mounted) return;
-        setReady(Boolean(data.session));
+        if (mounted) setReady(Boolean(data.session));
       });
     }
 
@@ -91,7 +89,7 @@ export default function PasswordRecoveryExperience() {
       try {
         await supabase.auth.signOut({ scope: 'local' });
       } catch {
-        // L’écran peut être quitté même si la fermeture de session réseau échoue.
+        // La navigation reste possible même si la fermeture réseau échoue.
       }
     }
     window.history.replaceState({}, document.title, '/');
@@ -102,94 +100,48 @@ export default function PasswordRecoveryExperience() {
     <div className="fixed inset-0 z-[10000] overflow-y-auto bg-slate-50 px-4 py-8 sm:py-12">
       <main className="mx-auto w-full max-w-md">
         <div className="mb-6 text-center">
-          <div className="text-2xl font-black tracking-tight text-slate-950">
-            <span className="text-blue-600">Nzela</span> Jobs
-          </div>
+          <div className="text-2xl font-black tracking-tight text-slate-950"><span className="text-blue-600">Nzela</span> Jobs</div>
           <p className="mt-1 text-sm font-semibold text-slate-500">La plateforme emploi du Congo</p>
         </div>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-8">
           {success ? (
             <div className="text-center">
-              <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                <CheckCircle2 size={34} />
-              </span>
+              <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600"><ShieldCheck size={34} /></span>
               <h1 className="mt-5 text-2xl font-black tracking-tight text-slate-950">Mot de passe modifié</h1>
-              <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
-                Votre nouveau mot de passe est enregistré. Vous pouvez maintenant vous reconnecter à votre compte Nzela Jobs.
-              </p>
-              <button
-                type="button"
-                onClick={returnToLogin}
-                className="mt-7 min-h-14 w-full rounded-xl bg-blue-600 px-5 text-base font-black text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
-              >
+              <p className="mt-3 text-sm font-medium leading-6 text-slate-600">Votre nouveau mot de passe est enregistré. Vous pouvez maintenant vous reconnecter à votre compte Nzela Jobs.</p>
+              <button type="button" onClick={returnToLogin} className="mt-7 min-h-14 w-full rounded-xl bg-blue-600 px-5 text-base font-black text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">
                 Revenir à la connexion
               </button>
             </div>
           ) : (
             <>
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
-                <KeyRound size={28} />
-              </span>
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><ShieldCheck size={28} /></span>
               <h1 className="mt-5 text-2xl font-black tracking-tight text-slate-950">Choisissez un nouveau mot de passe</h1>
-              <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
-                Créez un nouveau mot de passe pour sécuriser votre compte Nzela Jobs.
-              </p>
+              <p className="mt-2 text-sm font-medium leading-6 text-slate-600">Créez un nouveau mot de passe pour sécuriser votre compte Nzela Jobs.</p>
 
-              {!ready && (
-                <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-900">
-                  Vérification du lien sécurisé en cours…
-                </div>
-              )}
+              {!ready && <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-900">Vérification du lien sécurisé en cours…</div>}
 
               <form onSubmit={submit} className="mt-6 space-y-4">
                 <label className="block">
                   <span className="mb-2 block text-sm font-black text-slate-800">Nouveau mot de passe</span>
                   <div className="flex min-h-14 items-center rounded-xl border border-slate-300 bg-white px-4 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-50">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      autoComplete="new-password"
-                      placeholder="8 caractères minimum"
-                      className="min-w-0 flex-1 bg-transparent text-base font-semibold text-slate-950 outline-none placeholder:text-slate-400"
-                      required
-                    />
-                    <button type="button" onClick={() => setShowPassword((value) => !value)} className="ml-2 flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100" aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}>
-                      {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
-                    </button>
+                    <input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" placeholder="8 caractères minimum" className="min-w-0 flex-1 bg-transparent text-base font-semibold text-slate-950 outline-none placeholder:text-slate-400" required />
+                    <button type="button" onClick={() => setShowPassword((value) => !value)} className="ml-2 flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100" aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}>{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button>
                   </div>
                 </label>
 
                 <label className="block">
                   <span className="mb-2 block text-sm font-black text-slate-800">Confirmer le mot de passe</span>
                   <div className="flex min-h-14 items-center rounded-xl border border-slate-300 bg-white px-4 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-50">
-                    <input
-                      type={showConfirmation ? 'text' : 'password'}
-                      value={confirmation}
-                      onChange={(event) => setConfirmation(event.target.value)}
-                      autoComplete="new-password"
-                      placeholder="Répétez le nouveau mot de passe"
-                      className="min-w-0 flex-1 bg-transparent text-base font-semibold text-slate-950 outline-none placeholder:text-slate-400"
-                      required
-                    />
-                    <button type="button" onClick={() => setShowConfirmation((value) => !value)} className="ml-2 flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100" aria-label={showConfirmation ? 'Masquer la confirmation' : 'Afficher la confirmation'}>
-                      {showConfirmation ? <EyeOff size={19} /> : <Eye size={19} />}
-                    </button>
+                    <input type={showConfirmation ? 'text' : 'password'} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="new-password" placeholder="Répétez le nouveau mot de passe" className="min-w-0 flex-1 bg-transparent text-base font-semibold text-slate-950 outline-none placeholder:text-slate-400" required />
+                    <button type="button" onClick={() => setShowConfirmation((value) => !value)} className="ml-2 flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100" aria-label={showConfirmation ? 'Masquer la confirmation' : 'Afficher la confirmation'}>{showConfirmation ? <EyeOff size={19} /> : <Eye size={19} />}</button>
                   </div>
                 </label>
 
-                {error && (
-                  <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold leading-6 text-red-700" role="alert">
-                    {error}
-                  </p>
-                )}
+                {error && <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold leading-6 text-red-700" role="alert">{error}</p>}
 
-                <button
-                  type="submit"
-                  disabled={submitting || !ready}
-                  className="min-h-14 w-full rounded-xl bg-blue-600 px-5 text-base font-black text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-300"
-                >
+                <button type="submit" disabled={submitting || !ready} className="min-h-14 w-full rounded-xl bg-blue-600 px-5 text-base font-black text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-300">
                   {submitting ? 'Enregistrement…' : 'Enregistrer le nouveau mot de passe'}
                 </button>
               </form>
