@@ -5,15 +5,12 @@ const MessagingCenterV2 = lazy(() => import('./MessagingCenterV2.jsx'));
 const MessagingKeyboardShortcut = lazy(() => import('./MessagingKeyboardShortcut.jsx'));
 const GlobalApplicationsCenterV2 = lazy(() => import('./GlobalApplicationsCenterV2.jsx'));
 const PlatformPresenceTracker = lazy(() => import('./PlatformPresenceTracker.jsx'));
-const AdminPlatformDashboard = lazy(() => import('./AdminPlatformDashboard.jsx'));
 const OfferLifecycleCenter = lazy(() => import('./OfferLifecycleCenter.jsx'));
 const OfferLifecycleMobileTrigger = lazy(() => import('./OfferLifecycleMobileTrigger.jsx'));
 const PrivacyComplianceExperience = lazy(() => import('./PrivacyComplianceExperience.jsx'));
 const JobViewCounterExperience = lazy(() => import('./JobViewCounterExperience.jsx'));
 const TalentMarketplaceExperience = lazy(() => import('./TalentMarketplaceExperience.jsx'));
-const RecruiterVerificationAdmin = lazy(() => import('./RecruiterVerificationAdmin.jsx'));
 const RecruiterTrustCenter = lazy(() => import('./RecruiterTrustCenter.jsx'));
-const TrustSafetyAdmin = lazy(() => import('./TrustSafetyAdmin.jsx'));
 
 export default function DeferredPlatformEnhancements() {
   const [ready, setReady] = useState(false);
@@ -39,13 +36,12 @@ export default function DeferredPlatformEnhancements() {
       <MessagingKeyboardShortcut />
       <GlobalApplicationsCenterV2 />
       <PlatformPresenceTracker />
-      <AdminPlatformDashboard />
       <OfferLifecycleCenter />
       <OfferLifecycleMobileTrigger />
       <JobViewCounterExperience />
-      <RecruiterVerificationAdmin />
+      <TalentMarketplaceExperience />
       <RecruiterTrustCenter />
-      <TrustSafetyAdmin />
+      {!nativeApp && <PrivacyComplianceExperience />}
     </Suspense>
   );
 }
