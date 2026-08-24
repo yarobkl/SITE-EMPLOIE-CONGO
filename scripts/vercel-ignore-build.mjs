@@ -1,6 +1,6 @@
 const primaryProjectId = 'prj_4qu0pYW6yj73vIb0PPod5hr1j0YS';
+const adminProjectId = 'prj_tIEIS7stCAZtGG1mcvXk09vreNT0';
 const duplicateProjectIds = new Set([
-  'prj_tIEIS7stCAZtGG1mcvXk09vreNT0',
   'prj_7rKM0tfJequLypk32Out3ALTTNLO',
 ]);
 
@@ -11,6 +11,11 @@ const projectId = process.env.VERCEL_PROJECT_ID || '';
 if (duplicateProjectIds.has(projectId)) {
   console.log(`Skipping duplicate Vercel project ${projectId}. Primary project: ${primaryProjectId}.`);
   process.exit(0);
+}
+
+if (projectId === adminProjectId) {
+  console.log(`Building dedicated Nzela Admin project ${projectId}.`);
+  process.exit(1);
 }
 
 console.log(projectId
