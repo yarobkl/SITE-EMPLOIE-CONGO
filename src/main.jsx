@@ -10,7 +10,7 @@ import './nzela-mobile-shell-fixes.css'
 import './index.css'
 
 const isAdminApp = import.meta.env.VITE_APP_MODE === 'admin'
-const AdminPortal = lazy(() => import('./AdminPortal.jsx'))
+const AdminPortal = lazy(() => import('./NzelaAdminPortal.jsx'))
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
