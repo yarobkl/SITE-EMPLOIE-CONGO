@@ -9,9 +9,10 @@ import DeferredPlatformEnhancements from './DeferredPlatformEnhancements.jsx'
 import './nzela-mobile-shell-fixes.css'
 import './index.css'
 
-const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
-const adminHost = typeof window !== 'undefined' && window.location.hostname.includes('site-emploie-congo-6cqj')
-const isAdminApp = import.meta.env.VITE_APP_MODE === 'admin' || isAdminPath || adminHost
+const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
+const adminHost = hostname === 'site-emploie-congo-6cqj.vercel.app' || hostname.startsWith('site-emploie-congo-6cqj-')
+const localAdmin = import.meta.env.DEV && import.meta.env.VITE_APP_MODE === 'admin'
+const isAdminApp = adminHost || localAdmin
 const AdminPortal = lazy(() => import('./NzelaAdminPortal.jsx'))
 
 if (isAdminApp && typeof document !== 'undefined') {
