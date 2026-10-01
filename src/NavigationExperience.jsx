@@ -1,22 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, CheckCircle2, ClipboardList, X } from 'lucide-react';
 import { hasSupabaseConfig, supabase } from './lib/supabase';
+import { SCREEN_PATHS, getScreenFromPath } from './platformRoutes.js';
 import './navigation-experience.css';
 
 const FILTERS_KEY = 'nzelajobs.navigation.filters';
 const JOBS_SCROLL_KEY = 'nzelajobs.navigation.jobsScroll';
-
-const SCREEN_PATHS = {
-  home: '/',
-  jobs: '/offres',
-  immobilier: '/immobilier',
-  saved: '/favoris',
-  tracking: '/candidatures',
-  profile: '/profil',
-  recruiter: '/recruteur',
-  notifications: '/notifications',
-  settings: '/parametres',
-};
 
 function normalizeText(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
@@ -48,8 +37,7 @@ function parseRoute(pathname = window.location.pathname) {
   if (applyMatch) return { screen: 'apply', jobId: applyMatch[1] };
   const jobMatch = path.match(/^\/offres\/([0-9a-f-]{36})(?:-[^/]+)?$/i);
   if (jobMatch) return { screen: 'job', jobId: jobMatch[1] };
-  const screen = Object.entries(SCREEN_PATHS).find(([, value]) => value === path)?.[0];
-  return { screen: screen || 'home', jobId: '' };
+  return { screen: getScreenFromPath(path), jobId: '' };
 }
 
 function detectScreen() {
