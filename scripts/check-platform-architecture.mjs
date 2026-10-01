@@ -29,6 +29,7 @@ const app = read('src/App.jsx');
 const shell = read('src/MobilePlatformShell.jsx');
 const main = read('src/main.jsx');
 const navigation = read('src/NavigationExperience.jsx');
+const platformRoutes = read('src/platformRoutes.js');
 const talentMarketplace = read('src/TalentMarketplaceExperience.jsx');
 const onboarding = read('src/OnboardingReliabilityExperience.jsx');
 const viteConfig = read('vite.config.js');
@@ -79,26 +80,31 @@ if (!navigation.includes("target.closest('.nz-mobile-platform-nav')")) {
   fail('NavigationExperience doit explicitement ignorer les clics de la bottom navigation du MobilePlatformShell.');
 }
 
-// 5. Empêcher l’apparition silencieuse d’un troisième registre des routes primaires.
-const primaryRouteRegistryFiles = jsxFiles.filter((file) => {
-  const text = fs.readFileSync(file, 'utf8');
-  return text.includes("immobilier: '/immobilier'") && text.includes("profile: '/profil'");
-});
-
-const allowedRouteRegistries = new Set([
-  'src/App.jsx',
-  'src/NavigationExperience.jsx',
-]);
-
-for (const file of primaryRouteRegistryFiles) {
-  const relative = path.relative(root, file).replaceAll('\\', '/');
-  if (!allowedRouteRegistries.has(relative)) {
-    fail(`Nouveau registre parallèle des routes primaires détecté dans ${relative}. Centraliser avant d’ajouter une navigation.`);
-  }
+// 5. Les routes primaires ont une source de vérité partagée.
+for (const required of [
+  "home: '/'",
+  "jobs: '/offres'",
+  "immobilier: '/immobilier'",
+  "profile: '/profil'",
+]) {
+  if (!platformRoutes.includes(required)) fail(`Route primaire absente de platformRoutes.js: ${required}`);
 }
 
-if (primaryRouteRegistryFiles.length > 2) {
-  fail(`Trop de registres de routes primaires (${primaryRouteRegistryFiles.length}). Maximum temporaire: 2 pendant le refactor.`);
+if (!app.includes("from './platformRoutes.js'")) {
+  fail('App.jsx doit utiliser le registre partagé platformRoutes.js.');
+}
+
+if (!navigation.includes("from './platformRoutes.js'")) {
+  fail('NavigationExperience.jsx doit utiliser le registre partagé platformRoutes.js.');
+}
+
+const parallelPrimaryRouteRegistries = jsxFiles.filter((file) => {
+  const text = fs.readFileSync(file, 'utf8');
+  return text.includes("immobilier: '/immobilier'") || text.includes("profile: '/profil'");
+});
+
+if (parallelPrimaryRouteRegistries.length) {
+  fail(`Registre parallèle de routes primaires détecté: ${parallelPrimaryRouteRegistries.map((file) => path.relative(root, file)).join(', ')}`);
 }
 
 // 6. Un seul onboarding peut activer un profil.
