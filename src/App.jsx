@@ -36,6 +36,7 @@ import { hasSupabaseConfig, supabase } from './lib/supabase';
 import { formatCount, formatSalary } from './editorial';
 import MobilePlatformShell from './MobilePlatformShell.jsx';
 import RealEstateExperienceStable from './RealEstateExperienceStable.jsx';
+import { PLATFORM_PATHS, getPlatformSectionFromPath } from './platformRoutes.js';
 import {
   getPlatformRedirectUrl,
   installNativeAppBridge,
@@ -90,12 +91,9 @@ function useInvalidNotice(notify, message) {
 const MAX_CV_BYTES = 2 * 1024 * 1024;
 const MAX_CV_LABEL = '2 Mo';
 const PENDING_LOGIN_ROLE_KEY = 'congoemploi.pendingLoginRole';
-const PLATFORM_PATHS = { home: '/', jobs: '/offres', immobilier: '/immobilier', profile: '/profil' };
-
 function getInitialScreen() {
   if (window.location.hash === '#immobilier') return 'immobilier';
-  return Object.entries(PLATFORM_PATHS)
-    .find(([, pathname]) => pathname === window.location.pathname)?.[0] || 'home';
+  return getPlatformSectionFromPath(window.location.pathname);
 }
 
 const emptyApplication = {
